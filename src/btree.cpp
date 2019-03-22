@@ -133,6 +133,7 @@ void test(BTree<void>& t)
     t.insert(27,(void*)1);
     */
 
+    /*
     t.insert(9,(void*)1);
     t.insert(22,(void*)1);
     t.insert(1,(void*)1);
@@ -190,6 +191,27 @@ void test(BTree<void>& t)
 
     t.insert(29,(void*)1);
     t.insert(30,(void*)1);
+
+    for (BTree<void>::iter it(&t, -1); it.more(); it.advance())
+      std::cout << it.getkey() << std::endl;
+      */
+
+    FILE *fp_in;
+    fp_in = fopen("111", "r");
+    int element1 = 10, element2 = 10;
+    int rc = 1142;
+
+    for (int i = 0; i < rc; i++)
+    {
+        if (fscanf(fp_in,"%d\t%d\n", &element1, &element2) !=2 )
+            break;
+        //fscanf(fp_in,"%d\t%d\n", &element1, &element2);
+
+        bool x = t.insert((u64)element2,(void*)1);
+
+        std::cout << element2 << "\t" << x << std::endl;
+    }
+    fclose(fp_in);
 
     for (BTree<void>::iter it(&t, -1); it.more(); it.advance())
       std::cout << it.getkey() << std::endl;
@@ -255,6 +277,7 @@ continuelab:;
 // Driver program to test above functions 
 int main() 
 {
+    /*
     uint64_t start = utime();
     for (uint64_t i = 0; i < 3; ++i)
     {
@@ -262,15 +285,16 @@ int main()
         testrandom(t);
     }
     std::cout << ((utime() - start)/1000000) << std::endl;
+    */
 
 
 
-    start = utime();
+    u64 start = utime();
     for (uint64_t i = 0; i < 1; ++i)
     {
         BTree<void> t(8);
-        testseq(t);
-        //test(t);
+        //testseq(t);
+        test(t);
     }
     std::cout << ((utime() - start)/1000000) << std::endl;
 

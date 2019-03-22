@@ -117,25 +117,33 @@ public:
     // function is called
     bool insertNonFull(uint64_t k, V* btn)
     {
+        //bool set = false;
+        bool insert1 = false;
         // Initialize index as index of rightmost element
         int i = n-1;
-        int l = 0;
-        int r = n-1;
-        int m;
+        //int l = 0;
+        //int r = n-1;
+        //int m;
 
-        // If this is a leaf node
-        if (leaf == true)
-        {
 #ifdef DEDUPLICATE
 
-            //while (i >= 0)
-            //{
-            //    if (kvs[i].key == k)
-            //      return false;
-            //    i--;
-            //}
-            //i = n-1;
+        /*
+            while (i >= 0)
+            {
+                if (kvs[i].key == k)
+                {
+                    if (k == 134)
+                  std::cout << "D: " << i << std::endl;
+                  n = n+1;
+                    return false;
+                  //k = 100000000000;
+                }
+                i--;
+            }
+            i = n-1;
+            */
 
+            /*
             l = 0;
             r = n - 1;
             while (l <= r)
@@ -148,7 +156,26 @@ public:
                 else
                     r = m - 1;
              }
+             */
 #endif
+
+        i = n-1;
+        // If this is a leaf node
+        if (leaf == true)
+        {
+            while (i >= 0)
+            {
+                if (kvs[i].key == k)
+                {
+                    //if (k == 134)
+                  //std::cout << "D: " << i << std::endl;
+                  //n = n+1;
+                    return false;
+                  //k = 100000000000;
+                }
+                i--;
+            }
+            i = n-1;
 
             // The following loop does two things
             // a) Finds the location of new key to be inserted
@@ -164,65 +191,75 @@ public:
             kvs[i+1].key = k;
             kvs[i+1].val = btn;
             n = n+1;
+            /*
+            if (k == 134)
+            {
+                std::cout << "C: " << i << std::endl;
+                i = n - 1;
+                while (i >= 0)
+                {
+                    std::cout << kvs[i].key << "\t";
+                    i--;
+                }
+                std::cout << std::endl;
+
+            }
+            */
             return true;
         }
         else // If this node is not leaf
         {
-#ifdef DEDUPLICATE
-            //while (i >= 0)
-            //{
-            //    if (kvs[i].key == k)
-            //      return false;
-            //    i--;
-            //}
-            //i = n-1;
 
-            l = 0;
-            r = n - 1;
-            m = 0;
-            while (l <= r)
+            while (i >= 0)
             {
-                m = l + (r - l) / 2;
-                if (kvs[m].key == k)
-                   return false;
-                if (kvs[m].key < k)
-                    l = m + 1;
-                else
-                    r = m - 1;
-             }
-#endif
+                if (kvs[i].key == k)
+                {
+                    //if (k == 134)
+                  //std::cout << "D1: " << i << std::endl;
+                    return false;
+                  //k = 100000000000;
+                }
+                i--;
+            }
+            i = n-1;
 
             // Find the child which is going to have the new key
             while (i >= 0 && kvs[i].key > k)
                 i--;
 
+#ifdef DEDUPLICATE
+            int i1 = 0;
+            while (i1 < C[i+1]->n )
+            {
+                if (k == C[i+1]->kvs[i1].key)
+                {
+                    //if (k == 134)
+                    //std::cout << "B: " << std::endl;
+                    return false;
+                }
+                i1++;
+            }
+
+            /*
+            r = C[i+1]->n - 1;
+            l = 0;
+            m = 0;
+            while (l <= r)
+            {
+                m = l + (r - l) / 2;
+                if (C[i+1]->kvs[m].key == k)
+                   return false;
+                if (C[i+1]->kvs[m].key < k)
+                    l = m + 1;
+                else
+                    r = m - 1;
+            }
+            */
+#endif
+
             // See if the found child is full
             if (C[i+1]->n == 2*t-1)
             {
-#ifdef DEDUPLICATE
-                //int i1 = 0;
-                //while (i1 < C[i+1]->n )
-                //{
-                //    if (k == C[i+1]->kvs[i1].key)
-                //        return false;
-                //    i1++;
-                //}
-
-                r = C[i+1]->n - 1;
-                l = 0;
-                m = 0;
-                while (l <= r)
-                {
-                    m = l + (r - l) / 2;
-                    if (C[i+1]->kvs[m].key == k)
-                       return false;
-                    if (C[i+1]->kvs[m].key < k)
-                        l = m + 1;
-                    else
-                        r = m - 1;
-                }
-#endif
-
                 // If the child is full, then split it
                 splitChild(i+1, C[i+1]);
 
@@ -232,10 +269,9 @@ public:
                 if (kvs[i+1].key < k)
                     i++;
             }
-            if (C[i+1]->insertNonFull(k, btn) == false)
-                return false;
-            else
-                return true;
+            //if (k == 134)
+            //    std::cout << "A: " << std::endl;
+            return insert1 || C[i+1]->insertNonFull(k, btn);
         }
     }
 
@@ -616,7 +652,7 @@ public:
     {
         root = NULL;
         ecount = 0;
-        t = 8;
+        t = 4;
     }
 
     BTree(int _t)
@@ -652,6 +688,10 @@ public:
             root->kvs[0].key = k; // Insert key
             root->kvs[0].val = btn; // Insert key
             root->n = 1; // Update number of keys in root
+
+            //if (k == 134)
+            //std::cout << "E: " << std::endl;
+            return true;
         }
         else // If tree is not empty
         {
@@ -661,14 +701,18 @@ public:
                 // Find the first key greater than or equal to k
 #ifdef DEDUPLICATE
 
-                //int i1 = 0;
-                //while (i1 < root->n )
-                //{
-                //    if (k == root->kvs[i1].key)
-                //        return false;
-                //    i1++;
-                //}
-
+                int i1 = 0;
+                while (i1 < root->n )
+                {
+                    if (k == root->kvs[i1].key)
+                    {
+                        //if (k == 134)
+                        //std::cout << "F: " << std::endl;
+                        return false;
+                    }
+                    i1++;
+                }
+                /*
                 int l = 0;
                 int r = root->n;
                 int m = 0;
@@ -682,6 +726,7 @@ public:
                     else
                         r = m - 1;
                  }
+                 */
 #endif
 
                 // Allocate memory for new root
@@ -698,21 +743,37 @@ public:
                 int i = 0;
                 if (s->kvs[0].key < k)
                     i++;
-                if (s->C[i]->insertNonFull(k, btn) == false)
-                    return false;
 
+                if (s->C[i]->insertNonFull(k, btn) == false)
+                {
+                    //if (k == 134)
+                    //std::cout << "G: " << std::endl;
+
+                    root = s;
+                    return false;
+                }
+                else{
+
+                    //if (k == 134)
+                    //std::cout << "H: " << std::endl;
                 // Change root
                 root = s;
+
+                return true;
+                }
             }
             else // If root is not full, call insertNonFull for root
-                if (root->insertNonFull(k, btn) == false)
-                    return false;
+            {
+                //if (k == 134)
+                //std::cout << "I: " << std::endl;
+                return root->insertNonFull(k, btn);
+            }
         }
         ecount++;
 #ifdef LOGGING
         std::cout << "[Btree insert] [End] key is " << k << std::endl;
 #endif
-        return true;
+
     }
 
     // The main function that removes a new key in thie B-Tree
@@ -785,6 +846,7 @@ public:
 
             if (key != -1)
             {
+                more_flag = false;
                 cvalue = bt->root->search(key);
                 if (cvalue != NULL)
                 {
@@ -797,7 +859,6 @@ public:
                 return;
             }
 
-            more_flag = true;
 #ifdef LOGGING
             std::cout<<"[pushed key] " << bt->root->kvs[0].key << std::endl;
             std::cout<<"[pop key] " << bt->root->kvs[0].key << std::endl;
@@ -805,6 +866,7 @@ public:
 #endif
             cvalue = bt->root->kvs[0].val;
             ckey = bt->root->kvs[0].key;
+            more_flag = true;
 
             if (bt->root->leaf == false)
                 for (int i = 0; i < bt->root->n + 1; i++)
@@ -868,6 +930,8 @@ public:
                         std::cout << "node being pushed A" << t->C[i]->kvs[0].key << std::endl;
 #endif
                       }
+                      //else
+                      //    std::cout << "NULL" << std::endl;
 
                   for (int i = 0; i < t->n; i++)
                   {
@@ -894,6 +958,9 @@ public:
                           std::cout << "node being pushed B" << t->C[i]->kvs[0].key << std::endl;
 #endif
                         }
+                        //else
+                        //    std::cout << "NULL" << std::endl;
+
 
                     for (int i = 0; i < t->n; i++)
                     {

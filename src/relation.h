@@ -122,7 +122,7 @@ public:
 
     relation(const relation<arity>& r)
     {
-        (*this) = r;
+        (*this).tree = r.tree;
     }
 
 
@@ -206,31 +206,34 @@ public:
             tuple<arity> t;
             for (unsigned j = 0; j < arity; j++)
                 t[j] = buffer[i + j];
-            insert(t);
+            insert(t, 0);
         }
     }
 
 
-    bool insert(const tuple<arity>& t)
+    bool insert(const tuple<arity>& t, int lc)
     {
-#ifdef LOGGING
-        std::cout << "[Relation] [" << arity << "] " << "Search: " << t[0] << std::endl;
+#if 1
+        //subrelation* sr1 = tree.search(t[0]);
+        //if (lc == 1 && t[0] == 11 && t[1] == 134)
+        //std::cout << "[Relation 1] [" << arity << "] " <<  " Search: " << t[0] << std::endl;
 #endif
         subrelation* sr = tree.search(t[0]);
         bool modified = false;
         if (sr == NULL)
         {
-#ifdef LOGGING
-            std::cout << "[Relation] [" << arity << "] " << "Insert: " << t[0] << std::endl;
+#if 1
+            //if (lc == 1 && t[0] == 11 && t[1] == 134)
+            //std::cout << "[Relation 2] [" << arity << "] " << "Insert: " << t[0] << std::endl;
 #endif
             modified = true;
             sr = new subrelation();
             tree.insert(t[0], sr);
-
         }
 
-        return sr->insert(t.tail()) || modified;
+        return sr->insert(t.tail(), lc) || modified;
     }
+
 
     iter select(const tuple<arity>& sel)
     {
@@ -252,6 +255,11 @@ public:
 
     relation()
     {
+    }
+
+    relation(const relation<1>& r)
+    {
+        (*this).tree = r.tree;
     }
 
     class iter
@@ -293,10 +301,11 @@ public:
         }
     };
 
-    bool insert(const tuple<1> t)
+    bool insert(const tuple<1> t, int lc)
     {
 #ifdef LOGGING
-        std::cout << "[Relation] [1] insert: " << t[0] << std::endl;
+        if (lc == 1 && t[0] == 134)
+        std::cout << "[Relation] [X] insert: " << t[0] << std::endl;
 #endif
         return tree.insert(t[0], (void*)1);
     }

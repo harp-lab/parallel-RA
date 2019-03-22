@@ -65,13 +65,14 @@ int main(int argc, char **argv)
 
     relation<2> G(col_count * entry_count, input_buffer);
     relation<2> T;
-    relation<2> dT;
 
     tuple<2> t;
     t[0] = -1; t[1] = -1;
     tuple<2> selectall(t);
+    std::vector<u64> dV;
 
     int running_t_count = 0;
+
     for (relation<2>::iter it(G, selectall); it.more(); it.advance())
     {
       tuple<2> t1;
@@ -79,24 +80,28 @@ int main(int argc, char **argv)
       t1[1] = (*it)[1];
 
       if (T.insert(t1, 0) == true)
+      {
           running_t_count++;
-      dT.insert(t1, 0);
+          dV.push_back(t1[0]);
+          dV.push_back(t1[1]);
+      }
     }
     std::cout << "Initial T count " << running_t_count << std::endl;
 
+
     int lc = 0;
     int lb = 0;
-    relation<2> delT;
     u64 time = 0;
 
     std::cout << "Loop count ";
-    dT = join(dT, G, T, 0, &lb, &running_t_count, &time);
+    dV = joinV(dV, G, T, 0, &lb, &running_t_count, &time);
+
 
     lc++;
     while(true)
     {
       std::cout << "Loop count ";
-      dT = join(dT, G, T, lc, &lb, &running_t_count, &time);
+      dV = joinV(dV, G, T, lc, &lb, &running_t_count, &time);
 
       if (lb == 1)  break;
       lc++;

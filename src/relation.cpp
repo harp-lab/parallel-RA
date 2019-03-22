@@ -46,22 +46,26 @@ void testseq()
     tuple<2> t1;
 
     FILE *fp_in;
-    fp_in = fopen("TCS", "r");
-    int row_count = 100;
-    long long int element1 = 0, element2 = 0;
-    //int rc = 1711;
-    int rc = 46;
+    fp_in = fopen("11", "r");
+    assert (fp_in != NULL);
+    int row_count = 0;
+    int element1 = 10, element2 = 10;
+    int rc = 1142;
 
     for (int i = 0; i < rc; i++)
     {
-        assert(fscanf(fp_in,"%lld\t%lld\n", &element1, &element2) == 2);
+        if (fscanf(fp_in,"%d\t%d\n", &element1, &element2) !=2 )
+            break;
+        //fscanf(fp_in,"%d\t%d\n", &element1, &element2);
 
         t1[0] = (u64)element1;
         t1[1] = (u64)element2;
 
-        //std::cout << "[EXE] " << t1[0] << ", " << t1[1] << std::endl;
-        rel.insert(t1);
+        //std::cout << "[EXE] " << element1 << ", " << element2 << std::endl;
+        bool x = rel.insert(t1, 0);
 
+        if (x == true && t1[0] == 11 && t1[1] == 134)
+            std::cout << "Shout: " << t1[0] << "\t" << t1[1] << std::endl;
 
         row_count++;
     }
