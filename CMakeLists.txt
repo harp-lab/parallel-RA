@@ -11,7 +11,7 @@ file (GLOB source_files_relation "${source_dir}/relation.cpp")
 
 add_executable(BTree ${source_files_btree})
 
-#add_executable(TC ${source_files_tc})
+add_executable(TC ${source_files_tc})
 
 #add_executable(oTC ${source_files_otc})
 
