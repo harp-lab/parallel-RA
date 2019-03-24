@@ -2,7 +2,7 @@
 #define __RA__
 
 #include <iostream>
-#include "relation.h"
+#include "btree_relation.h"
 #include "compat.h"
 
 uint64_t utime()
@@ -73,6 +73,7 @@ relation<2> join(relation<2>& delT, relation<2>& G, relation<2>& T, int lc, int*
 
     int count = 0;
     int tcount = 0;
+    int tuple_count = 0;
 
     for (relation<2>::iter dit(delT, selectall); dit.more(); dit.advance())
     {
@@ -86,11 +87,12 @@ relation<2> join(relation<2>& delT, relation<2>& G, relation<2>& T, int lc, int*
         tuple<2> dt;
         dt[0] = (*dit)[0];
         dt[1] = (*git)[1];
+        tuple_count++;
 
-        if (T.insert(dt, lc) == true)
+        if (T.insert(dt) == true)
         {
             tcount++;
-            if (delTT.insert(dt, lc) == true)
+            if (delTT.insert(dt) == true)
               count++;
         }
       }
@@ -107,7 +109,7 @@ relation<2> join(relation<2>& delT, relation<2>& G, relation<2>& T, int lc, int*
     u64 dTime = (end - start) / 1000000;
     *running_time = *running_time + dTime;
 
-    std::cout << lc << " [" << dTime << "]  [" << *running_time << "] : Delta count " << count << " T count: " << *running_t_count << " : " << std::endl;
+    std::cout << lc << " [" << dTime << "]  [" << *running_time << "] Tuple count " << tuple_count << " Delta count " << count << " T count: " << *running_t_count << " : " << std::endl;
 
     return delTT;
 }
@@ -145,7 +147,7 @@ std::vector<u64> joinV(std::vector<u64>& delT, relation<2>& G, relation<2>& T, i
         dt[0] = a;
         dt[1] = (*git)[1];
 
-        if (T.insert(dt, lc) == true)
+        if (T.insert(dt) == true)
         {
             tcount++;
             delTT.push_back(a);

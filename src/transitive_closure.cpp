@@ -12,7 +12,7 @@
 #include <fstream>
 
 #include "btree.h"
-#include "relation.h"
+#include "btree_relation.h"
 #include "RA.h"
 
 
@@ -78,20 +78,21 @@ int main(int argc, char **argv)
       t1[0] = (*it)[0];
       t1[1] = (*it)[1];
 
-      if (T.insert(t1, 0) == true)
+      if (T.insert(t1) == true)
           running_t_count++;
-      dT.insert(t1, 0);
+      dT.insert(t1);
     }
     std::cout << "Initial T count " << running_t_count << std::endl;
 
-    int lc = 0;
+    //int lc = 0;
     int lb = 0;
-    relation<2> delT;
     u64 time = 0;
 
     std::cout << "Loop count ";
     dT = join(dT, G, T, 0, &lb, &running_t_count, &time);
+    //join(dT, G, T, 0, &lb, &running_t_count, &time);
 
+    /*
     lc++;
     while(true)
     {
@@ -111,4 +112,5 @@ int main(int argc, char **argv)
     for (relation<2>::iter Tit(T, selectall); Tit.more(); Tit.advance())
       myfile << (*Tit)[0] << "\t" << (*Tit)[1] << "\n";
     myfile.close();
+    */
 }

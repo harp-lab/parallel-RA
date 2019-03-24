@@ -12,13 +12,7 @@
 #define DEDUPLICATE
 
 
-//using namespace std;
-
-//static uint64_t utime();
-//static void testseq(Btree& t);
-//static uint32_t rnd();
 // A BTree node
-
 template<typename V>
 class BTreeNode
 {
@@ -40,6 +34,7 @@ public:
 
     BTreeNode(int t1, bool leaf1)
     {
+        //std::cout << "Constructor 1" << std::endl;
         // Copy the given minimum degree and leaf property
         t = t1;
         leaf = leaf1;
@@ -51,6 +46,13 @@ public:
 
         // Initialize the number of keys as 0
         n = 0;
+    }
+
+    ~BTreeNode()
+    {
+        delete[] C;
+        delete[] kvs;
+        //std::cout << "Destructor 1" << std::endl;
     }
 
     // A function to traverse all nodes in a subtree rooted with this node
@@ -166,13 +168,7 @@ public:
             while (i >= 0)
             {
                 if (kvs[i].key == k)
-                {
-                    //if (k == 134)
-                  //std::cout << "D: " << i << std::endl;
-                  //n = n+1;
                     return false;
-                  //k = 100000000000;
-                }
                 i--;
             }
             i = n-1;
@@ -191,20 +187,7 @@ public:
             kvs[i+1].key = k;
             kvs[i+1].val = btn;
             n = n+1;
-            /*
-            if (k == 134)
-            {
-                std::cout << "C: " << i << std::endl;
-                i = n - 1;
-                while (i >= 0)
-                {
-                    std::cout << kvs[i].key << "\t";
-                    i--;
-                }
-                std::cout << std::endl;
 
-            }
-            */
             return true;
         }
         else // If this node is not leaf
@@ -213,12 +196,8 @@ public:
             while (i >= 0)
             {
                 if (kvs[i].key == k)
-                {
-                    //if (k == 134)
-                  //std::cout << "D1: " << i << std::endl;
                     return false;
-                  //k = 100000000000;
-                }
+
                 i--;
             }
             i = n-1;
@@ -232,11 +211,8 @@ public:
             while (i1 < C[i+1]->n )
             {
                 if (k == C[i+1]->kvs[i1].key)
-                {
-                    //if (k == 134)
-                    //std::cout << "B: " << std::endl;
                     return false;
-                }
+
                 i1++;
             }
 
@@ -662,6 +638,25 @@ public:
         t = _t;
     }
 
+
+    void DestroyRecursive(BTreeNode<V> *root)
+    {
+        if (root)
+        {
+            if (root->leaf == false)
+              for (int i = 0; i < root->n + 1; i++)
+                DestroyRecursive(root->C[i]);
+
+            //std::cout << "DesT" << std::endl;
+            delete root;
+        }
+    }
+
+    ~BTree()
+    {
+        DestroyRecursive(root);
+    }
+
     void traverse()
     {
         if (root != NULL) root->traverse();
@@ -677,9 +672,6 @@ public:
     // The main function that inserts a new key in this B-Tree
     bool insert(uint64_t k, V* btn)
     {
-#ifdef LOGGING
-        std::cout << "[Btree insert] key is " << k << std::endl;
-#endif
         // If tree is empty
         if (root == NULL)
         {
@@ -689,8 +681,6 @@ public:
             root->kvs[0].val = btn; // Insert key
             root->n = 1; // Update number of keys in root
 
-            //if (k == 134)
-            //std::cout << "E: " << std::endl;
             return true;
         }
         else // If tree is not empty
@@ -705,11 +695,8 @@ public:
                 while (i1 < root->n )
                 {
                     if (k == root->kvs[i1].key)
-                    {
-                        //if (k == 134)
-                        //std::cout << "F: " << std::endl;
                         return false;
-                    }
+
                     i1++;
                 }
                 /*
@@ -746,34 +733,20 @@ public:
 
                 if (s->C[i]->insertNonFull(k, btn) == false)
                 {
-                    //if (k == 134)
-                    //std::cout << "G: " << std::endl;
-
                     root = s;
                     return false;
                 }
-                else{
-
-                    //if (k == 134)
-                    //std::cout << "H: " << std::endl;
-                // Change root
-                root = s;
-
-                return true;
+                else
+                {
+                    root = s;
+                    return true;
                 }
             }
             else // If root is not full, call insertNonFull for root
-            {
-                //if (k == 134)
-                //std::cout << "I: " << std::endl;
                 return root->insertNonFull(k, btn);
-            }
+
         }
         ecount++;
-#ifdef LOGGING
-        std::cout << "[Btree insert] [End] key is " << k << std::endl;
-#endif
-
     }
 
     // The main function that removes a new key in thie B-Tree
@@ -827,9 +800,6 @@ public:
         iter(const BTree* _bt, int key)
             : bt(_bt)
         {
-#ifdef LOGGING
-            std::cout << "[iter cons]" << std::endl;
-#endif
             if (bt == NULL)
             {
               cvalue = NULL;
@@ -851,19 +821,11 @@ public:
                 if (cvalue != NULL)
                 {
                   ckey = key;
-#ifdef LOGGING
-                  std::cout<<"[pushed Ca] " << bt->root->kvs[0].key << std::endl;
-#endif
                   more_flag = true;
                 }
                 return;
             }
 
-#ifdef LOGGING
-            std::cout<<"[pushed key] " << bt->root->kvs[0].key << std::endl;
-            std::cout<<"[pop key] " << bt->root->kvs[0].key << std::endl;
-            std::cout << "n = " << bt->root->n << std::endl;
-#endif
             cvalue = bt->root->kvs[0].val;
             ckey = bt->root->kvs[0].key;
             more_flag = true;
@@ -871,18 +833,11 @@ public:
             if (bt->root->leaf == false)
                 for (int i = 0; i < bt->root->n + 1; i++)
                   if (bt->root->C[i] != NULL)
-                  {
                     node_queue.push(bt->root->C[i]);
-#ifdef LOGGING
-                    std::cout << "node being pushed" << bt->root->C[i]->kvs[0].key << std::endl;
-#endif
-                  }
+
 
             for (int i = 1; i < bt->root->n; i++)
             {
-#ifdef LOGGING
-                std::cout<<"[pushed key] " << bt->root->kvs[i].key << std::endl;
-#endif
                 key_queue.push(bt->root->kvs[i].key);
                 value_queue.push(bt->root->kvs[i].val);
             }
@@ -901,17 +856,11 @@ public:
             more_flag = false;
             if (!key_queue.empty())
             {
-#ifdef LOGGING
-              std::cout << "advance" << std::endl;
-#endif
               cvalue = value_queue.front();
               ckey = key_queue.front();
 
               value_queue.pop();
               key_queue.pop();
-#ifdef LOGGING
-              std::cout << "[popping key A] " << ckey << ", " << key_queue.empty() <<std::endl;
-#endif
 
               if (key_queue.empty())
                   more_flag = true;
@@ -924,26 +873,17 @@ public:
                   if (t->leaf == false)
                     for (int i = 0; i < t->n + 1; i++)
                       if (t->C[i] != NULL)
-                      {
                         node_queue.push(t->C[i]);
-#ifdef LOGGING
-                        std::cout << "node being pushed A" << t->C[i]->kvs[0].key << std::endl;
-#endif
-                      }
-                      //else
-                      //    std::cout << "NULL" << std::endl;
 
                   for (int i = 0; i < t->n; i++)
                   {
                       key_queue.push(t->kvs[i].key);
-#ifdef LOGGING
-                      std::cout << "[pushing A] " << t->kvs[i].key << std::endl;
-#endif
                       value_queue.push(t->kvs[i].val);
                   }
               }
             }
-            else{
+            else
+            {
                 if (node_queue.size() != 0)
                 {
                     BTreeNode<V>* t = node_queue.front();
@@ -952,22 +892,11 @@ public:
                     if (t->leaf == false)
                       for (int i = 0; i < t->n + 1; i++)
                         if (t->C[i] != NULL)
-                        {
-                          node_queue.push(t->C[i]);
-#ifdef LOGGING
-                          std::cout << "node being pushed B" << t->C[i]->kvs[0].key << std::endl;
-#endif
-                        }
-                        //else
-                        //    std::cout << "NULL" << std::endl;
-
+                            node_queue.push(t->C[i]);
 
                     for (int i = 0; i < t->n; i++)
                     {
                         key_queue.push(t->kvs[i].key);
-#ifdef LOGGING
-                        std::cout << "[pushing key B] " << t->kvs[i].key << std::endl;
-#endif
                         value_queue.push(t->kvs[i].val);
                     }
 
@@ -976,9 +905,6 @@ public:
 
                     value_queue.pop();
                     key_queue.pop();
-#ifdef LOGGING
-                    std::cout << "[popping key B] " << ckey << ", " << key_queue.empty() <<std::endl;
-#endif
 
                     if (key_queue.empty())
                         more_flag = true;

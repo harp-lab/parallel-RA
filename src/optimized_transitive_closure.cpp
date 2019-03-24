@@ -12,7 +12,8 @@
 #include <fstream>
 
 #include "btree.h"
-#include "relation.h"
+#include "btree_relation.h"
+#include "tuple.h"
 #include "RA.h"
 
 
@@ -79,7 +80,7 @@ int main(int argc, char **argv)
       t1[0] = (*it)[0];
       t1[1] = (*it)[1];
 
-      if (T.insert(t1, 0) == true)
+      if (T.insert(t1) == true)
       {
           running_t_count++;
           dV.push_back(t1[0]);

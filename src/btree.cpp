@@ -1,6 +1,6 @@
 #include <chrono>
 #include "btree.h"
-#include "relation.h"
+#include "btree_relation.h"
 
 /* The following program performs deletion on a B-Tree. It contains functions 
 specific for deletion along with all the other functions provided in the 
