@@ -22,11 +22,6 @@ static MPI_Comm comm;
 static u32 global_row_count;
 static u32 global_col_count;
 
-uint64_t utime()
-{
-    return std::chrono::high_resolution_clock::now().time_since_epoch().count();
-}
-
 
 inline static u64 tunedhash(const u8* bp, const u32 len)
 {
@@ -212,9 +207,15 @@ void buffer_data_to_hash_buffer(u32 local_number_of_rows, int col_count, u64* in
 }
 
 
-relation<2> * parallel_join(relation<2>* delT, relation<2>& G, relation<2>& T, int lc, int* lb, int* running_t_count, u64* running_time)
+relation<2> * parallel_join(relation<2>* delT, relation<2>& G, relation<2>& T, int lc, int* lb, int* running_t_count, double* running_time)
 {
-    u64 start = utime();
+    double j1, j2;
+    double c1, c2;
+    double i1, i2;
+    double v1, v2;
+
+    j1 = MPI_Wtime();
+
     tuple<2> t;
     t[0] = -1;
     t[1] = -1;
@@ -258,7 +259,10 @@ relation<2> * parallel_join(relation<2>* delT, relation<2>& G, relation<2>& T, i
         }
       }
     }
+    j2 = MPI_Wtime();
 
+
+    c1 = MPI_Wtime();
     int prefix_sum_process_size[nprocs];
     memset(prefix_sum_process_size, 0, nprocs * sizeof(int));
     for(u32 i = 1; i < nprocs; i++)
@@ -300,6 +304,9 @@ relation<2> * parallel_join(relation<2>* delT, relation<2>& G, relation<2>& T, i
 
     MPI_Alltoallv(process_data, process_size, prefix_sum_process_size, MPI_UNSIGNED_LONG_LONG, hash_buffer, recv_process_size_buffer, prefix_sum_recv_process_size_buffer, MPI_UNSIGNED_LONG_LONG, comm);
 
+    c2 = MPI_Wtime();
+
+    i1 = MPI_Wtime();
     count = 0;
     for(u32 k = 0; k < outer_hash_buffer_size; k = k + 2)
     {
@@ -314,7 +321,9 @@ relation<2> * parallel_join(relation<2>* delT, relation<2>& G, relation<2>& T, i
               count++;
         }
     }
+    i2 = MPI_Wtime();
 
+    v1 = MPI_Wtime();
     int sum = 0;
     MPI_Allreduce(&count, &sum, 1, MPI_INT, MPI_BOR, comm);
     if(sum == 0)
@@ -323,13 +332,18 @@ relation<2> * parallel_join(relation<2>* delT, relation<2>& G, relation<2>& T, i
       *lb = 0;
 
     *running_t_count = *running_t_count + tcount;
+    v2 = MPI_Wtime();
 
-    u64 end = utime();
-    u64 dTime = (end - start) / 1000000;
-    *running_time = *running_time + dTime;
+    *running_time = *running_time + (v2 - j1);
 
     if (rank == 0)
-        std::cout << lc << " [" << dTime << "]  [" << *running_time << "] Tuple count " << tuple_count << " Delta count " << count << " T count: " << *running_t_count << " : " << std::endl;
+        std::cout << lc << " [" << v2-j1 << "] [" << *running_time << "] Join: " << (j2 - j1)
+                  << " Comm: " << (c2 - c1)
+                  << " Insert: " << (i2 - i1)
+                  << " Verify: " << (v2 - v1)
+                  << " Delta: " << tcount
+                  << " T : " << *running_t_count
+                  << std::endl;
 
     delete delT;
 
@@ -399,7 +413,7 @@ int main(int argc, char **argv)
 #if 1
     int lc = 0;
     int lb = 0;
-    u64 time = 0;
+    double time = 0;
 
     //std::cout << "Loop count ";
     dT = parallel_join(dT, G, T, 0, &lb, &running_t_count, &time);
