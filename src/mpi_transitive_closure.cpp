@@ -321,6 +321,8 @@ relation<2> * parallel_join(relation<2>* delT, relation<2>& G, relation<2>& T, i
               count++;
         }
     }
+    delete[] hash_buffer;
+    delete[] process_data;
     i2 = MPI_Wtime();
 
     v1 = MPI_Wtime();
