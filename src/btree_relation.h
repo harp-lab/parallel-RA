@@ -26,6 +26,16 @@ public:
         (*this).tree = r.tree;
     }
 
+    ~relation()
+    {
+        for (typename btree::iter it(&tree, -1); it.more(); it.advance())
+        {
+            subrelation *sr = it.getval();
+            if (sr != (void*)1)
+                delete sr;
+        }
+    }
+
 
     class iter
     {

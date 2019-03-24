@@ -5,14 +5,38 @@
 #include "btree_relation.h"
 #include "compat.h"
 
+
 uint64_t utime()
 {
     return std::chrono::high_resolution_clock::now().time_since_epoch().count();
 }
 
-relation<2> join(relation<2>& r1, relation<2>& r2, relation<2>& r3, int lc, int* lb, int* rtc, u64* time);
+relation<2> * join(relation<2>* r1, relation<2>& r2, relation<2>& r3, int lc, int* lb, int* rtc, u64* time);
 
-std::vector<u64*> joinV(std::vector<u64*>& delT, relation<2>& G, relation<2>& T, int lc, int* lb, int* running_t_count, u64* running_time);
+inline static u64 tunedhash(const u8* bp, const u32 len)
+{
+    u64 h0 = 0xb97a19cb491c291d;
+    u64 h1 = 0xc18292e6c9371a17;
+    const u8* const ep = bp+len;
+    while (bp < ep)
+    {
+        h1 ^= *bp;
+        h1 *= 31;
+        h0 ^= (((u64)*bp) << 17) ^ *bp;
+        h0 *= 0x100000001b3;
+        h0 = (h0 >> 7) | (h0 << 57);
+        ++bp;
+    }
+
+    return h0 ^ h1;// ^ (h1 << 31);
+}
+
+
+
+static u64 outer_hash(const u64 val)
+{
+    return tunedhash((u8*)(&val),sizeof(u64));
+}
 
 #if 0
 static void file_io(const char* filename, relation<2>& T);
@@ -61,117 +85,8 @@ static bool union1(relation<2>& r1, relation<2>& r2, int lc)
 }
 #endif
 
-relation<2> join(relation<2>& delT, relation<2>& G, relation<2>& T, int lc, int* lb, int* running_t_count, u64* running_time)
-{
-    u64 start = utime();
-    tuple<2> t;
-    t[0] = -1;
-    t[1] = -1;
-    tuple<2> selectall(t);
-
-    relation<2> delTT;
-
-    int count = 0;
-    int tcount = 0;
-    int tuple_count = 0;
-
-    for (relation<2>::iter dit(delT, selectall); dit.more(); dit.advance())
-    {
-      tuple<2> s;
-      s[0] = (*dit)[1];
-      s[1] = -1;
-      tuple<2> select(s);
-
-      for (relation<2>::iter git(G, select); git.more(); git.advance())
-      {
-        tuple<2> dt;
-        dt[0] = (*dit)[0];
-        dt[1] = (*git)[1];
-        tuple_count++;
-
-        if (T.insert(dt) == true)
-        {
-            tcount++;
-            if (delTT.insert(dt) == true)
-              count++;
-        }
-      }
-    }
-
-    if (count == 0)
-        *lb = 1;
-    else
-        *lb = 0;
-
-    *running_t_count = *running_t_count + tcount;
-
-    u64 end = utime();
-    u64 dTime = (end - start) / 1000000;
-    *running_time = *running_time + dTime;
-
-    std::cout << lc << " [" << dTime << "]  [" << *running_time << "] Tuple count " << tuple_count << " Delta count " << count << " T count: " << *running_t_count << " : " << std::endl;
-
-    return delTT;
-}
 
 
-std::vector<u64> joinV(std::vector<u64>& delT, relation<2>& G, relation<2>& T, int lc, int* lb, int* running_t_count, u64* running_time)
-{
-    //std::vector<u64> r;
-
-    u64 start = utime();
-    tuple<2> t;
-    t[0] = -1;
-    t[1] = -1;
-    tuple<2> selectall(t);
-
-    std::vector<u64> delTT;
-
-    int count = 0;
-    int tcount = 0;
-
-    for (std::vector<u64>::iterator it = delT.begin() ; it != delT.end(); ++it)
-    {
-      u64 a = *it;
-      ++it;
-      u64 b = *it;
-
-      tuple<2> s;
-      s[0] = b;
-      s[1] = -1;
-      tuple<2> select(s);
-
-      for (relation<2>::iter git(G, select); git.more(); git.advance())
-      {
-        tuple<2> dt;
-        dt[0] = a;
-        dt[1] = (*git)[1];
-
-        if (T.insert(dt) == true)
-        {
-            tcount++;
-            delTT.push_back(a);
-            delTT.push_back(dt[1]);
-            count++;
-        }
-      }
-    }
-
-    if (count == 0)
-        *lb = 1;
-    else
-        *lb = 0;
-
-    *running_t_count = *running_t_count + tcount;
-
-    u64 end = utime();
-    u64 dTime = (end - start) / 1000000;
-    *running_time = *running_time + dTime;
-
-    std::cout << lc << " [" << dTime << "]  [" << *running_time << "] : Delta count " << count << " T count: " << *running_t_count << " : " << std::endl;
-
-    return delTT;
-}
 
 /*
 void file_io(const char* filename, relation<2>& T)
