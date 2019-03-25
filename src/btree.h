@@ -628,7 +628,7 @@ public:
     {
         root = NULL;
         ecount = 0;
-        t = 4;
+        t = 8;
     }
 
     BTree(int _t)
