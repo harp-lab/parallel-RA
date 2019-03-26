@@ -119,35 +119,25 @@ public:
     // function is called
     bool insertNonFull(uint64_t k, V* btn)
     {
-        //bool set = false;
-        bool insert1 = false;
         // Initialize index as index of rightmost element
         int i = n-1;
-        //int l = 0;
-        //int r = n-1;
-        //int m;
 
-#ifdef DEDUPLICATE
-
-        /*
+        // If this is a leaf node
+        if (leaf == true)
+        {
+#if 0
             while (i >= 0)
             {
                 if (kvs[i].key == k)
-                {
-                    if (k == 134)
-                  std::cout << "D: " << i << std::endl;
-                  n = n+1;
                     return false;
-                  //k = 100000000000;
-                }
                 i--;
             }
             i = n-1;
-            */
-
-            /*
-            l = 0;
-            r = n - 1;
+#endif
+#if 1
+            int l = 0;
+            int r = n - 1;
+            int m = 0;
             while (l <= r)
             {
                 m = l + (r - l) / 2;
@@ -157,22 +147,8 @@ public:
                     l = m + 1;
                 else
                     r = m - 1;
-             }
-             */
-#endif
-
-        i = n-1;
-        // If this is a leaf node
-        if (leaf == true)
-        {
-            while (i >= 0)
-            {
-                if (kvs[i].key == k)
-                    return false;
-                i--;
             }
-            i = n-1;
-
+#endif
             // The following loop does two things
             // a) Finds the location of new key to be inserted
             // b) Moves all greater keys to one place ahead
@@ -183,7 +159,6 @@ public:
                 i--;
             }
 
-
             kvs[i+1].key = k;
             kvs[i+1].val = btn;
             n = n+1;
@@ -192,21 +167,35 @@ public:
         }
         else // If this node is not leaf
         {
-
+#if 0
             while (i >= 0)
             {
                 if (kvs[i].key == k)
                     return false;
-
                 i--;
             }
             i = n-1;
-
+#endif
+#if 1
+            int l = 0;
+            int r = n - 1;
+            int m = 0;
+            while (l <= r)
+            {
+                m = l + (r - l) / 2;
+                if (kvs[m].key == k)
+                   return false;
+                if (kvs[m].key < k)
+                    l = m + 1;
+                else
+                    r = m - 1;
+            }
+#endif
             // Find the child which is going to have the new key
             while (i >= 0 && kvs[i].key > k)
                 i--;
 
-#ifdef DEDUPLICATE
+#if 0
             int i1 = 0;
             while (i1 < C[i+1]->n )
             {
@@ -215,8 +204,8 @@ public:
 
                 i1++;
             }
-
-            /*
+#endif
+#if 1
             r = C[i+1]->n - 1;
             l = 0;
             m = 0;
@@ -230,9 +219,7 @@ public:
                 else
                     r = m - 1;
             }
-            */
 #endif
-
             // See if the found child is full
             if (C[i+1]->n == 2*t-1)
             {
@@ -245,9 +232,8 @@ public:
                 if (kvs[i+1].key < k)
                     i++;
             }
-            //if (k == 134)
-            //    std::cout << "A: " << std::endl;
-            return insert1 || C[i+1]->insertNonFull(k, btn);
+
+            return C[i+1]->insertNonFull(k, btn);
         }
     }
 
@@ -647,7 +633,6 @@ public:
               for (int i = 0; i < root->n + 1; i++)
                 DestroyRecursive(root->C[i]);
 
-            //std::cout << "DesT" << std::endl;
             delete root;
         }
     }
@@ -689,7 +674,7 @@ public:
             if (root->n == 2*t-1)
             {
                 // Find the first key greater than or equal to k
-#ifdef DEDUPLICATE
+#if 0
 
                 int i1 = 0;
                 while (i1 < root->n )
@@ -699,9 +684,10 @@ public:
 
                     i1++;
                 }
-                /*
+#endif
+#if 1
                 int l = 0;
-                int r = root->n;
+                int r = root->n - 1;
                 int m = 0;
                 while (l <= r)
                 {
@@ -713,7 +699,6 @@ public:
                     else
                         r = m - 1;
                  }
-                 */
 #endif
 
                 // Allocate memory for new root
@@ -731,16 +716,10 @@ public:
                 if (s->kvs[0].key < k)
                     i++;
 
-                if (s->C[i]->insertNonFull(k, btn) == false)
-                {
-                    root = s;
-                    return false;
-                }
-                else
-                {
-                    root = s;
-                    return true;
-                }
+                bool ret = s->C[i]->insertNonFull(k, btn);
+                root = s;
+                return ret;
+
             }
             else // If root is not full, call insertNonFull for root
                 return root->insertNonFull(k, btn);

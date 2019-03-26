@@ -14,7 +14,6 @@
 
 #include "btree.h"
 #include "btree_relation.h"
-//#include "RA.h"
 
 static int rank = 0;
 static u32 nprocs = 1;
@@ -22,8 +21,8 @@ static MPI_Comm comm;
 static u32 global_row_count;
 static u32 global_col_count;
 
-
-inline static u64 tunedhash(const u8* bp, const u32 len)
+#if 1
+inline u64 tunedhash(const u8* bp, const u32 len)
 {
     u64 h0 = 0xb97a19cb491c291d;
     u64 h1 = 0xc18292e6c9371a17;
@@ -43,11 +42,11 @@ inline static u64 tunedhash(const u8* bp, const u32 len)
 
 
 
-static u64 outer_hash(const u64 val)
+u64 outer_hash(const u64 val)
 {
     return tunedhash((u8*)(&val),sizeof(u64));
 }
-
+#endif
 
 
 void parallel_read_input_relation_from_file_to_local_buffer(const char *file_name, u64** read_buffer, u32* local_row_count, u32* col_count)
@@ -210,9 +209,10 @@ void buffer_data_to_hash_buffer(u32 local_number_of_rows, int col_count, u64* in
 relation<2> * parallel_join(relation<2>* delT, relation<2>& G, relation<2>& T, int lc, int* lb, int* running_t_count, double* running_time)
 {
     double j1, j2;
-    double c1, c2;
-    double i1, i2;
-    double v1, v2;
+    double c1 = 0, c2 = 0;
+    double i1 = 0, i2 = 0;
+    double v1 = 0;
+    double v2 = 0;
 
     j1 = MPI_Wtime();
 
@@ -229,44 +229,50 @@ relation<2> * parallel_join(relation<2>* delT, relation<2>& G, relation<2>& T, i
     memset(process_size, 0, nprocs * sizeof(int));
 
     /* vector[i] contains the data that needs to be sent to process i */
-    std::vector<u64> *process_data_vector;
-    process_data_vector = new std::vector<u64>[nprocs];
+    std::vector<tuple<2>> *process_data_vector;
+    process_data_vector = new std::vector<tuple<2>>[nprocs];
 
-    int count = 0;
     int tcount = 0;
     int tuple_count = 0;
 
+    tuple<2> dt;
+    tuple<2> s;
+    s[1] = -1;
+    tuple<2> select;
+    uint64_t index;
     for (relation<2>::iter dit(*delT, selectall); dit.more(); dit.advance())
     {
-      tuple<2> s;
       s[0] = (*dit)[1];
-      s[1] = -1;
-      tuple<2> select(s);
+      select = s;
 
       for (relation<2>::iter git(G, select); git.more(); git.advance())
       {
-        tuple<2> dt;
         dt[0] = (*dit)[0];
         dt[1] = (*git)[1];
         tuple_count++;
 
         if (tempT.insert(dt) == true)
         {
-            uint64_t index = outer_hash(dt[1])%nprocs;
-            process_size[index] = process_size[index] + 2/*COL_COUNT*/;
-            process_data_vector[index].push_back(dt[0]);
-            process_data_vector[index].push_back(dt[1]);
+            index = outer_hash(dt[1])%nprocs;
+            process_data_vector[index].push_back(dt);
         }
       }
     }
     j2 = MPI_Wtime();
 
 
+#if 1
     c1 = MPI_Wtime();
     int prefix_sum_process_size[nprocs];
     memset(prefix_sum_process_size, 0, nprocs * sizeof(int));
+
+    process_size[0] = 2 * process_data_vector[0].size();
     for(u32 i = 1; i < nprocs; i++)
-        prefix_sum_process_size[i] = prefix_sum_process_size[i - 1] + process_size[i - 1];
+    {
+        //prefix_sum_process_size[i] = prefix_sum_process_size[i - 1] + process_size[i - 1];
+        prefix_sum_process_size[i] = prefix_sum_process_size[i - 1] + (2 * process_data_vector[i - 1].size());
+        process_size[i] = 2 * process_data_vector[i].size();
+    }
 
     int process_data_buffer_size = prefix_sum_process_size[nprocs - 1] + process_size[nprocs - 1];
 
@@ -275,7 +281,10 @@ relation<2> * parallel_join(relation<2>* delT, relation<2>& G, relation<2>& T, i
     memset(process_data, 0, process_data_buffer_size * sizeof(u64));
 
     for(u32 i = 0; i < nprocs; i++)
-        memcpy(process_data + prefix_sum_process_size[i], &process_data_vector[i][0], process_data_vector[i].size() * sizeof(u64));
+    {
+        //memcpy(process_data + prefix_sum_process_size[i], &process_data_vector[i][0], process_data_vector[i].size() * sizeof(u64));
+        memcpy(process_data + prefix_sum_process_size[i], &process_data_vector[i][0], process_data_vector[i].size() * sizeof(tuple<2>));
+    }
 
     delete[] process_data_vector;
 
@@ -307,7 +316,7 @@ relation<2> * parallel_join(relation<2>* delT, relation<2>& G, relation<2>& T, i
     c2 = MPI_Wtime();
 
     i1 = MPI_Wtime();
-    count = 0;
+    int count = 0;
     for(u32 k = 0; k < outer_hash_buffer_size; k = k + 2)
     {
         tuple<2> dt;
@@ -332,7 +341,7 @@ relation<2> * parallel_join(relation<2>* delT, relation<2>& G, relation<2>& T, i
       *lb = 1;
     else
       *lb = 0;
-
+#endif
     *running_t_count = *running_t_count + tcount;
     v2 = MPI_Wtime();
 
@@ -373,7 +382,6 @@ int main(int argc, char **argv)
     u64 *G_hashed_data = NULL;
     buffer_data_to_hash_buffer(entry_count, col_count, input_buffer,  0 /*hash_column_index*/, &G_hashed_data, &G_hash_entry_count, MPI_COMM_WORLD);
 
-
     u32 T_hash_entry_count;
     u64 *T_hashed_data = NULL;
     buffer_data_to_hash_buffer(entry_count, col_count, input_buffer,  1 /*hash_column_index*/, &T_hashed_data, &T_hash_entry_count, MPI_COMM_WORLD);
@@ -388,8 +396,8 @@ int main(int argc, char **argv)
         std::cout << hashed_data[i] << " " << hashed_data[i+1] << std::endl;
     */
 
-    relation<2> G(col_count * G_hash_entry_count, G_hashed_data);
     relation<2> T(col_count * T_hash_entry_count, T_hashed_data);
+    relation<2> G(col_count * G_hash_entry_count, G_hashed_data);
 
     delete[] T_hashed_data;
     delete[] G_hashed_data;
@@ -409,18 +417,22 @@ int main(int argc, char **argv)
       t1[1] = (*it)[1];
       if (dT->insert(t1) == true)
           running_t_count++;
+      else
+          std::cout << "Shout" << std::endl;
     }
-    //std::cout << "[" << rank << "] Initial T count " << running_t_count << std::endl;
+    std::cout << "[" << rank << "] Initial T count " << running_t_count << std::endl;
 
-#if 1
-    int lc = 0;
+
+
     int lb = 0;
     double time = 0;
 
     //std::cout << "Loop count ";
     dT = parallel_join(dT, G, T, 0, &lb, &running_t_count, &time);
 
-    lc++;
+#if 1
+    //
+    int lc = 1;
     while(true)
     {
       //std::cout << "Loop count ";
@@ -429,6 +441,7 @@ int main(int argc, char **argv)
       if (lb == 1)  break;
       lc++;
     }
+    //
 
     delete dT;
 
