@@ -11,6 +11,7 @@
 #include <iostream>
 #include <fstream>
 #include <mpi.h>
+//#include <omp.h>
 
 #include "btree.h"
 #include "btree_relation.h"
@@ -152,7 +153,9 @@ void buffer_data_to_hash_buffer(u32 local_number_of_rows, int col_count, u64* in
     */
 
     int process_data_buffer_size = prefix_sum_process_size[nprocs - 1] + process_size[nprocs - 1];
-    u64 process_data[process_data_buffer_size];
+
+    //u64 process_data[process_data_buffer_size];
+    u64* process_data = new u64[process_data_buffer_size];
 
     for (u32 i = 0; i < nprocs; i++)
         memcpy(process_data + prefix_sum_process_size[i], &process_data_vector[i][0], process_data_vector[i].size() * sizeof(u64));
@@ -196,6 +199,7 @@ void buffer_data_to_hash_buffer(u32 local_number_of_rows, int col_count, u64* in
 
     *outer_hash_buffer_size = *outer_hash_buffer_size / col_count;
 
+    delete[] process_data;
     /*
     if (rank == 0)
         for (u32 i = 0; i < *outer_hash_buffer_size; i=i+2)
@@ -269,7 +273,6 @@ relation<2> * parallel_join(relation<2>* delT, relation<2>& G, relation<2>& T, i
     process_size[0] = 2 * process_data_vector[0].size();
     for(u32 i = 1; i < nprocs; i++)
     {
-        //prefix_sum_process_size[i] = prefix_sum_process_size[i - 1] + process_size[i - 1];
         prefix_sum_process_size[i] = prefix_sum_process_size[i - 1] + (2 * process_data_vector[i - 1].size());
         process_size[i] = 2 * process_data_vector[i].size();
     }
@@ -281,10 +284,8 @@ relation<2> * parallel_join(relation<2>* delT, relation<2>& G, relation<2>& T, i
     memset(process_data, 0, process_data_buffer_size * sizeof(u64));
 
     for(u32 i = 0; i < nprocs; i++)
-    {
-        //memcpy(process_data + prefix_sum_process_size[i], &process_data_vector[i][0], process_data_vector[i].size() * sizeof(u64));
         memcpy(process_data + prefix_sum_process_size[i], &process_data_vector[i][0], process_data_vector[i].size() * sizeof(tuple<2>));
-    }
+
 
     delete[] process_data_vector;
 
@@ -298,20 +299,55 @@ relation<2> * parallel_join(relation<2>* delT, relation<2>& G, relation<2>& T, i
 
     int prefix_sum_recv_process_size_buffer[nprocs];
     memset(prefix_sum_recv_process_size_buffer, 0, nprocs * sizeof(int));
-    for(u32 i = 1; i < nprocs; i++)
-        prefix_sum_recv_process_size_buffer[i] = prefix_sum_recv_process_size_buffer[i - 1] + recv_process_size_buffer[i - 1];
 
-    /* Sending data to all processes */
-    /* What is the buffer size to allocate */
-    u32 outer_hash_buffer_size = 0;
-    for(u32 i = 0; i < nprocs; i++)
+    /* Sending data to all processes: What is the buffer size to allocate */
+    u32 outer_hash_buffer_size = recv_process_size_buffer[0];
+    for(u32 i = 1; i < nprocs; i++)
+    {
+        prefix_sum_recv_process_size_buffer[i] = prefix_sum_recv_process_size_buffer[i - 1] + recv_process_size_buffer[i - 1];
         outer_hash_buffer_size = outer_hash_buffer_size + recv_process_size_buffer[i];
+    }
 
     u64 *hash_buffer = 0;
     hash_buffer = new u64[outer_hash_buffer_size];
     memset(hash_buffer, 0, outer_hash_buffer_size * sizeof(u64));
 
+#if 1
     MPI_Alltoallv(process_data, process_size, prefix_sum_process_size, MPI_UNSIGNED_LONG_LONG, hash_buffer, recv_process_size_buffer, prefix_sum_recv_process_size_buffer, MPI_UNSIGNED_LONG_LONG, comm);
+#endif
+
+#if 0
+    MPI_Request* request = new MPI_Request[nprocs * 2];
+    MPI_Status* status = new MPI_Status[nprocs * 2];
+
+    for (u32 i = 0; i < nprocs; i++)
+    {
+        MPI_Irecv(hash_buffer + prefix_sum_recv_process_size_buffer[i], recv_process_size_buffer[i], MPI_UNSIGNED_LONG_LONG, i, 123, MPI_COMM_WORLD, &request[nprocs + i]);
+    }
+
+    for (u32 i = 0; i < nprocs; i++)
+    {
+        MPI_Isend(process_data + prefix_sum_process_size[i], process_size[i], MPI_UNSIGNED_LONG_LONG, i, 123, MPI_COMM_WORLD, &request[i]);
+    }
+
+
+
+    MPI_Waitall(2*nprocs, request, status);
+
+    delete [] request;
+    delete [] status;
+#endif
+
+#if 0
+    int N = 5;
+    #pragma omp parallel
+    #pragma omp for
+    for (int i=0; i<N; i++)
+    {
+        printf("printing in parallel %d\n", i);
+        // do something with i
+    }
+#endif
 
     c2 = MPI_Wtime();
 
@@ -335,12 +371,15 @@ relation<2> * parallel_join(relation<2>* delT, relation<2>& G, relation<2>& T, i
     i2 = MPI_Wtime();
 
     v1 = MPI_Wtime();
-    int sum = 0;
-    MPI_Allreduce(&count, &sum, 1, MPI_INT, MPI_BOR, comm);
-    if(sum == 0)
-      *lb = 1;
-    else
-      *lb = 0;
+    if (lc % 10 == 0)
+    {
+        int sum = 0;
+        MPI_Allreduce(&count, &sum, 1, MPI_INT, MPI_BOR, comm);
+        if(sum == 0)
+            *lb = 1;
+        else
+            *lb = 0;
+    }
 #endif
     *running_t_count = *running_t_count + tcount;
     v2 = MPI_Wtime();

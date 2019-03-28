@@ -3,8 +3,8 @@
 
 #include <stdint.h>
 #include <stdlib.h>
-#include<iostream>
-#include<stdio.h>
+#include <iostream>
+#include <stdio.h>
 #include <time.h>
 #include <queue>
 #include "compat.h"
@@ -12,11 +12,11 @@
 #define DEDUPLICATE
 
 
+
 // A BTree node
 template<typename V>
 class BTreeNode
 {
-
 public:
 
     struct KV
@@ -604,7 +604,7 @@ template<typename V>
 class BTree
 {
     BTreeNode<V> *root; // Pointer to root node
-    int t; // Minimum degree
+    int t;              // Minimum degree
     uint64_t ecount;
 
 public:
@@ -765,11 +765,15 @@ public:
 
     class iter
     {
+    public:
+
+
     private:
         const BTree* bt;
         uint64_t ckey;
         V* cvalue;
         std::queue<BTreeNode<V>*> node_queue;
+
         std::queue<uint64_t> key_queue;
         std::queue<V*> value_queue;
         bool more_flag;
@@ -810,9 +814,9 @@ public:
             more_flag = true;
 
             if (bt->root->leaf == false)
-                for (int i = 0; i < bt->root->n + 1; i++)
-                  if (bt->root->C[i] != NULL)
-                    node_queue.push(bt->root->C[i]);
+              for (int i = 0; i < bt->root->n + 1; i++)
+                if (bt->root->C[i] != NULL)
+                  node_queue.push(bt->root->C[i]);
 
 
             for (int i = 1; i < bt->root->n; i++)
@@ -841,8 +845,12 @@ public:
               value_queue.pop();
               key_queue.pop();
 
+#if 0
               if (key_queue.empty())
                   more_flag = true;
+#endif
+
+              more_flag = key_queue.empty();
 
               if (node_queue.size() != 0)
               {
@@ -851,8 +859,15 @@ public:
 
                   if (t->leaf == false)
                     for (int i = 0; i < t->n + 1; i++)
+                      node_queue.push(t->C[i]);
+
+#if 0
+                  if (t->leaf == false)
+                    for (int i = 0; i < t->n + 1; i++)
                       if (t->C[i] != NULL)
                         node_queue.push(t->C[i]);
+#endif
+
 
                   for (int i = 0; i < t->n; i++)
                   {
@@ -867,26 +882,36 @@ public:
                 {
                     BTreeNode<V>* t = node_queue.front();
                     node_queue.pop();
-
+#if 0
                     if (t->leaf == false)
                       for (int i = 0; i < t->n + 1; i++)
                         if (t->C[i] != NULL)
                             node_queue.push(t->C[i]);
+#endif
+                    if (t->leaf == false)
+                      for (int i = 0; i < t->n + 1; i++)
+                          node_queue.push(t->C[i]);
 
-                    for (int i = 0; i < t->n; i++)
+                    for (int i = 1; i < t->n; i++)
                     {
                         key_queue.push(t->kvs[i].key);
                         value_queue.push(t->kvs[i].val);
                     }
 
+                    cvalue = t->kvs[0].val;
+                    ckey = t->kvs[0].key;
+#if 0
                     cvalue = value_queue.front();
                     ckey = key_queue.front();
 
                     value_queue.pop();
                     key_queue.pop();
 
+
                     if (key_queue.empty())
                         more_flag = true;
+#endif
+                    more_flag = key_queue.empty();
                 }
             }
         }
