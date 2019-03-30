@@ -481,14 +481,35 @@ int main(int argc, char **argv)
       lc++;
     }
     delete dT;
+
+
+    u64 total_sum = 0;
+    u64 Tcounter = 0;
+    for (relation<2>::iter Tit(T, selectall); Tit.more(); Tit.advance())
+        Tcounter++;
+    MPI_Allreduce(&Tcounter, &total_sum, 1, MPI_UNSIGNED_LONG_LONG, MPI_SUM, comm);
     double join_end = MPI_Wtime();
+
+    if (rank == 0)
+    {
+        std::cout << "n: "
+                  << nprocs
+                  << " G: "
+                  << global_row_count
+                  << " T: " << total_sum
+                  << " Read time: " << (ior_end - ior_start)
+                  << " Init hash: " << (hash_end - hash_start)
+                  << " Relation init: " << (relation_end - relation_start)
+                  << " Fixed point: " << (join_end - join_start)
+                  << " Total: " << (join_end - ior_start)
+                  << " [" << (ior_end - ior_start) + (hash_end - hash_start) + (relation_end - relation_start) + (join_end - join_start) << "]" << std::endl;
+    }
 
     double iow_start = MPI_Wtime();
 
     char TDname[1024];
     sprintf(TDname, "%s_TC", argv[1]);
     //std::cout << "Filename " << TCname << std::endl;
-
     if (rank == 0)
         mkdir(TDname, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
 
@@ -496,13 +517,6 @@ int main(int argc, char **argv)
 
     char TCname[1024];
     sprintf(TCname, "%s/%s_%d", TDname, argv[1], rank);
-    //std::cout << "Filename " << TCname << std::endl;
-
-    //std::ofstream myfile;
-    //myfile.open (TCname, std::ios::out | std::ios::app | std::ios::binary);
-    u64 Tcounter = 0;
-    for (relation<2>::iter Tit(T, selectall); Tit.more(); Tit.advance())
-        Tcounter++;
 
 
     u64 counter = 0;
@@ -528,12 +542,19 @@ int main(int argc, char **argv)
     delete[] buffer;
     double iow_end = MPI_Wtime();
 
-    u64 total_sum = 0;
-    MPI_Allreduce(&Tcounter, &total_sum, 1, MPI_UNSIGNED_LONG_LONG, MPI_SUM, comm);
 
     if (rank == 0)
     {
-        std::cout << "n: " << nprocs << " G: " << global_row_count << " T: " << total_sum << " Read time: " << (ior_end - ior_start) << " Init hash: " << (hash_end - hash_start) << " Relation init: " << (relation_end - relation_start) << " Fixed point: " << (join_end - join_start) << " Write time: " << (iow_end - iow_start) << " Total: " << (iow_end - ior_start) << " [" << (ior_end - ior_start) + (hash_end - hash_start) + (relation_end - relation_start) + (join_end - join_start) + (iow_end - iow_start) << "]" << std::endl;
+        std::cout << "n: " << nprocs
+                  << " G: " << global_row_count
+                  << " T: " << total_sum
+                  << " Read time: " << (ior_end - ior_start)
+                  << " Init hash: " << (hash_end - hash_start)
+                  << " Relation init: " << (relation_end - relation_start)
+                  << " Fixed point: " << (join_end - join_start)
+                  << " Write time: " << (iow_end - iow_start)
+                  << " Total: " << (iow_end - ior_start)
+                  << " [" << (ior_end - ior_start) + (hash_end - hash_start) + (relation_end - relation_start) + (join_end - join_start) + (iow_end - iow_start) << "]" << std::endl;
     }
 
     // Finalizing MPI
