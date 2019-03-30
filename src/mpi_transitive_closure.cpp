@@ -500,7 +500,7 @@ int main(int argc, char **argv)
 
     //std::ofstream myfile;
     //myfile.open (TCname, std::ios::out | std::ios::app | std::ios::binary);
-    u32 Tcounter = 0;
+    u64 Tcounter = 0;
     for (relation<2>::iter Tit(T, selectall); Tit.more(); Tit.advance())
         Tcounter++;
 
@@ -528,8 +528,8 @@ int main(int argc, char **argv)
     delete[] buffer;
     double iow_end = MPI_Wtime();
 
-    u32 total_sum = 0;
-    MPI_Allreduce(&Tcounter, &total_sum, 1, MPI_INT, MPI_SUM, comm);
+    u64 total_sum = 0;
+    MPI_Allreduce(&Tcounter, &total_sum, 1, MPI_UNSIGNED_LONG_LONG, MPI_SUM, comm);
 
     if (rank == 0)
     {
