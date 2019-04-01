@@ -1,6 +1,8 @@
 #include <chrono>
+#include <math.h>
 #include "btree.h"
 #include "btree_relation.h"
+#include "unordered_map"
 
 /* The following program performs deletion on a B-Tree. It contains functions 
 specific for deletion along with all the other functions provided in the 
@@ -65,9 +67,79 @@ void fatal(const char* const msg)
 }
 
 
+void testinsert(BTree<void>& t, u64 count)
+{
+    for (uint64_t i = 0; i < count; ++i)
+    {
+        //const uint64_t i = ep*0x300000 + j;
+        const uint64_t n = (((uint64_t)rnd()) << 32) | rnd();
+        t.insert(n,(void*)1);
+    }
+}
+
+void testiterate(BTree<void>& t, u64 element_count)
+{
+    u64 count = 0;
+    for (BTree<void>::iter it(&t, -1); it.more(); it.advance())
+        count++;
+
+    if (count != element_count)
+        fatal("Wrong element count");
+}
+
+void testsearch(BTree<void>& t, u64 ecount)
+{
+    u64 count = 0;
+    for (BTree<void>::iter it(&t, -1); it.more(); it.advance())
+    {
+        if (it.getval() != (void*)1 || it.getkey() < 0 || it.getkey() > ecount)
+            fatal("1 Bad value during iteration.");
+        count++;
+    }
+
+    if (count != ecount)
+        fatal("Wrong element count");
+}
+
+
+void testinsert_map(std::unordered_map<u64, u64*>& t, u64 count)
+{
+    u64 v = 1;
+    for (uint64_t i = 0; i < count; ++i)
+    {
+        //const uint64_t n = (((uint64_t)rnd()) << 32) | rnd();
+        t.insert({i, (&v)});
+    }
+}
+
+void testiterate_map(std::unordered_map<u64, u64*>& t, u64 ecount)
+{
+    u64 count = 0;
+    for ( auto it = t.begin(); it != t.end(); ++it )
+       count++;
+
+    if (count != ecount)
+        fatal("Wrong element count");
+}
+
+void testsearch_map(std::unordered_map<u64, u64*>& t, u64 ecount)
+{
+    u64 count = 0;
+    for ( auto it = t.begin(); it != t.end(); ++it )
+    {
+       if (it->first < 0 || it->first > ecount)
+           fatal("2 Bad value during iteration.");
+       count++;
+    }
+
+    if (count != ecount)
+        fatal("Wrong element count");
+}
+
+
 void testrandom(BTree<void>& t)
 {
-    for (uint64_t i = 0; i < 500000; ++i)
+    for (uint64_t i = 0; i < 1000000; ++i)
     {
         const uint64_t n = (((uint64_t)rnd()) << 32) | rnd();
         t.insert(n,(void*)1);
@@ -89,113 +161,6 @@ void testrandom(BTree<void>& t)
 
 void test(BTree<void>& t)
 {
-    /*
-    t.insert(9,(void*)1);
-    t.insert(1,(void*)1);
-    t.insert(2,(void*)1);
-    t.insert(3,(void*)1);
-
-    t.insert(4,(void*)1);
-    t.insert(5,(void*)1);
-    t.insert(6,(void*)1);
-    t.insert(8,(void*)1);
-
-    t.insert(11,(void*)1);
-    t.insert(18,(void*)1);
-    t.insert(20,(void*)1);
-    t.insert(22,(void*)1);
-
-    t.insert(23,(void*)1);
-    t.insert(24,(void*)1);
-    t.insert(25,(void*)1);
-    t.insert(27,(void*)1);
-
-    t.insert(28,(void*)1);
-    t.insert(29,(void*)1);
-    t.insert(30,(void*)1);
-    t.insert(1,(void*)1);
-
-    t.insert(2,(void*)1);
-    t.insert(3,(void*)1);
-    t.insert(4,(void*)1);
-    t.insert(6,(void*)1);
-
-    t.insert(8,(void*)1);
-    t.insert(10,(void*)1);
-    t.insert(17,(void*)1);
-    t.insert(19,(void*)1);
-
-    t.insert(20,(void*)1);
-    t.insert(21,(void*)1);
-    t.insert(22,(void*)1);
-    t.insert(26,(void*)1);
-
-    t.insert(27,(void*)1);
-    */
-
-    /*
-    t.insert(9,(void*)1);
-    t.insert(22,(void*)1);
-    t.insert(1,(void*)1);
-    t.insert(2,(void*)1);
-
-    t.insert(3,(void*)1);
-    t.insert(4,(void*)1);
-    t.insert(5,(void*)1);
-    t.insert(6,(void*)1);
-
-    t.insert(8,(void*)1);
-    t.insert(10,(void*)1);
-    t.insert(11,(void*)1);
-    t.insert(17,(void*)1);
-
-    t.insert(18,(void*)1);
-    t.insert(19,(void*)1);
-    t.insert(20,(void*)1);
-    t.insert(21,(void*)1);
-
-    t.insert(23,(void*)1);
-    t.insert(24,(void*)1);
-    t.insert(25,(void*)1);
-    t.insert(26,(void*)1);
-
-    t.insert(27,(void*)1);
-    t.insert(28,(void*)1);
-    t.insert(29,(void*)1);
-    t.insert(30,(void*)1);
-
-    t.insert(22,(void*)1);
-    t.insert(1,(void*)1);
-    t.insert(2,(void*)1);
-    t.insert(3,(void*)1);
-
-    t.insert(4,(void*)1);
-    t.insert(5,(void*)1);
-    t.insert(6,(void*)1);
-    t.insert(7,(void*)1);
-
-    t.insert(9,(void*)1);
-    t.insert(11,(void*)1);
-    t.insert(12,(void*)1);
-    t.insert(18,(void*)1);
-
-    t.insert(19,(void*)1);
-    t.insert(20,(void*)1);
-    t.insert(21,(void*)1);
-    t.insert(23,(void*)1);
-
-    t.insert(24,(void*)1);
-    t.insert(25,(void*)1);
-    t.insert(27,(void*)1);
-    t.insert(28,(void*)1);
-
-    t.insert(29,(void*)1);
-    t.insert(30,(void*)1);
-
-    for (BTree<void>::iter it(&t, -1); it.more(); it.advance())
-      std::cout << it.getkey() << std::endl;
-      */
-
     FILE *fp_in;
     fp_in = fopen("111", "r");
     int element1 = 10, element2 = 10;
@@ -222,6 +187,7 @@ void testseq(BTree<void>& t)
 {
     const uint64_t epochs = 5;
     const uint64_t max = 100000;
+
     for (uint64_t ep = 0; ep < epochs; ++ep)
         for (uint64_t j = 0; j < max; ++j)
         {
@@ -245,6 +211,7 @@ continuelab:;
     }
 
 
+    /*
 
     for (uint64_t ep = 1; ep < epochs; ++ep)
         for (uint64_t j = 0; j < max; ++j)
@@ -252,7 +219,7 @@ continuelab:;
             const uint64_t i = ep*0x300000 + j;
             t.remove(i);
         }
-
+    */
 
     for (uint64_t ep = 0; ep < epochs+2; ++ep)
         for (uint64_t j = 0; j < max; ++j)
@@ -277,18 +244,54 @@ continuelab:;
 // Driver program to test above functions 
 int main() 
 {
-    /*
-    uint64_t start = utime();
-    for (uint64_t i = 0; i < 3; ++i)
+
+    std::cout << "B tree" << std::endl;
+    for (int i = 1; i < 5; i++)
     {
-        BTree<void> t(8);
-        testrandom(t);
+        BTree<void> t(4);
+        u64 element_count = 10000000 * i;
+
+        uint64_t start = utime();
+        testinsert(t, element_count);
+        uint64_t end = utime();
+
+        std::cout << "Insert: " << 1000000 * i << " in " << ((end - start)/1000000) << std::endl;
+
+        testiterate(t, element_count);
+        uint64_t end2 = utime();
+        std::cout << "Iterate: " << ((end2 - end)/1000000) << std::endl;
+
+        testsearch(t, element_count);
+        uint64_t end3 = utime();
+        std::cout << "Iterate and search: " << ((end3 - end2)/1000000) << std::endl;
+        std::cout << "Total time: " << (end3 - start)/1000000 << std::endl << std::endl;
     }
-    std::cout << ((utime() - start)/1000000) << std::endl;
-    */
+
+    std::cout << "Unordered map" << std::endl;
+    for (int i = 1; i < 5; i++)
+    {
+        std::unordered_map<u64, u64*> t;
+        u64 element_count = 10000000 * i;
+
+        uint64_t start = utime();
+        testinsert_map(t, element_count);
+        uint64_t end = utime();
+
+        std::cout << "Insert: " << 1000000 * i << " in " << ((end - start)/1000000) << std::endl;
+
+        testiterate_map(t, element_count);
+        uint64_t end2 = utime();
+        std::cout << "Iterate: " << ((end2 - end)/1000000) << std::endl;
+
+        testsearch_map(t, element_count);
+        uint64_t end3 = utime();
+        std::cout << "Iterate and search: " << ((end3 - end2)/1000000) << std::endl;
+
+        std::cout << "Total time: " << (end3 - start)/1000000 << std::endl << std::endl;
+    }
 
 
-
+    /*
     u64 start = utime();
     for (uint64_t i = 0; i < 1; ++i)
     {
@@ -297,6 +300,7 @@ int main()
         test(t);
     }
     std::cout << ((utime() - start)/1000000) << std::endl;
+    */
 
     return 0;
 }

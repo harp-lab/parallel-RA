@@ -69,7 +69,6 @@ void testseq()
             std::cout << "Shout" << std::endl;
       //std::cout << (*it)[0] << "\t" << (*it)[1] << std::endl;
     }
-
 }
 
 // Driver program to test above functions

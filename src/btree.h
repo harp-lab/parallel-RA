@@ -125,7 +125,7 @@ public:
         // If this is a leaf node
         if (leaf == true)
         {
-#if 0
+#if 1
             while (i >= 0)
             {
                 if (kvs[i].key == k)
@@ -134,7 +134,7 @@ public:
             }
             i = n-1;
 #endif
-#if 1
+#if 0
             int l = 0;
             int r = n - 1;
             int m = 0;
@@ -167,7 +167,7 @@ public:
         }
         else // If this node is not leaf
         {
-#if 0
+#if 1
             while (i >= 0)
             {
                 if (kvs[i].key == k)
@@ -176,7 +176,7 @@ public:
             }
             i = n-1;
 #endif
-#if 1
+#if 0
             int l = 0;
             int r = n - 1;
             int m = 0;
@@ -195,7 +195,7 @@ public:
             while (i >= 0 && kvs[i].key > k)
                 i--;
 
-#if 0
+#if 1
             int i1 = 0;
             while (i1 < C[i+1]->n )
             {
@@ -205,7 +205,7 @@ public:
                 i1++;
             }
 #endif
-#if 1
+#if 0
             r = C[i+1]->n - 1;
             l = 0;
             m = 0;
@@ -674,8 +674,7 @@ public:
             if (root->n == 2*t-1)
             {
                 // Find the first key greater than or equal to k
-#if 0
-
+#if 1
                 int i1 = 0;
                 while (i1 < root->n )
                 {
@@ -685,7 +684,7 @@ public:
                     i1++;
                 }
 #endif
-#if 1
+#if 0
                 int l = 0;
                 int r = root->n - 1;
                 int m = 0;

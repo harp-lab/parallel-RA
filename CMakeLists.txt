@@ -15,6 +15,7 @@ set (source_dir "${PROJECT_SOURCE_DIR}/src")
 file (GLOB source_files_btree "${source_dir}/btree.cpp")
 file (GLOB source_files_tc "${source_dir}/transitive_closure.cpp")
 file (GLOB source_files_mpitc "${source_dir}/mpi_transitive_closure.cpp")
+file (GLOB source_files_ata "${source_dir}/all_to_all.cpp")
 file (GLOB source_files_mpitc_map "${source_dir}/mpi_tc_unordered_map.cpp")
 file (GLOB source_files_otc "${source_dir}/optimized_transitive_closure.cpp")
 file (GLOB source_files_relation "${source_dir}/relation.cpp")
@@ -22,6 +23,10 @@ file (GLOB source_files_relation "${source_dir}/relation.cpp")
 add_executable(BTree ${source_files_btree})
 
 add_executable(TC ${source_files_tc})
+
+add_executable(ata ${source_files_ata})
+INCLUDE_DIRECTORIES(${MPI_INCLUDE_PATH})
+TARGET_LINK_LIBRARIES(ata ${MPI_LIBRARIES})
 
 add_executable(mpiTC ${source_files_mpitc})
 INCLUDE_DIRECTORIES(${MPI_INCLUDE_PATH})

@@ -509,7 +509,7 @@ int main(int argc, char **argv)
     double iow_start = MPI_Wtime();
 
     char TDname[1024];
-    sprintf(TDname, "%s_TC", argv[1]);
+    sprintf(TDname, "%s_%d_TC", argv[1], nprocs);
     //std::cout << "Filename " << TCname << std::endl;
     if (rank == 0)
         mkdir(TDname, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
