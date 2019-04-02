@@ -506,6 +506,7 @@ int main(int argc, char **argv)
                   << " [" << (ior_end - ior_start) + (hash_end - hash_start) + (relation_end - relation_start) + (join_end - join_start) << "]" << std::endl;
     }
 
+#if 0
     double iow_start = MPI_Wtime();
 
     char TDname[1024];
@@ -557,6 +558,7 @@ int main(int argc, char **argv)
                   << " Total: " << (iow_end - ior_start)
                   << " [" << (ior_end - ior_start) + (hash_end - hash_start) + (relation_end - relation_start) + (join_end - join_start) + (iow_end - iow_start) << "]" << std::endl;
     }
+#endif
 
     // Finalizing MPI
     MPI_Finalize();
