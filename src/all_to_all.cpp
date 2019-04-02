@@ -32,27 +32,27 @@ void all_to_all_test(u32 index, u64 data_size, u32 iteration_index)
     send_process_prefix[0] = 0;
     recv_process_prefix[0] = 0;
 
-    send_process_size[0] = data_size;
-    recv_process_size[0] = data_size;
+    send_process_size[0] = data_size / nprocs;
+    recv_process_size[0] = data_size / nprocs;
 
     for(u32 i = 1; i < nprocs; i++)
     {
         send_process_prefix[i] = send_process_prefix[i - 1] +  send_process_size[i - 1];
-        send_process_size[i] = data_size;
+        send_process_size[i] = data_size / nprocs;
 
         recv_process_prefix[i] = recv_process_prefix[i - 1] + recv_process_size[i - 1];
-        recv_process_size[i] = data_size;
+        recv_process_size[i] = data_size / nprocs;
     }
 
-    int send_buffer_size = nprocs * data_size;
-    int recv_buffer_size = nprocs * data_size;
+    int send_buffer_size = data_size;
+    int recv_buffer_size = data_size;
 
     u64* send_buffer = 0;
     send_buffer = new u64[send_buffer_size];
     memset(send_buffer, 0, send_buffer_size * sizeof(u64));
 
-    for(u32 i = 0; i < nprocs * data_size; i++)
-        send_buffer[i] = i/data_size;
+    for(u32 i = 0; i < data_size; i++)
+        send_buffer[i] = i / (data_size/nprocs);
 
 
     u64 *recv_buffer = 0;
@@ -65,7 +65,7 @@ void all_to_all_test(u32 index, u64 data_size, u32 iteration_index)
     i2 = MPI_Wtime();
 
     if (rank == 0)
-    for(u32 i = 0; i < nprocs * data_size; i++)
+    for (u32 i = 0; i < data_size; i++)
         if (recv_buffer[i] != (u64)rank)
         {
             std::cout << "Error !!!!" << std::endl;
@@ -80,7 +80,7 @@ void all_to_all_test(u32 index, u64 data_size, u32 iteration_index)
     MPI_Allreduce(&time, &max_time, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
 
     if (time == max_time)
-    std::cout << "[" << iteration_index << "] " << nprocs << " " <<data_size << " " << nprocs * data_size << ", " << index << " Rank " << rank <<  " All to all communication time: " << max_time << " Rank 0 time: " << (i2 - c1) << std::endl;
+    std::cout << "[" << iteration_index << "] " << nprocs << " " << data_size << " " << index << " Rank " << rank <<  " All to all communication time: " << max_time << " Rank 0 time: " << (i2 - c1) << std::endl;
 
 
 }
@@ -95,7 +95,7 @@ int main(int argc, char **argv)
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     nprocs = size;
 
-    for (int i = 10; i < 17; i++)
+    for (int i = 10; i < 25; i++)
     {
         all_to_all_test(i, pow(2, i), i);
         MPI_Barrier(MPI_COMM_WORLD);
