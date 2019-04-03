@@ -44,20 +44,17 @@ void all_to_all_test(u32 index, u64 data_size, u32 iteration_index)
         recv_process_size[i] = data_size / nprocs;
     }
 
-    int send_buffer_size = data_size;
-    int recv_buffer_size = data_size;
-
     u64* send_buffer = 0;
-    send_buffer = new u64[send_buffer_size];
-    memset(send_buffer, 0, send_buffer_size * sizeof(u64));
+    send_buffer = new u64[data_size];
+    memset(send_buffer, 0, data_size * sizeof(u64));
 
     for(u32 i = 0; i < data_size; i++)
         send_buffer[i] = i / (data_size/nprocs);
 
 
     u64 *recv_buffer = 0;
-    recv_buffer = new u64[recv_buffer_size];
-    memset(recv_buffer, 0, recv_buffer_size * sizeof(u64));
+    recv_buffer = new u64[data_size];
+    memset(recv_buffer, 0, data_size * sizeof(u64));
 
     c1 = MPI_Wtime();
     MPI_Alltoallv(send_buffer, send_process_size, send_process_prefix, MPI_UNSIGNED_LONG_LONG, recv_buffer, recv_process_size, recv_process_prefix, MPI_UNSIGNED_LONG_LONG, MPI_COMM_WORLD);
@@ -95,12 +92,11 @@ int main(int argc, char **argv)
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     nprocs = size;
 
-    for (int i = 10; i < 25; i++)
+    for (int i = 10; i < 30; i++)
     {
         all_to_all_test(i, pow(2, i), i);
         MPI_Barrier(MPI_COMM_WORLD);
     }
-
 
 
     // Finalizing MPI
