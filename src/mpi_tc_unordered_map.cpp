@@ -283,36 +283,42 @@ std::unordered_map<u64, std::unordered_set<u64>> * parallel_map_join(std::unorde
         std::unordered_set<u64> it2 = it->second;
         for (auto dit2 = it2.begin(); dit2 != it2.end(); dit2++)
         {
-            std::unordered_set<u64> Git = G[*dit2];
-            for (auto it2 = Git.begin(); it2 != Git.end(); it2++)
-            {
-                tuple_count++;
+            //std::unordered_set<u64> Git = G[*dit2];
 
-                auto itx = tempT.find(it->first);
-                if( itx != tempT.end() ) {
-                    auto it2x = (itx->second).find(*it2);
-                    if( it2x != (itx->second).end() ) {
-                        ;
+            auto itd = G.find(*dit2);
+            if( itd != G.end() ) {
+                std::unordered_set<u64> Git = itd->second;
+                for (auto it2 = Git.begin(); it2 != Git.end(); it2++)
+                {
+                    tuple_count++;
+
+                    auto itx = tempT.find(it->first);
+                    if( itx != tempT.end() ) {
+                        auto it2x = (itx->second).find(*it2);
+                        if( it2x != (itx->second).end() ) {
+                            ;
+                        }
+                        else{
+                            (itx->second).insert(*it2);
+                            tempT[it->first] = itx->second;
+                            index = outer_hash(*it2)%nprocs;
+                            dt[0] = it->first;
+                            dt[1] = *it2;
+                            process_data_vector[index].push_back(dt);
+                            //row_count++;
+                        }
                     }
-                    else{
-                        (itx->second).insert(*it2);
-                        tempT[it->first] = itx->second;
+                    else {
+                        std::unordered_set<u64> k;
+                        k.insert(*it2);
+                        //tempT.insert(std::make_pair(it->first,k));
+                        tempT[it->first] = k;
                         index = outer_hash(*it2)%nprocs;
                         dt[0] = it->first;
                         dt[1] = *it2;
                         process_data_vector[index].push_back(dt);
                         //row_count++;
                     }
-                }
-                else {
-                    std::unordered_set<u64> k;
-                    k.insert(*it2);
-                    tempT.insert(std::make_pair(it->first,k));
-                    index = outer_hash(*it2)%nprocs;
-                    dt[0] = it->first;
-                    dt[1] = *it2;
-                    process_data_vector[index].push_back(dt);
-                    //row_count++;
                 }
             }
         }
@@ -394,31 +400,62 @@ std::unordered_map<u64, std::unordered_set<u64>> * parallel_map_join(std::unorde
     c2 = MPI_Wtime();
 #if 1
     i1 = MPI_Wtime();
+
+    char TCname[1024];
+    sprintf(TCname, "%d_T", lc);
+    std::cout << "Filename " << TCname << std::endl;
+
+    std::ofstream myfile;
+    myfile.open (TCname);
+
+    for ( auto local_it = T.begin(); local_it!= T.end(); ++local_it )
+    {
+        std::unordered_set<u64> k = local_it->second;
+        for (auto it2 = k.begin(); it2 != k.end(); it2++)
+            myfile << local_it->first << "\t" << *it2 << "\n";
+    }
+    //myfile.close();
+
+
+
+    //char delta[1024];
+    //sprintf(delta, "%d_delta", lc);
+    //std::cout << "Filename " << delta << std::endl;
+
+    //std::ofstream dfile;
+    //dfile.open (delta);
     int count = 0;
     u64 tduplicates = 0;
     for(u32 ko = 0; ko < outer_hash_buffer_size; ko = ko + 2)
     {
+        myfile << hash_buffer[ko] << "\t" << hash_buffer[ko + 1] << "\n";
         auto it = T.find(hash_buffer[ko]);
         if( it != T.end() ) {
             auto it2 = (it->second).find(hash_buffer[ko + 1]);
             if( it2 != (it->second).end() ) {
                 tduplicates++;
             }
-            else{
+            else
+            {
                 (it->second).insert(hash_buffer[ko + 1]);
+
+                //T.insert(std::make_pair(hash_buffer[ko],it->second));
                 T[hash_buffer[ko]] = it->second;
                 tcount++;
 
                 auto sit = (*delTT).find(hash_buffer[ko]);
                 if( sit != (*delTT).end() ) {
+                    //(sit->second).insert(hash_buffer[ko + 1]);
                     (sit->second).insert(hash_buffer[ko + 1]);
+                    //(*delTT).insert(std::make_pair(hash_buffer[ko],sit->second));
                     (*delTT)[hash_buffer[ko]] = sit->second;
                     count++;
                 }
                 else {
                     std::unordered_set<u64> k;
                     k.insert(hash_buffer[ko + 1]);
-                    (*delTT).insert(std::make_pair(hash_buffer[ko],k));
+                    //(*delTT).insert(std::make_pair(hash_buffer[ko],k));
+                    (*delTT)[hash_buffer[ko]] = k;
                     count++;
                 }
             }
@@ -426,23 +463,30 @@ std::unordered_map<u64, std::unordered_set<u64>> * parallel_map_join(std::unorde
         else {
             std::unordered_set<u64> k;
             k.insert(hash_buffer[ko + 1]);
-            T.insert(std::make_pair(hash_buffer[ko],k));
+
+            //T.insert(std::make_pair(hash_buffer[ko],k));
+            T[hash_buffer[ko]] = k;
             tcount++;
 
             auto sit = (*delTT).find(hash_buffer[ko]);
             if( sit != (*delTT).end() ) {
                 (sit->second).insert(hash_buffer[ko + 1]);
+                //(*delTT).insert(std::make_pair(hash_buffer[ko],sit->second));
                 (*delTT)[hash_buffer[ko]] = sit->second;
                 count++;
             }
             else {
                 std::unordered_set<u64> k;
                 k.insert(hash_buffer[ko + 1]);
-                (*delTT).insert(std::make_pair(hash_buffer[ko],k));
+                //(*delTT).insert(std::make_pair(hash_buffer[ko],k));
+                (*delTT)[hash_buffer[ko]] = k;
                 count++;
             }
         }
     }
+
+    myfile.close();
+    //dfile.close();
 
     delete[] hash_buffer;
     delete[] process_data;
