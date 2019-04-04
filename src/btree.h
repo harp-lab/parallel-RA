@@ -657,6 +657,7 @@ public:
     // The main function that inserts a new key in this B-Tree
     bool insert(uint64_t k, V* btn)
     {
+
         // If tree is empty
         if (root == NULL)
         {

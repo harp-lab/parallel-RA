@@ -4,43 +4,6 @@
 #include "btree_relation.h"
 #include "unordered_map"
 
-/* The following program performs deletion on a B-Tree. It contains functions 
-specific for deletion along with all the other functions provided in the 
-previous articles on B-Trees. See https://www.geeksforgeeks.org/b-tree-set-1-introduction-2/ 
-for previous article. 
-
-The deletion function has been compartmentalized into 8 functions for ease 
-of understanding and clarity 
-
-The following functions are exclusive for deletion 
-In class BTreeNode: 
-        1) remove
-        2) removeFromLeaf
-        3) removeFromNonLeaf
-        4) getPred
-        5) getSucc
-        6) borrowFromPrev
-        7) borrowFromNext
-        8) merge
-        9) findKey
-
-In class BTree: 
-        1) remove
-
-The removal of a key from a B-Tree is a fairly complicated process. The program handles 
-all the 6 different cases that might arise while removing a key. 
-
-Testing: The code has been tested using the B-Tree provided in the CLRS book( included 
-in the main function ) along with other cases. 
-
-Reference: CLRS3 - Chapter 18 - (499-502) 
-It is advised to read the material in CLRS before taking a look at the code. */
-
-
-uint64_t utime()
-{
-    return std::chrono::high_resolution_clock::now().time_since_epoch().count();
-}
 
 
 uint32_t x=123456789, y=362436069, z=521288629;
@@ -69,8 +32,29 @@ void fatal(const char* const msg)
 
 void testinsert(BTree<void>& t, u64 epochs, u64 max)
 {
-    //const uint64_t epochs = 5;
-    //const uint64_t max = 100000;
+    for (uint64_t ep = 0; ep < epochs; ++ep)
+        for (uint64_t j = 0; j < max; ++j)
+        {
+            const uint64_t i = max*ep + j;
+            t.insert(i,(void*)1);
+
+        }
+
+    for (uint64_t ep = 0; ep < epochs; ++ep)
+        for (uint64_t j = 0; j < max; ++j)
+        {
+            const uint64_t i = epochs*j + ep;
+            t.insert(i,(void*)1);
+
+        }
+
+    for (uint64_t ep = 0; ep < epochs; ++ep)
+        for (uint64_t j = 0; j < max; ++j)
+        {
+            const uint64_t i = epochs*j + ep;
+            t.insert(i,(void*)1);
+
+        }
 
     for (uint64_t ep = 0; ep < epochs; ++ep)
         for (uint64_t j = 0; j < max; ++j)
@@ -101,9 +85,9 @@ void testsearch(BTree<void>& t, u64 epochs, u64 max)
     for (uint64_t ep = 0; ep < epochs+2; ++ep)
         for (uint64_t j = 0; j < max; ++j)
         {
-            const uint64_t i = j*epochs + ep;
+            const uint64_t i = max*ep + j;
             void* ans = t.search(i);
-            if (ans == (void*)1 && ep < epochs)
+            if (ans == (void*)1)
                 ccount++;
             else
                 wcount++;
@@ -119,7 +103,30 @@ void testsearch(BTree<void>& t, u64 epochs, u64 max)
 
 void testinsert_map(std::unordered_map<u64, u64*>& t, u64 epochs, u64 max)
 {
-    //u64 v = 1;
+    for (uint64_t ep = 0; ep < epochs; ++ep)
+        for (uint64_t j = 0; j < max; ++j)
+        {
+            const uint64_t i = max*ep + j;
+            t.insert({i, (u64*)1});
+
+        }
+
+    for (uint64_t ep = 0; ep < epochs; ++ep)
+        for (uint64_t j = 0; j < max; ++j)
+        {
+            const uint64_t i = epochs*j + ep;
+            t.insert({i, (u64*)NULL});
+
+        }
+
+    for (uint64_t ep = 0; ep < epochs; ++ep)
+        for (uint64_t j = 0; j < max; ++j)
+        {
+            const uint64_t i = epochs*j + ep;
+            t.insert({i, (u64*)NULL});
+
+        }
+
     for (uint64_t ep = 0; ep < epochs; ++ep)
         for (uint64_t j = 0; j < max; ++j)
         {
@@ -133,7 +140,7 @@ void testiterate_map(std::unordered_map<u64, u64*>& t, u64 epochs, u64 max)
 {
     u64 count = 0;
     for ( auto it = t.begin(); it != t.end(); ++it )
-       count++;
+        count++;
 
     if (count != epochs * max)
         fatal("Map: Wrong element count");
@@ -141,144 +148,32 @@ void testiterate_map(std::unordered_map<u64, u64*>& t, u64 epochs, u64 max)
 
 void testsearch_map(std::unordered_map<u64, u64*>& t, u64 epochs, u64 max)
 {
-    /*
-    u64 count = 0;
-    for ( auto it = t.begin(); it != t.end(); ++it )
-    {
-       if (it->first < 0 || it->first > ecount)
-           fatal("2 Bad value during iteration.");
-       count++;
-    }
-
-    if (count != ecount)
-        fatal("Wrong element count");
-    */
-
     u64 ccount = 0;
     u64 wcount = 0;
 
     for (uint64_t ep = 0; ep < epochs+2; ++ep)
         for (uint64_t j = 0; j < max; ++j)
         {
-            const uint64_t i = epochs*j + ep;
-            u64* ans = t[i];
-            if (ans == NULL && ep < epochs)
-                ccount++;
-            else
+            const uint64_t i = max*ep + j;
+            auto ans = t.find(i);
+            if (ans != t.end())
+            {
+                if (ans->second == (u64*)1)
+                    ccount++;
+            } else
                 wcount++;
         }
 
     if (ccount != epochs * max)
+    {
+        std::cout <<  "Count: " << ccount << " " << epochs * max << std::endl;
         fatal("1 search error.");
+    }
 
     if (wcount != 2 * max)
         fatal("2 search error.");
 }
 
-
-void testrandom(BTree<void>& t)
-{
-    for (uint64_t i = 0; i < 1000000; ++i)
-    {
-        const uint64_t n = (((uint64_t)rnd()) << 32) | rnd();
-        t.insert(n,(void*)1);
-    }
-
-    for (uint64_t i = 100000; i < 500000; ++i)
-    {
-        const uint64_t n = (((uint64_t)rnd()) << 32) | rnd();
-        //const uint64_t n = ((uint64_t)rnd()) % 100;
-        t.remove(n);
-    }
-
-    for (uint64_t i = 0; i < 700000; ++i)
-    {
-        const uint64_t n = (((uint64_t)rnd()) << 32) | rnd();
-        t.search(n);
-    }
-}
-
-void test(BTree<void>& t)
-{
-    FILE *fp_in;
-    fp_in = fopen("111", "r");
-    int element1 = 10, element2 = 10;
-    int rc = 1142;
-
-    for (int i = 0; i < rc; i++)
-    {
-        if (fscanf(fp_in,"%d\t%d\n", &element1, &element2) !=2 )
-            break;
-        //fscanf(fp_in,"%d\t%d\n", &element1, &element2);
-
-        bool x = t.insert((u64)element2,(void*)1);
-
-        std::cout << element2 << "\t" << x << std::endl;
-    }
-    fclose(fp_in);
-
-    for (BTree<void>::iter it(&t, -1); it.more(); it.advance())
-      std::cout << it.getkey() << std::endl;
-}
-
-
-void testseq(BTree<void>& t)
-{
-    const uint64_t epochs = 5;
-    const uint64_t max = 100000;
-
-    for (uint64_t ep = 0; ep < epochs; ++ep)
-        for (uint64_t j = 0; j < max; ++j)
-        {
-            const uint64_t i = ep*0x300000 + j;
-            t.insert(i,(void*)1);
-
-        }
-
-
-
-    for (BTree<void>::iter it(&t, -1); it.more(); it.advance())
-    {
-
-        if (it.getval() != (void*)1)
-            fatal("Bad value during iteration.");
-        for (uint64_t ep = 0; ep < epochs; ++ep)
-            if (it.getkey() >= ep*0x300000 && it.getkey() < ep*0x300000+max)
-                goto continuelab;
-        fatal("Key not in range during iteration");
-continuelab:;
-    }
-
-
-    /*
-
-    for (uint64_t ep = 1; ep < epochs; ++ep)
-        for (uint64_t j = 0; j < max; ++j)
-        {
-            const uint64_t i = ep*0x300000 + j;
-            t.remove(i);
-        }
-    */
-
-    for (uint64_t ep = 0; ep < epochs+2; ++ep)
-        for (uint64_t j = 0; j < max; ++j)
-        {
-            const uint64_t i = ep*0x300000 + j;
-            void* ans = t.search(i);
-            if (ans == 0 && ep == 0)
-                fatal("Should have found key.");
-            else if (ans != 0 && ep > 0)
-                fatal("Should not have found key.");
-        }
-
-
-    //printf("count = %d\n", (int)t.count());
-
-    if (t.count() != max)
-        fatal("Wrong key-count.");
-
-
-}
 
 // Driver program to test above functions 
 int main() 
@@ -287,60 +182,81 @@ int main()
     u64 epochs = 5;
     u64 max = 10000000;
 
-    std::cout << "B tree" << std::endl;
-    for (int i = 1; i < 5; i++)
-    {
-        BTree<void> t(8);
-
-        uint64_t start = utime();
-        testinsert(t, epochs, max);
-        uint64_t end = utime();
-
-        std::cout << "Insert: " << max * epochs << " in " << ((end - start)/1000000) << std::endl;
-
-        testiterate(t, epochs, max);
-        uint64_t end2 = utime();
-        std::cout << "Iterate: " << ((end2 - end)/1000000) << std::endl;
-
-        testsearch(t, epochs, max);
-        uint64_t end3 = utime();
-        std::cout << "Iterate and search: " << ((end3 - end2)/1000000) << std::endl;
-        std::cout << "Total time: " << (end3 - start)/1000000 << std::endl << std::endl;
-    }
 
     std::cout << "Unordered map" << std::endl;
-    for (int i = 1; i < 5; i++)
+    auto map_start = std::chrono::high_resolution_clock::now();
+    for (int i = 0; i < 1; i++)
     {
         std::unordered_map<u64, u64*> t;
 
-        uint64_t start = utime();
+        auto map_insert_start = std::chrono::high_resolution_clock::now();
         testinsert_map(t, epochs, max);
-        uint64_t end = utime();
+        auto map_insert_end = std::chrono::high_resolution_clock::now();
 
-        std::cout << "Insert: " << max * epochs << " in " << ((end - start)/1000000) << std::endl;
 
+        auto map_iterate_start = std::chrono::high_resolution_clock::now();
         testiterate_map(t, epochs, max);
-        uint64_t end2 = utime();
-        std::cout << "Iterate: " << ((end2 - end)/1000000) << std::endl;
+        auto map_iterate_end = std::chrono::high_resolution_clock::now();
 
+
+        auto map_search_start = std::chrono::high_resolution_clock::now();
         testsearch_map(t, epochs, max);
-        uint64_t end3 = utime();
-        std::cout << "Iterate and search: " << ((end3 - end2)/1000000) << std::endl;
+        auto map_search_end = std::chrono::high_resolution_clock::now();
 
-        std::cout << "Total time: " << (end3 - start)/1000000 << std::endl << std::endl;
+        std::chrono::duration<double> map_insert_elapsed = map_insert_end - map_insert_start;
+        std::chrono::duration<double> map_iterate_elapsed = map_iterate_end - map_iterate_start;
+        std::chrono::duration<double> map_search_elapsed = map_search_end - map_search_start;
+
+        std::cout << "Map insert " << map_insert_elapsed.count() << std::endl;
+        std::cout << "Map iterate " << map_iterate_elapsed.count() << std::endl;
+        std::cout << "Map search " << map_search_elapsed.count() << std::endl << std::endl;
     }
+    auto map_end = std::chrono::high_resolution_clock::now();
 
 
-    /*
-    u64 start = utime();
-    for (uint64_t i = 0; i < 1; ++i)
+
+    std::cout << "B tree" << std::endl;
+    auto btree_start = std::chrono::high_resolution_clock::now();
+    for (int i = 0; i < 1; i++)
     {
         BTree<void> t(8);
-        //testseq(t);
-        test(t);
+
+        auto btree_insert_start = std::chrono::high_resolution_clock::now();
+        testinsert(t, epochs, max);
+        auto btree_insert_end = std::chrono::high_resolution_clock::now();
+
+
+        auto btree_iterate_start = std::chrono::high_resolution_clock::now();
+        testiterate(t, epochs, max);
+        auto btree_iterate_end = std::chrono::high_resolution_clock::now();
+
+
+        auto btree_search_start = std::chrono::high_resolution_clock::now();
+        testsearch(t, epochs, max);
+        auto btree_search_end = std::chrono::high_resolution_clock::now();
+
+
+        std::chrono::duration<double> btree_insert_elapsed = btree_insert_end - btree_insert_start;
+        std::chrono::duration<double> btree_iterate_elapsed = btree_iterate_end - btree_iterate_start;
+        std::chrono::duration<double> btree_search_elapsed = btree_search_end - btree_search_start;
+
+        std::cout << "Btree insert " << btree_insert_elapsed.count() << std::endl;
+        std::cout << "Btree iterate " << btree_iterate_elapsed.count() << std::endl;
+        std::cout << "Btree search " << btree_search_elapsed.count() << std::endl << std::endl;
     }
-    std::cout << ((utime() - start)/1000000) << std::endl;
-    */
+    auto btree_end = std::chrono::high_resolution_clock::now();
+
+
+    std::cout << std::endl;
+    std::cout << std::endl;
+
+    std::chrono::duration<double> btree_elapsed = btree_end - btree_start;
+    std::cout << "Btree " << btree_elapsed.count() << std::endl;
+
+    std::cout << std::endl;
+
+    std::chrono::duration<double> map_elapsed = map_end - map_start;
+    std::cout << "Map " << map_elapsed.count() << std::endl;
 
     return 0;
 }
