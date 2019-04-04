@@ -408,22 +408,52 @@ std::unordered_map<u64, std::unordered_set<u64>> * parallel_map_join(std::unorde
     std::ofstream myfile;
     myfile.open (TCname);
 
+    u64 counter = 0;
     for ( auto local_it = T.begin(); local_it!= T.end(); ++local_it )
     {
         std::unordered_set<u64> k = local_it->second;
         for (auto it2 = k.begin(); it2 != k.end(); it2++)
-            myfile << local_it->first << "\t" << *it2 << "\n";
+            counter++;
     }
-    //myfile.close();
 
 
+    u64* buffer = new u64[counter * 2 + outer_hash_buffer_size];
+    std::cout << "Buffer size: " << counter * 2 + outer_hash_buffer_size << std::endl;
+    //std::cout << "Buffer size: " << counter * 2  << std::endl;
 
-    //char delta[1024];
-    //sprintf(delta, "%d_delta", lc);
-    //std::cout << "Filename " << delta << std::endl;
+    counter = 0;
+    for ( auto local_it = T.begin(); local_it!= T.end(); ++local_it )
+    {
+        std::unordered_set<u64> k = local_it->second;
+        for (auto it2 = k.begin(); it2 != k.end(); it2++)
+        {
+            memcpy(buffer + counter, &(local_it->first), sizeof(u64));
+            counter++;
 
-    //std::ofstream dfile;
-    //dfile.open (delta);
+            memcpy(buffer + counter, &(*it2), sizeof(u64));
+            counter++;
+        }
+    }
+
+    for(u32 ko = 0; ko < outer_hash_buffer_size; ko = ko + 2)
+    {
+        memcpy(buffer + counter, &(hash_buffer[ko]), sizeof(u64));
+        counter++;
+
+        memcpy(buffer + counter, &(hash_buffer[ko + 1]), sizeof(u64));
+        counter++;
+    }
+
+
+    FILE * pFile;
+    pFile = fopen (TCname,"wb");
+    if (pFile!=NULL)
+        fwrite (buffer , sizeof(u64), counter, pFile);
+    fclose(pFile);
+
+
+    delete[] buffer;
+
     int count = 0;
     u64 tduplicates = 0;
     for(u32 ko = 0; ko < outer_hash_buffer_size; ko = ko + 2)

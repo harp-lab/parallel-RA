@@ -1,3 +1,15 @@
+#include <sys/stat.h>
+#include <errno.h>
+#include <limits.h>
+#include <arpa/inet.h>
+#include <stdio.h>
+#include <string.h>
+#include <math.h>
+#include <assert.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <iostream>
+#include <fstream>
 #include <chrono>
 #include "btree.h"
 #include "btree_relation.h"
@@ -17,6 +29,7 @@ void fatal(const char* const msg)
 }
 
 
+/*
 void fileIO(const char* filename, tuple<2> * tup, int rc)
 {
     FILE *fp_in  = fopen(filename, "r");
@@ -33,34 +46,34 @@ void fileIO(const char* filename, tuple<2> * tup, int rc)
         tup[i][1] = (u64)element2;
     }
     fclose(fp_in);
-
 }
+*/
 
 
 
-void testUmap(tuple<2> * tup, u64 rc)
+void testUmap(u64 * tup, u64 rc)
 {
     //auto insert_start = std::chrono::high_resolution_clock::now();
     std::unordered_map<u64, std::unordered_set<u64>> G;
     u64 row_count = 0;
-    for (u64 i = 0; i < rc; i++)
+    for (u64 i = 0; i < rc * 2; i=i+2)
     {
-        auto it = G.find(tup[i][0]);
+        auto it = G.find(tup[i]);
         if( it != G.end() ) {
-            auto it2 = (it->second).find(tup[i][1]);
+            auto it2 = (it->second).find(tup[i + 1]);
             if( it2 != (it->second).end() ) {
                 ;
             }
             else{
-                (it->second).insert(tup[i][1]);
-                G[tup[i][0]] = it->second;
+                (it->second).insert(tup[i + 1]);
+                G[tup[i]] = it->second;
                 row_count++;
             }
         }
         else {
             std::unordered_set<u64> k;
-            k.insert(tup[i][1]);
-            G.insert(std::make_pair(tup[i][0],k));
+            k.insert(tup[i + 1]);
+            G.insert(std::make_pair(tup[i],k));
             row_count++;
         }
     }
@@ -97,15 +110,16 @@ void testUmap(tuple<2> * tup, u64 rc)
 
 
 
-void testBtree(tuple<2> * tup, u64 rc)
+void testBtree(u64 * tup, u64 rc)
 {
     //auto insert_start = std::chrono::high_resolution_clock::now();
     u64 row_count = 0;
     relation<2> rel;
-
-    for (u64 i = 0; i < rc; i++)
+    tuple<2> t1;
+    for (u64 i = 0; i < rc * 2; i=i+2)
     {
-        if (rel.insert(tup[i]))
+        t1[0] = tup[i]; t1[1] = tup[i+1];
+        if (rel.insert(t1))
           row_count++;
     }
 
@@ -140,20 +154,28 @@ void testBtree(tuple<2> * tup, u64 rc)
 // Driver program to test above functions
 int main()
 {
-    tuple<2> * tup = new tuple<2>[16411677];
-    fileIO("24_T", tup, 16411677);
+
+    u64 rc = 32823354/2;
+    int fp = open("24_T", O_RDONLY);
+    u64 * read_buffer = new u64[rc * 2];
+    u32 rb_size = pread(fp, read_buffer, rc * 2 * sizeof(u64), 0);
+    if (rb_size != rc * 2 * sizeof(u64))
+    {
+        std::cout << "Error !!!!" << std::endl;
+    }
+    close(fp);
 
     auto map_start = std::chrono::high_resolution_clock::now();
-    testUmap(tup, 16411677);
+    testUmap(read_buffer, rc);
     auto map_finish = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> map_elapsed = map_finish - map_start;
-    std::cout << "16411677 Map insert " << map_elapsed.count() << std::endl;
+    std::cout << "Map insert " << map_elapsed.count() << std::endl;
 
     auto btree_start = std::chrono::high_resolution_clock::now();
-    testBtree(tup, 16411677);
+    testBtree(read_buffer, rc);
     auto btree_finish = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> btree_elapsed = btree_finish - btree_start;
-    std::cout << "16411677 Btree insert " << btree_elapsed.count() << std::endl;
+    std::cout << "Btree insert " << btree_elapsed.count() << std::endl;
 
 
 
@@ -163,7 +185,73 @@ int main()
     std::cout << std::endl;
 
 
-    delete[] tup;
+    map_start = std::chrono::high_resolution_clock::now();
+    testUmap(read_buffer, rc);
+    map_finish = std::chrono::high_resolution_clock::now();
+    map_elapsed = map_finish - map_start;
+    std::cout << "Map insert " << map_elapsed.count() << std::endl;
+
+    btree_start = std::chrono::high_resolution_clock::now();
+    testBtree(read_buffer, rc);
+    btree_finish = std::chrono::high_resolution_clock::now();
+    btree_elapsed = btree_finish - btree_start;
+    std::cout << "Btree insert " << btree_elapsed.count() << std::endl;
+
+
+    std::cout << std::endl;
+    std::cout << "-------------------------------------------" << std::endl;
+    std::cout << std::endl;
+
+
+    map_start = std::chrono::high_resolution_clock::now();
+    testUmap(read_buffer, rc);
+    map_finish = std::chrono::high_resolution_clock::now();
+    map_elapsed = map_finish - map_start;
+    std::cout << "Map insert " << map_elapsed.count() << std::endl;
+
+    btree_start = std::chrono::high_resolution_clock::now();
+    testBtree(read_buffer, rc);
+    btree_finish = std::chrono::high_resolution_clock::now();
+    btree_elapsed = btree_finish - btree_start;
+    std::cout << "Btree insert " << btree_elapsed.count() << std::endl;
+
+
+    std::cout << std::endl;
+    std::cout << "-------------------------------------------" << std::endl;
+    std::cout << std::endl;
+
+
+    map_start = std::chrono::high_resolution_clock::now();
+    testUmap(read_buffer, rc);
+    map_finish = std::chrono::high_resolution_clock::now();
+    map_elapsed = map_finish - map_start;
+    std::cout << "Map insert " << map_elapsed.count() << std::endl;
+
+    btree_start = std::chrono::high_resolution_clock::now();
+    testBtree(read_buffer, rc);
+    btree_finish = std::chrono::high_resolution_clock::now();
+    btree_elapsed = btree_finish - btree_start;
+    std::cout << "Btree insert " << btree_elapsed.count() << std::endl;
+
+
+    std::cout << std::endl;
+    std::cout << "-------------------------------------------" << std::endl;
+    std::cout << std::endl;
+
+
+    map_start = std::chrono::high_resolution_clock::now();
+    testUmap(read_buffer, rc);
+    map_finish = std::chrono::high_resolution_clock::now();
+    map_elapsed = map_finish - map_start;
+    std::cout << "Map insert " << map_elapsed.count() << std::endl;
+
+    btree_start = std::chrono::high_resolution_clock::now();
+    testBtree(read_buffer, rc);
+    btree_finish = std::chrono::high_resolution_clock::now();
+    btree_elapsed = btree_finish - btree_start;
+    std::cout << "Btree insert " << btree_elapsed.count() << std::endl;
+
+    delete[] read_buffer;
 
 
     return 0;
