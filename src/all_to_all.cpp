@@ -92,7 +92,7 @@ int main(int argc, char **argv)
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     nprocs = size;
 
-    for (int i = 10; i < 30; i++)
+    for (int i = 17; i <= 31; i++)
     {
         all_to_all_test(i, pow(2, i), i);
         MPI_Barrier(MPI_COMM_WORLD);
