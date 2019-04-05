@@ -93,7 +93,13 @@ int main(int argc, char **argv)
     nprocs = size;
 
     for (int i = 33; i <= 36; i++)
-    //for (int i = 10; i <= 15; i++)
+    {
+        all_to_all_test(pow(2, i)/nprocs, i);
+        MPI_Barrier(MPI_COMM_WORLD);
+    }
+
+
+    for (int i = 33; i <= 36; i++)
     {
         all_to_all_test(pow(2, i)/nprocs, i);
         MPI_Barrier(MPI_COMM_WORLD);
