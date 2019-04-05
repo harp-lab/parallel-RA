@@ -19,7 +19,7 @@
 static int rank = 0;
 static u32 nprocs = 1;
 
-void all_to_all_test(u32 index, u64 data_size, u32 iteration_index)
+void all_to_all_test(u64 data_size, u32 iteration_index)
 {
     double c1 = 0;
     double i2 = 0;
@@ -77,7 +77,7 @@ void all_to_all_test(u32 index, u64 data_size, u32 iteration_index)
     MPI_Allreduce(&time, &max_time, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
 
     if (time == max_time)
-    std::cout << "[" << iteration_index << "] " << nprocs << " " << data_size << " " << index << " Rank " << rank <<  " All to all communication time: " << max_time << " Rank 0 time: " << (i2 - c1) << std::endl;
+    std::cout << "[" << iteration_index << "] " << nprocs << " " << data_size << " "  << " Rank " << rank <<  " All to all communication time: " << max_time << " Rank 0 time: " << (i2 - c1) << std::endl;
 
 
 }
@@ -92,9 +92,10 @@ int main(int argc, char **argv)
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     nprocs = size;
 
-    for (int i = 17; i <= 31; i++)
+    for (int i = 33; i <= 36; i++)
+    //for (int i = 10; i <= 15; i++)
     {
-        all_to_all_test(i, pow(2, i), i);
+        all_to_all_test(pow(2, i)/nprocs, i);
         MPI_Barrier(MPI_COMM_WORLD);
     }
 
