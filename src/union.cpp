@@ -12,6 +12,9 @@
 #include <iostream>
 #include <fstream>
 #include <mpi.h>
+#include <iostream>
+#include <fstream>
+
 
 #include "btree.h"
 #include "btree_relation.h"
@@ -51,7 +54,7 @@ u64 outer_hash(const u64 val)
 #endif
 
 
-void parallel_read_input_relation_from_file_to_local_buffer(const char *file_name, u64** read_buffer, u32 row_count, u32* local_row_count)
+void parallel_read_input_relation_from_file_to_local_buffer(const char *file_name, u64** read_buffer, u32 row_count, u64* local_row_count)
 {
     u32 read_offset;
     read_offset = ceil((float)row_count / nprocs) * rank;
@@ -72,22 +75,32 @@ void parallel_read_input_relation_from_file_to_local_buffer(const char *file_nam
 
     char data_filename[1024];
     sprintf(data_filename, "%s/data.raw", file_name);
-    int fp = open(data_filename, O_RDONLY);
+    //int fp = open(data_filename, O_RDONLY);
 
 
+    size_t bsize = (u64) *local_row_count *  (u64)COL_COUNT * sizeof(u64);
     *read_buffer = new u64[*local_row_count * COL_COUNT];
-    u32 rb_size = pread(fp, *read_buffer, *local_row_count * COL_COUNT * sizeof(u64), read_offset * COL_COUNT * sizeof(u64));
+
+    /*
+    u64 rb_size = pread(fp, *read_buffer, bsize, read_offset * COL_COUNT * sizeof(u64));
     if (rb_size != *local_row_count * COL_COUNT * sizeof(u64))
     {
-        std::cout << "Wrong IO: rank: " << rank << " " << rb_size << " " <<  *local_row_count << " " << COL_COUNT << std::endl;
+        std::cout << "Wrong IO: rank: " << rank << " " << rb_size << " " <<  bsize << " " << *local_row_count << std::endl;
         MPI_Abort(MPI_COMM_WORLD, -1);
     }
     close(fp);
+    */
+
+    std::ifstream myFile (data_filename, std::ios::in | std::ios::binary);
+    myFile.seekg (read_offset * COL_COUNT * sizeof(u64));
+    myFile.read ((char*)*read_buffer, bsize);
+    myFile.close();
+
 
     return;
 }
 
-void buffer_data_to_hash_buffer(u32 local_number_of_rows, u64* input_data, u64** outer_hash_data, u32* outer_hash_buffer_size, MPI_Comm comm)
+void buffer_data_to_hash_buffer(u32 local_number_of_rows, u64* input_data, u64** outer_hash_data, u64* outer_hash_buffer_size, MPI_Comm comm)
 {
     /* process_size[j] stores the number of samples to be sent to process with rank j */
     int process_size[nprocs];
@@ -300,12 +313,11 @@ int main(int argc, char **argv)
 
     nprocs = (u32)size;
 
-
     u32 relation_count = atoi(argv[1]);
-    u32 *  row_count = new u32[relation_count];
-    u32 *  hash_entry_count = new u32[relation_count];
+    u64 *  row_count = new u64[relation_count];
+    u64 *  hash_entry_count = new u64[relation_count];
 
-    u32 *  local_entry_count = new u32[relation_count];
+    u64 *  local_entry_count = new u64[relation_count];
     u64 ** input_buffer = new u64*[relation_count];
     u64 ** hashed_data = new u64*[relation_count];
 
@@ -345,15 +357,74 @@ int main(int argc, char **argv)
         }
         union_end[i] = MPI_Wtime();
     }
+
+    double iow_start = MPI_Wtime();
+
+
+    char TDname[1024];
+    sprintf(TDname, "union_%d", nprocs);
+    if (rank == 0)
+        mkdir(TDname, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+
+    MPI_Barrier(MPI_COMM_WORLD);
+
+    char TCname[1024];
+    sprintf(TCname, "%s/%d", TDname, rank);
+
+
+    u64 counter = 0;
+    tuple<2> t;
+    t[0] = -1; t[1] = -1;
+    tuple<2> selectall(t);
+    u64* buffer = new u64[inserted_tuple * 2];
+    for (relation<2>::iter Tit(unionG, selectall); Tit.more(); Tit.advance())
+    {
+        memcpy(buffer + counter, &((*Tit)[0]), sizeof(u64));
+        counter++;
+
+        memcpy(buffer + counter, &((*Tit)[1]), sizeof(u64));
+        counter++;
+    }
+
+    FILE * pFile;
+    pFile = fopen (TCname,"wb");
+    if (pFile!=NULL)
+        fwrite (buffer , sizeof(u64), inserted_tuple * 2, pFile);
+    fclose(pFile);
+
+
+    delete[] buffer;
+    double iow_end = MPI_Wtime();
+
     double end = MPI_Wtime();
 
     double elapsed_time = end - start;
     double max_time = 0;
+    u64 total_sum = 0;
+    u64 total_sum2 = 0;
     MPI_Allreduce(&elapsed_time, &max_time, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
+    MPI_Allreduce(&inserted_tuple, &total_sum, 1, MPI_UNSIGNED_LONG_LONG, MPI_SUM, comm);
+    MPI_Allreduce(&total_tuple, &total_sum2, 1, MPI_UNSIGNED_LONG_LONG, MPI_SUM, comm);
+
+
+    for (u32 i = 0; i < relation_count; i++)
+    {
+        delete[] input_buffer[i];
+        delete[] hashed_data[i];
+    }
+
 
     if (max_time == elapsed_time)
     {
-        std::cout << nprocs << " : " << "Total tuple: " << total_tuple << " Inserted tuple: " << inserted_tuple << std::endl;
+        std::cout << nprocs << " : "
+                  << "[L] Total tuple: " << total_tuple
+                  << " [G] Total tuple: " << total_sum2
+                  << " [L] Inserted tuple: " << inserted_tuple
+                  << " [G] Inserted tuple: " << total_sum
+                  << " Write time: " << (iow_end - iow_start)
+                  << std::endl;
+
+        double time = 0;
         for (u32 i = 0; i < relation_count; i++)
         {
             std::cout << "[" << i << "]: "
@@ -361,13 +432,13 @@ int main(int argc, char **argv)
                       << " Hash time: " << (hash_end[i] - hash_start[i])
                       << " Insert time: " << (union_end[i] - union_start[i])
                       << std::endl;
-        }
-    }
 
-    for (u32 i = 0; i < relation_count; i++)
-    {
-        delete[] input_buffer[i];
-        delete[] hashed_data[i];
+            time = time + (ior_end[i] - ior_start[i]) + (hash_end[i] - hash_start[i]) + (union_end[i] - union_start[i]);
+        }
+
+        std::cout << "Read + hash + insert: " << time << std::endl;
+        std::cout << "Write time: " << (iow_end - iow_start) << std::endl;
+        std::cout << "Total time: " << max_time << " " << time + (iow_end - iow_start) << std::endl;
     }
 
     delete[] input_buffer;
@@ -385,37 +456,6 @@ int main(int argc, char **argv)
     delete[] hash_end;
     delete[] union_start;
     delete[] union_end;
-
-
-
-    /*
-    double join_end = MPI_Wtime();
-
-    u64 total_sum = 0;
-    MPI_Allreduce(&jcount, &total_sum, 1, MPI_UNSIGNED_LONG_LONG, MPI_SUM, comm);
-
-
-    if (rank == 0)
-    {
-        std::cout << "n: "
-                  << nprocs
-                  << " G: "
-                  << G_hash_entry_count
-                  << " T: "
-                  << T_hash_entry_count
-                  << " Join count: " << total_sum
-                  << std::endl
-                  << "G Read time: " << (G_ior_end - G_ior_start)
-                  << " T Read time: " << (T_ior_end - T_ior_start)
-                  << " G hash comm: " << (G_hash_end - G_hash_start)
-                  << " T hash comm: " << (T_hash_end - T_hash_start)
-                  << " G hash init: " << (G_hash_init_end - G_hash_init_start)
-                  << " T hash init: " << (T_hash_init_end - T_hash_init_start)
-                  << " Join: " << (join_end - join_start)
-                  << " Total: " << (join_end - G_ior_start)
-                  << " [" << (G_ior_end - G_ior_start) + (T_ior_end - T_ior_start) + (G_hash_end - G_hash_start) + (T_hash_end - T_hash_start) + (G_hash_init_end - G_hash_init_start) + (T_hash_init_end - T_hash_init_start) + (join_end - join_start) << "]" << std::endl;
-    }
-    */
 
     // Finalizing MPI
     MPI_Finalize();

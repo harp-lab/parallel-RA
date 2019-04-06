@@ -12,6 +12,9 @@
 #include <iostream>
 #include <fstream>
 #include <mpi.h>
+#include <iostream>
+#include <fstream>
+
 
 #include "btree.h"
 #include "btree_relation.h"
@@ -72,17 +75,23 @@ void parallel_read_input_relation_from_file_to_local_buffer(const char *file_nam
 
     char data_filename[1024];
     sprintf(data_filename, "%s/data.raw", file_name);
-    int fp = open(data_filename, O_RDONLY);
+    //int fp = open(data_filename, O_RDONLY);
 
 
+    size_t bsize = (u64) *local_row_count *  (u64)COL_COUNT * sizeof(u64);
     *read_buffer = new u64[*local_row_count * COL_COUNT];
-    u32 rb_size = pread(fp, *read_buffer, *local_row_count * COL_COUNT * sizeof(u64), read_offset * COL_COUNT * sizeof(u64));
-    if (rb_size != *local_row_count * COL_COUNT * sizeof(u64))
-    {
-        std::cout << "Wrong IO: rank: " << rank << " " << rb_size << " " <<  *local_row_count << " " << COL_COUNT << std::endl;
-        MPI_Abort(MPI_COMM_WORLD, -1);
-    }
-    close(fp);
+    std::ifstream myFile (data_filename, std::ios::in | std::ios::binary);
+    myFile.seekg (read_offset * COL_COUNT * sizeof(u64));
+    myFile.read ((char*)*read_buffer, bsize);
+    myFile.close();
+
+    //u32 rb_size = pread(fp, *read_buffer, *local_row_count * COL_COUNT * sizeof(u64), read_offset * COL_COUNT * sizeof(u64));
+    //if (rb_size != *local_row_count * COL_COUNT * sizeof(u64))
+    //{
+    //    std::cout << "Wrong IO: rank: " << rank << " " << rb_size << " " <<  *local_row_count << " " << COL_COUNT << std::endl;
+    //    MPI_Abort(MPI_COMM_WORLD, -1);
+    //}
+    //close(fp);
 
     return;
 }
