@@ -358,6 +358,7 @@ int main(int argc, char **argv)
         union_end[i] = MPI_Wtime();
     }
 
+    /*
     double iow_start = MPI_Wtime();
 
 
@@ -395,6 +396,7 @@ int main(int argc, char **argv)
 
     delete[] buffer;
     double iow_end = MPI_Wtime();
+    */
 
     double end = MPI_Wtime();
 
@@ -421,13 +423,14 @@ int main(int argc, char **argv)
                   << " [G] Total tuple: " << total_sum2
                   << " [L] Inserted tuple: " << inserted_tuple
                   << " [G] Inserted tuple: " << total_sum
-                  << " Write time: " << (iow_end - iow_start)
                   << std::endl;
 
         double time = 0;
         for (u32 i = 0; i < relation_count; i++)
         {
             std::cout << "[" << i << "]: "
+                      << " Global row count: " << row_count[i]
+                      << " Local row count: " << local_entry_count[i]
                       << " Read time: " << (ior_end[i] - ior_start[i])
                       << " Hash time: " << (hash_end[i] - hash_start[i])
                       << " Insert time: " << (union_end[i] - union_start[i])
@@ -437,8 +440,7 @@ int main(int argc, char **argv)
         }
 
         std::cout << "Read + hash + insert: " << time << std::endl;
-        std::cout << "Write time: " << (iow_end - iow_start) << std::endl;
-        std::cout << "Total time: " << max_time << " " << time + (iow_end - iow_start) << std::endl;
+        std::cout << "Total time: " << max_time << " " << time << std::endl;
     }
 
     delete[] input_buffer;
@@ -462,6 +464,10 @@ int main(int argc, char **argv)
 
     return 0;
 }
+
+
+// 256 : [L] Total tuple: 99583402 [G] Total tuple: 664659334 [L] Inserted tuple: 99583240 [G] Inserted tuple: 664616755 Write time: 24.5067
+//4096 : [L] Total tuple: 97510090 [G] Total tuple: 664659334 [L] Inserted tuple: 97510078 [G] Inserted tuple: 664616755 Write time: 21.0971
 
 
 
