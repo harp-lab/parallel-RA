@@ -53,7 +53,7 @@ u64 outer_hash(const u64 val)
 }
 #endif
 
-
+#if 0
 void parallel_read_input_relation_from_file_to_local_buffer(const char *file_name, u64** read_buffer, u64 row_count, u64* local_row_count)
 {
     u64 read_offset;
@@ -183,6 +183,7 @@ void buffer_data_to_hash_buffer(u64 local_number_of_rows, u64* input_data, u64**
 
     return;
 }
+#endif
 
 
 int main(int argc, char **argv)
@@ -218,30 +219,150 @@ int main(int argc, char **argv)
     double start = MPI_Wtime();
     u64 total_tuple = 0;
     u64 inserted_tuple = 0;
-    for (u32 i = 0; i < relation_count; i++)
+    for (u32 i1 = 0; i1 < relation_count; i1++)
     {
-        ior_start[i] = MPI_Wtime();
-        row_count[i] = atoi(argv[3 + 2*i]);
-        parallel_read_input_relation_from_file_to_local_buffer(argv[2 + 2*i], &(input_buffer[i]), row_count[i], &local_entry_count[i]);
-        ior_end[i] = MPI_Wtime();
+        ior_start[i1] = MPI_Wtime();
+        row_count[i1] = atoi(argv[3 + 2*i1]);
+        //parallel_read_input_relation_from_file_to_local_buffer(argv[2 + 2*i1], &(input_buffer[i1]), row_count[i1], &local_entry_count[i1]);
+        //parallel_read_input_relation_from_file_to_local_buffer(const char *file_name, u64** read_buffer, u64 row_count, u64* local_row_count)
+
+        u64 read_offset;
+        read_offset = ceil((float)row_count[i1] / nprocs) * rank;
+
+        if (read_offset > row_count[i1])
+        {
+            local_entry_count[i1] = 0;
+            //goto move1;
+        }
+        else{
+
+        if (read_offset + ceil((float)row_count[i1] / nprocs) > row_count[i1])
+          local_entry_count[i1] = row_count[i1] - read_offset;
+        else
+          local_entry_count[i1] = (u64) ceil((float)row_count[i1] / nprocs);
+
+        if (local_entry_count[i1] != 0)
+        {
+
+        char data_filename[1024];
+        sprintf(data_filename, "%s/data.raw", argv[2 + 2*i1]);
+        int fp = open(data_filename, O_RDONLY);
+
+
+        size_t bsize = (u64) local_entry_count[i1] *  (u64)COL_COUNT * sizeof(u64);
+        input_buffer[i1] = new u64[local_entry_count[i1] * COL_COUNT];
+
+
+        u64 rb_size = pread(fp, input_buffer[i1], bsize, read_offset * COL_COUNT * sizeof(u64));
+        if (rb_size != local_entry_count[i1] * COL_COUNT * sizeof(u64))
+        {
+            std::cout << "Wrong IO: rank: " << rank << " " << rb_size << " " <<  bsize << " " << local_entry_count[i1] << std::endl;
+            MPI_Abort(MPI_COMM_WORLD, -1);
+        }
+        close(fp);
+        }
+        }
+
+      //move1:
+
+        ior_end[i1] = MPI_Wtime();
 
         if (rank == 64)
-            std::cout << "Local entry count () " << i << " " << local_entry_count[i] << std::endl;
+            std::cout << "Local entry count () " << i1 << " " << local_entry_count[i1] << std::endl;
 
-        hash_start[i] = MPI_Wtime();
-        buffer_data_to_hash_buffer(local_entry_count[i], input_buffer[i], &(hashed_data[i]), &(hash_entry_count[i]), MPI_COMM_WORLD, i);
-        hash_end[i] = MPI_Wtime();
+        hash_start[i1] = MPI_Wtime();
+        //buffer_data_to_hash_buffer(local_entry_count[i1], input_buffer[i1], &(hashed_data[i1]), &(hash_entry_count[i1]), MPI_COMM_WORLD, i);
+        //buffer_data_to_hash_buffer(u64 local_number_of_rows, u64* input_data, u64** outer_hash_data, u64* outer_hash_buffer_size, MPI_Comm comm, u32 index);
+        /* process_size[j] stores the number of samples to be sent to process with rank j */
+        int process_size[nprocs];
+        memset(process_size, 0, nprocs * sizeof(int));
 
-        union_start[i] = MPI_Wtime();
-        for ( u32 j = 0; j < hash_entry_count[i] * COL_COUNT; j = j + 2)
+        /* vector[i] contains the data that needs to be sent to process i */
+        std::vector<tuple<2>> *process_data_vector;
+        process_data_vector = new std::vector<tuple<2>>[nprocs];
+
+        if (rank == 0 && i1 == 1)
+            std::cout << "Local number of rows: " << local_entry_count[i1] << std::endl;
+
+        tuple<2> dt;
+        for (u32 i = 0; i < local_entry_count[i1] * COL_COUNT; i=i+2)
+        {
+            uint64_t index = outer_hash(input_buffer[i1][i])%nprocs;
+            process_size[index] = process_size[index] + COL_COUNT;
+
+            dt[0] = input_buffer[i1][i];
+            dt[1] = input_buffer[i1][i + 1];
+
+            process_data_vector[index].push_back(dt);
+        }
+
+        int prefix_sum_process_size[nprocs];
+        memset(prefix_sum_process_size, 0, nprocs * sizeof(int));
+
+        process_size[0] = 2 * process_data_vector[0].size();
+        if (rank == 0 && i1 == 1)
+            std::cout << "PS 0" << " " << process_size[0] << std::endl;
+
+        for (u32 i = 1; i < nprocs; i++)
+        {
+            prefix_sum_process_size[i] = prefix_sum_process_size[i - 1] + process_size[i - 1];
+            process_size[i] = 2 * process_data_vector[i].size();
+
+            if (rank == 0 && i1 == 1)
+                std::cout << "PS " << i << " " << process_size[i] << std::endl;
+        }
+
+
+        int process_data_buffer_size = prefix_sum_process_size[nprocs - 1] + process_size[nprocs - 1];
+        u64* process_data = new u64[process_data_buffer_size];
+
+        for (u32 i = 0; i < nprocs; i++)
+            memcpy(process_data + prefix_sum_process_size[i], &process_data_vector[i][0], process_data_vector[i].size() * sizeof(tuple<2>));
+
+        delete[] process_data_vector;
+
+        /* This step prepares for actual data transfer */
+        /* Every process sends to every other process the amount of data it is going to send */
+        int recv_process_size_buffer[nprocs];
+        memset(recv_process_size_buffer, 0, nprocs * sizeof(int));
+        MPI_Alltoall(process_size, 1, MPI_INT, recv_process_size_buffer, 1, MPI_INT, comm);
+
+
+        /* Sending data to all processes, what is the buffer size to allocate */
+        int prefix_sum_recv_process_size_buffer[nprocs];
+        memset(prefix_sum_recv_process_size_buffer, 0, nprocs * sizeof(int));
+        hash_entry_count[i1] = recv_process_size_buffer[0];
+        if (rank == 0 && i1 == 1)
+            std::cout << "OHBS 0" << " " << hash_entry_count[i1] << std::endl;
+        for (u32 i = 1; i < nprocs; i++)
+        {
+            prefix_sum_recv_process_size_buffer[i] = prefix_sum_recv_process_size_buffer[i - 1] + recv_process_size_buffer[i - 1];
+            hash_entry_count[i1] = hash_entry_count[i1] + recv_process_size_buffer[i];
+
+            if (rank == 0 && i1 == 1)
+                std::cout << "OHBS " << i << " " << hash_entry_count[i1] << std::endl;
+        }
+
+        hashed_data[i1] = new u64[hash_entry_count[i1]];
+        MPI_Alltoallv(process_data, process_size, prefix_sum_process_size, MPI_UNSIGNED_LONG_LONG, hashed_data[i1], recv_process_size_buffer, prefix_sum_recv_process_size_buffer, MPI_UNSIGNED_LONG_LONG, comm);
+
+        hash_entry_count[i1] = hash_entry_count[i1] / COL_COUNT;
+
+        delete[] process_data;
+
+
+        hash_end[i1] = MPI_Wtime();
+
+        union_start[i1] = MPI_Wtime();
+        for ( u32 j1 = 0; j1 < hash_entry_count[i1] * COL_COUNT; j1 = j1 + 2)
         {
             total_tuple++;
-            t1[0] = hashed_data[i][j];
-            t1[1] = hashed_data[i][j+1];
+            t1[0] = hashed_data[i1][j1];
+            t1[1] = hashed_data[i1][j1+1];
             if (unionG.insert(t1))
                 inserted_tuple++;
         }
-        union_end[i] = MPI_Wtime();
+        union_end[i1] = MPI_Wtime();
     }
     double end = MPI_Wtime();
 
@@ -285,8 +406,8 @@ int main(int argc, char **argv)
 
     for (u32 i = 0; i < relation_count; i++)
     {
-        delete[] input_buffer[i];
-        delete[] hashed_data[i];
+        delete[] input_buffer[i1];
+        delete[] hashed_data[i1];
     }
 
     delete[] input_buffer;
