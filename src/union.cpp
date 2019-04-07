@@ -54,9 +54,9 @@ u64 outer_hash(const u64 val)
 #endif
 
 
-void parallel_read_input_relation_from_file_to_local_buffer(const char *file_name, u64** read_buffer, u32 row_count, u64* local_row_count)
+void parallel_read_input_relation_from_file_to_local_buffer(const char *file_name, u64** read_buffer, u64 row_count, u64* local_row_count)
 {
-    u32 read_offset;
+    u64 read_offset;
     read_offset = ceil((float)row_count / nprocs) * rank;
 
     if (read_offset > row_count)
@@ -68,7 +68,7 @@ void parallel_read_input_relation_from_file_to_local_buffer(const char *file_nam
     if (read_offset + ceil((float)row_count / nprocs) > row_count)
       *local_row_count = row_count - read_offset;
     else
-      *local_row_count = (u32) ceil((float)row_count / nprocs);
+      *local_row_count = (u64) ceil((float)row_count / nprocs);
 
     if (*local_row_count == 0)
         return;
@@ -102,7 +102,7 @@ void parallel_read_input_relation_from_file_to_local_buffer(const char *file_nam
     return;
 }
 
-void buffer_data_to_hash_buffer(u32 local_number_of_rows, u64* input_data, u64** outer_hash_data, u64* outer_hash_buffer_size, MPI_Comm comm)
+void buffer_data_to_hash_buffer(u64 local_number_of_rows, u64* input_data, u64** outer_hash_data, u64* outer_hash_buffer_size, MPI_Comm comm, u32 index)
 {
     /* process_size[j] stores the number of samples to be sent to process with rank j */
     int process_size[nprocs];
@@ -128,10 +128,16 @@ void buffer_data_to_hash_buffer(u32 local_number_of_rows, u64* input_data, u64**
     memset(prefix_sum_process_size, 0, nprocs * sizeof(int));
 
     process_size[0] = 2 * process_data_vector[0].size();
+    if (rank == 0 && index == 1)
+        std::cout << "PS 0" << " " << process_size[0] << std::endl;
+
     for (u32 i = 1; i < nprocs; i++)
     {
         prefix_sum_process_size[i] = prefix_sum_process_size[i - 1] + process_size[i - 1];
         process_size[i] = 2 * process_data_vector[i].size();
+
+        if (rank == 0 && index == 1)
+            std::cout << "PS " << i << " " << process_size[i] << std::endl;
     }
 
 
@@ -154,10 +160,15 @@ void buffer_data_to_hash_buffer(u32 local_number_of_rows, u64* input_data, u64**
     int prefix_sum_recv_process_size_buffer[nprocs];
     memset(prefix_sum_recv_process_size_buffer, 0, nprocs * sizeof(int));
     *outer_hash_buffer_size = recv_process_size_buffer[0];
+    if (rank == 0 && index == 1)
+        std::cout << "OHBS 0" << " " << *outer_hash_buffer_size << std::endl;
     for (u32 i = 1; i < nprocs; i++)
     {
         prefix_sum_recv_process_size_buffer[i] = prefix_sum_recv_process_size_buffer[i - 1] + recv_process_size_buffer[i - 1];
         *outer_hash_buffer_size = *outer_hash_buffer_size + recv_process_size_buffer[i];
+
+        if (rank == 0 && index == 1)
+            std::cout << "OHBS " << i << " " << *outer_hash_buffer_size << std::endl;
     }
 
     *outer_hash_data = new u64[*outer_hash_buffer_size];
@@ -212,7 +223,7 @@ int main(int argc, char **argv)
         ior_end[i] = MPI_Wtime();
 
         hash_start[i] = MPI_Wtime();
-        buffer_data_to_hash_buffer(local_entry_count[i], input_buffer[i], &(hashed_data[i]), &(hash_entry_count[i]), MPI_COMM_WORLD);
+        buffer_data_to_hash_buffer(local_entry_count[i], input_buffer[i], &(hashed_data[i]), &(hash_entry_count[i]), MPI_COMM_WORLD, i);
         hash_end[i] = MPI_Wtime();
 
         union_start[i] = MPI_Wtime();
@@ -235,14 +246,6 @@ int main(int argc, char **argv)
     MPI_Allreduce(&elapsed_time, &max_time, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
     MPI_Allreduce(&inserted_tuple, &total_sum, 1, MPI_UNSIGNED_LONG_LONG, MPI_SUM, comm);
     MPI_Allreduce(&total_tuple, &total_sum2, 1, MPI_UNSIGNED_LONG_LONG, MPI_SUM, comm);
-
-
-    for (u32 i = 0; i < relation_count; i++)
-    {
-        delete[] input_buffer[i];
-        delete[] hashed_data[i];
-    }
-
 
     if (max_time == elapsed_time)
     {
@@ -272,6 +275,14 @@ int main(int argc, char **argv)
         std::cout << "Total time: " << max_time << " " << time << std::endl;
     }
 
+    /*
+
+    for (u32 i = 0; i < relation_count; i++)
+    {
+        delete[] input_buffer[i];
+        delete[] hashed_data[i];
+    }
+
     delete[] input_buffer;
     delete[] hashed_data;
 
@@ -287,6 +298,7 @@ int main(int argc, char **argv)
     delete[] hash_end;
     delete[] union_start;
     delete[] union_end;
+    */
 
     // Finalizing MPI
     MPI_Finalize();
