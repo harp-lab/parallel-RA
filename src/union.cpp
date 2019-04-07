@@ -112,6 +112,9 @@ void buffer_data_to_hash_buffer(u64 local_number_of_rows, u64* input_data, u64**
     std::vector<tuple<2>> *process_data_vector;
     process_data_vector = new std::vector<tuple<2>>[nprocs];
 
+    if (rank == 0 && index == 1)
+        std::cout << "Local number of rows: " << local_number_of_rows << std::endl;
+
     tuple<2> dt;
     for (u32 i = 0; i < local_number_of_rows * COL_COUNT; i=i+2)
     {
@@ -221,6 +224,9 @@ int main(int argc, char **argv)
         row_count[i] = atoi(argv[3 + 2*i]);
         parallel_read_input_relation_from_file_to_local_buffer(argv[2 + 2*i], &(input_buffer[i]), row_count[i], &local_entry_count[i]);
         ior_end[i] = MPI_Wtime();
+
+        if (rank == 64)
+            std::cout << "Local entry count () " << i << " " << local_entry_count[i] << std::endl;
 
         hash_start[i] = MPI_Wtime();
         buffer_data_to_hash_buffer(local_entry_count[i], input_buffer[i], &(hashed_data[i]), &(hash_entry_count[i]), MPI_COMM_WORLD, i);
