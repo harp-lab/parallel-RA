@@ -75,13 +75,13 @@ void parallel_read_input_relation_from_file_to_local_buffer(const char *file_nam
 
     char data_filename[1024];
     sprintf(data_filename, "%s/data.raw", file_name);
-    //int fp = open(data_filename, O_RDONLY);
+    int fp = open(data_filename, O_RDONLY);
 
 
     size_t bsize = (u64) *local_row_count *  (u64)COL_COUNT * sizeof(u64);
     *read_buffer = new u64[*local_row_count * COL_COUNT];
 
-    /*
+
     u64 rb_size = pread(fp, *read_buffer, bsize, read_offset * COL_COUNT * sizeof(u64));
     if (rb_size != *local_row_count * COL_COUNT * sizeof(u64))
     {
@@ -89,12 +89,14 @@ void parallel_read_input_relation_from_file_to_local_buffer(const char *file_nam
         MPI_Abort(MPI_COMM_WORLD, -1);
     }
     close(fp);
-    */
 
+
+    /*
     std::ifstream myFile (data_filename, std::ios::in | std::ios::binary);
     myFile.seekg (read_offset * COL_COUNT * sizeof(u64));
     myFile.read ((char*)*read_buffer, bsize);
     myFile.close();
+    */
 
 
     return;
@@ -169,139 +171,6 @@ void buffer_data_to_hash_buffer(u32 local_number_of_rows, u64* input_data, u64**
 }
 
 
-u64 parallel_join(relation<2>& O, relation<2>& G, relation<2>& T)
-{
-    double j1, j2;
-    double c1 = 0, c2 = 0;
-    double i1 = 0, i2 = 0;
-
-    j1 = MPI_Wtime();
-
-    tuple<2> t;
-    t[0] = -1;
-    t[1] = -1;
-    tuple<2> selectall(t);
-    relation<2> tempT;
-
-    // Send Join output
-    /* process_size[j] stores the number of samples to be sent to process with rank j */
-    int process_size[nprocs];
-    memset(process_size, 0, nprocs * sizeof(int));
-
-    /* vector[i] contains the data that needs to be sent to process i */
-    std::vector<tuple<2>> *process_data_vector;
-    process_data_vector = new std::vector<tuple<2>>[nprocs];
-
-    u64 tuple_count = 0;
-    u64 non_deduplicate_tuple_count = 0;
-
-    tuple<2> dt;
-    tuple<2> s;
-    s[1] = -1;
-    tuple<2> select;
-    uint64_t index;
-    for (relation<2>::iter dit(G, selectall); dit.more(); dit.advance())
-    {
-      s[0] = (*dit)[0];
-      select = s;
-
-      for (relation<2>::iter git(T, select); git.more(); git.advance())
-      {
-        dt[0] = (*dit)[1];
-        dt[1] = (*git)[1];
-        tuple_count++;
-
-        if (tempT.insert(dt) == true)
-        {
-            index = outer_hash(dt[1])%nprocs;
-            process_data_vector[index].push_back(dt);
-        }
-      }
-    }
-    j2 = MPI_Wtime();
-
-
-    c1 = MPI_Wtime();
-    int prefix_sum_process_size[nprocs];
-    memset(prefix_sum_process_size, 0, nprocs * sizeof(int));
-
-    process_size[0] = 2 * process_data_vector[0].size();
-    for(u32 i = 1; i < nprocs; i++)
-    {
-        prefix_sum_process_size[i] = prefix_sum_process_size[i - 1] + (2 * process_data_vector[i - 1].size());
-        process_size[i] = 2 * process_data_vector[i].size();
-        non_deduplicate_tuple_count = non_deduplicate_tuple_count + process_data_vector[i].size();
-    }
-
-    int process_data_buffer_size = prefix_sum_process_size[nprocs - 1] + process_size[nprocs - 1];
-
-    u64* process_data = 0;
-    process_data = new u64[process_data_buffer_size];
-    memset(process_data, 0, process_data_buffer_size * sizeof(u64));
-
-    for(u32 i = 0; i < nprocs; i++)
-        memcpy(process_data + prefix_sum_process_size[i], &process_data_vector[i][0], process_data_vector[i].size() * sizeof(tuple<2>));
-
-    delete[] process_data_vector;
-
-    /* This step prepares for actual data transfer */
-    /* Every process sends to every other process the amount of data it is going to send */
-
-    int recv_process_size_buffer[nprocs];
-    memset(recv_process_size_buffer, 0, nprocs * sizeof(int));
-    MPI_Alltoall(process_size, 1, MPI_INT, recv_process_size_buffer, 1, MPI_INT, comm);
-
-    int prefix_sum_recv_process_size_buffer[nprocs];
-    memset(prefix_sum_recv_process_size_buffer, 0, nprocs * sizeof(int));
-
-    /* Sending data to all processes: What is the buffer size to allocate */
-    u32 outer_hash_buffer_size = recv_process_size_buffer[0];
-    for(u32 i = 1; i < nprocs; i++)
-    {
-        prefix_sum_recv_process_size_buffer[i] = prefix_sum_recv_process_size_buffer[i - 1] + recv_process_size_buffer[i - 1];
-        outer_hash_buffer_size = outer_hash_buffer_size + recv_process_size_buffer[i];
-    }
-
-    u64 *hash_buffer = 0;
-    hash_buffer = new u64[outer_hash_buffer_size];
-    memset(hash_buffer, 0, outer_hash_buffer_size * sizeof(u64));
-
-    MPI_Alltoallv(process_data, process_size, prefix_sum_process_size, MPI_UNSIGNED_LONG_LONG, hash_buffer, recv_process_size_buffer, prefix_sum_recv_process_size_buffer, MPI_UNSIGNED_LONG_LONG, comm);
-
-
-    c2 = MPI_Wtime();
-
-    i1 = MPI_Wtime();
-    u64 tcount = 0;
-
-    for (u32 k = 0; k < outer_hash_buffer_size; k = k + 2)
-    {
-        tuple<2> dt;
-        dt[0] = hash_buffer[k];
-        dt[1] = hash_buffer[k + 1];
-
-        if (O.insert(dt) == true)
-            tcount++;
-    }
-
-    delete[] hash_buffer;
-    delete[] process_data;
-    i2 = MPI_Wtime();
-
-
-    if (rank == 0)
-        std::cout << "Join: " << (j2 - j1)
-                  << " Comm: " << (c2 - c1)
-                  << " Insert: " << (i2 - i1)
-                  << " Total: " << (i2 - j1)
-                  << " [" << (j2 - j1) + (c2 - c1) + (i2 - i1) << "]"
-                  << " Delta: " << tcount
-                  << std::endl;
-
-    return tcount;
-}
-
-
 int main(int argc, char **argv)
 {
     // Initializing MPI
@@ -357,47 +226,6 @@ int main(int argc, char **argv)
         }
         union_end[i] = MPI_Wtime();
     }
-
-    /*
-    double iow_start = MPI_Wtime();
-
-
-    char TDname[1024];
-    sprintf(TDname, "union_%d", nprocs);
-    if (rank == 0)
-        mkdir(TDname, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-
-    MPI_Barrier(MPI_COMM_WORLD);
-
-    char TCname[1024];
-    sprintf(TCname, "%s/%d", TDname, rank);
-
-
-    u64 counter = 0;
-    tuple<2> t;
-    t[0] = -1; t[1] = -1;
-    tuple<2> selectall(t);
-    u64* buffer = new u64[inserted_tuple * 2];
-    for (relation<2>::iter Tit(unionG, selectall); Tit.more(); Tit.advance())
-    {
-        memcpy(buffer + counter, &((*Tit)[0]), sizeof(u64));
-        counter++;
-
-        memcpy(buffer + counter, &((*Tit)[1]), sizeof(u64));
-        counter++;
-    }
-
-    FILE * pFile;
-    pFile = fopen (TCname,"wb");
-    if (pFile!=NULL)
-        fwrite (buffer , sizeof(u64), inserted_tuple * 2, pFile);
-    fclose(pFile);
-
-
-    delete[] buffer;
-    double iow_end = MPI_Wtime();
-    */
-
     double end = MPI_Wtime();
 
     double elapsed_time = end - start;
