@@ -238,7 +238,7 @@ relation<2> * parallel_join(relation<2>* delT, relation<2>& G, relation<2>& T, i
     process_data_vector = new std::vector<tuple<2>>[nprocs];
 
     u64 tuple_count = 0;
-    u64 non_deduplicate_tuple_count = 0;
+
 
     tuple<2> dt;
     tuple<2> s;
@@ -269,6 +269,7 @@ relation<2> * parallel_join(relation<2>* delT, relation<2>& G, relation<2>& T, i
 #if 1
     c1 = MPI_Wtime();
     int prefix_sum_process_size[nprocs];
+    u64 non_deduplicate_tuple_count = process_data_vector[0].size();
     memset(prefix_sum_process_size, 0, nprocs * sizeof(int));
 
     process_size[0] = 2 * process_data_vector[0].size();
