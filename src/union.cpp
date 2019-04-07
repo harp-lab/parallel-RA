@@ -259,6 +259,7 @@ int main(int argc, char **argv)
             std::cout << "[" << i << "]: "
                       << " Global row count: " << row_count[i]
                       << " Local row count: " << local_entry_count[i]
+                      << " Hash row count: " << hash_entry_count[i]
                       << " Read time: " << (ior_end[i] - ior_start[i])
                       << " Hash time: " << (hash_end[i] - hash_start[i])
                       << " Insert time: " << (union_end[i] - union_start[i])
