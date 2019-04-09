@@ -16,6 +16,7 @@ file (GLOB source_files_btree "${source_dir}/btree.cpp")
 file (GLOB source_files_tc "${source_dir}/transitive_closure.cpp")
 file (GLOB source_files_mpitc "${source_dir}/mpi_transitive_closure.cpp")
 file (GLOB source_files_union "${source_dir}/union.cpp")
+file (GLOB source_files_aggregated_union "${source_dir}/aggregated_union.cpp")
 file (GLOB source_files_join "${source_dir}/join.cpp")
 file (GLOB source_files_ata "${source_dir}/all_to_all.cpp")
 file (GLOB source_files_mpitc_map "${source_dir}/mpi_tc_unordered_map.cpp")
@@ -38,6 +39,12 @@ TARGET_LINK_LIBRARIES(mpiTC ${MPI_LIBRARIES})
 add_executable(union ${source_files_union})
 INCLUDE_DIRECTORIES(${MPI_INCLUDE_PATH})
 TARGET_LINK_LIBRARIES(union ${MPI_LIBRARIES})
+
+
+add_executable(aggregated_union ${source_files_aggregated_union})
+INCLUDE_DIRECTORIES(${MPI_INCLUDE_PATH})
+TARGET_LINK_LIBRARIES(aggregated_union ${MPI_LIBRARIES})
+
 
 add_executable(join ${source_files_join})
 INCLUDE_DIRECTORIES(${MPI_INCLUDE_PATH})

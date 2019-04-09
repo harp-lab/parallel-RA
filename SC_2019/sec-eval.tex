@@ -2,32 +2,53 @@
 
 \section{Evaluation}
 \label{sec:eval}
-%
-Radix-hash join and merge-sort join are two of the most popularly used parallel implementations of the inner join
-operation. Both these algorithms involve partitioning the input data so that they can be efficiently distributed
-to the participating processes. For example, in the radix-hash approach a tuple is assigned to a process based
-on the hash output of the column-value on which the join operation is keyed. With this approach, tuples on
-both relations that share the same hash value are always assigned to the same process. For every tuple in the
-left-hand side of the join relation is matched against all the tuples of the right-hand side of the join relation. Fast
-lookup data-structures like hash tables, or radix-trees (TRIE) can be used to organize the tuples within every
-process. The initial distribution of data using hashing reduces the overall computation overhead by a factor of
-the number of processes (n).
-More recently (Barthels et al. 2015, 2017), there has been a concerted effort to implement JOIN operations on
-clusters using an MPI backend. The commonly used radix-hash join and merge-sort join have been re-designed
-for this purpose. Both these algorithms involve a hash-based partitioning of data so that they are be efficiently
-distributed to the participating processes and are designed such that inter-process communication is minimized.
-In both of these implementations one-sided communication is used for transferring data between process. With
-one-sided communication the initiator of a data transfer request can directly access parts of the remote memory
-and has full control where the data will be placed. Read and write operations are executed without any
-involvement of the target machine. This approach of data transfer involves minimal synchronization between
-particiapting processes and have been shown to scale better that traditional two-sided communication. The
-implementation of parallel join has shown promising performance numbers; for example, the parallel join algorithm
-of (Barthels et al. 2017) ran successfully at 4,096 processor cores with up to 4.8 terabytes of input data
+
+%There are two goals of this sections 1) evaluate the performance of RA primitive operations Union and Join  2) evaluate the performance of transitive closure, which is a fixed point iteration algorithm.
+The goal of this section is to evaluate the performance of parallel join, parallel union and parallel transitive closure at scale.
+To this end, we individually study the computation and communication components of the RA operations.
+Computation is dominated by insertion of tuples and the major challenge faced is that of deduplication.
+We first study the efficacy of our btree-based relation container for inserts specifically in the context of deduplication.
+All our RA operations involve an all to communication phase, hence, we perform a detailed MPI all to all benchmark.
+Following these two experiments, we then benchmark the efficacy of parallel union, parallel join and parallel transitive closure over a wider range of graphs.
+%We first study how our data structure performs, and how well are the all to all communication primitives are supported by super computers. More specifically, we study how fast can we insert into our btree based relation class, and how efficiently can it support the task of de-duplication. This is mostly studying the computation aspect of our algorithms. Next, with the all to all tests, we benchmark the communication aspect of our algorithms.
 
 
-\subsection{Datasets}
+%Radix-hash join and merge-sort join are two of the most popularly used parallel implementations of the inner join operation. Both these algorithms involve partitioning the input data so that they can be efficiently distributed to the participating processes. For example, in the radix-hash approach a tuple is assigned to a process based on the hash output of the column-value on which the join operation is keyed. With this approach, tuples on both relations that share the same hash value are always assigned to the same process. For every tuple in the left-hand side of the join relation is matched against all the tuples of the right-hand side of the join relation. Fast lookup data-structures like hash tables, or radix-trees (TRIE) can be used to organize the tuples within every process. The initial distribution of data using hashing reduces the overall computation overhead by a factor of the number of processes (n).
+
+%More recently (Barthels et al. 2015, 2017), there has been a concerted effort to implement JOIN operations on clusters using an MPI backend. The commonly used radix-hash join and merge-sort join have been re-designed for this purpose. Both these algorithms involve a hash-based partitioning of data so that they are be efficiently distributed to the participating processes and are designed such that inter-process communication is minimized. In both of these implementations one-sided communication is used for transferring data between process. With one-sided communication the initiator of a data transfer request can directly access parts of the remote memory and has full control where the data will be placed. Read and write operations are executed without any involvement of the target machine. This approach of data transfer involves minimal synchronization between particiapting processes and have been shown to scale better that traditional two-sided communication. The implementation of parallel join has shown promising performance numbers; for example, the parallel join algorithm of (Barthels et al. 2017) ran successfully at 4,096 processor cores with up to 4.8 terabytes of input data
+
+
+\subsection{Dataset and HPC platforms}
 \label{sec:datasets}
-Lorem ipsum dolar sit amat
+We have performed our experiments using open sourced graphs available at ~\cite{}.
+The graphs represent a wide range in terms of the number of edges. The last three graphs are the largest available graphs.
+Transitive closure of a graph with n edges can compute upto n^2 edges for a fully connected graph. The number of edges in the transitive closure of a graph depends on the connectivity of the input graph. We found our third graph with X edges to be highly connected; the transitive closure of the graph genertaed 260 billion edges, which is 3 terabytes in size.
+-- wide range in terms of number of edges
+-- The transitive closure of third graph generated 260 billion edges, which corresponds to 4 tera bytes of data.
+
+\begin{table}[]
+	\begin{tabular}{lllll}
+		\begin{tabular}[c]{@{}l@{}}Input graph \\ edge count\end{tabular} & Union & Join & \begin{tabular}[c]{@{}l@{}}Transitive \\ Closure\end{tabular} & Graph name \\
+		412148                                                            & \checkmark      & \checkmark     &                                                               &            \\
+		2100225                                                           &       &      &                                                               &            \\
+		6291408                                                           &       &      &                                                               &            \\
+		59062957                                                          &       &      &                                                               &            \\
+		136024430                                                         &       &      &                                                               &            \\
+		180292586                                                         &       &      &                                                               &            \\
+		240023949                                                         &       &      &                                                               &           
+	\end{tabular}
+\end{table}
+
+
+The experiments presented in this work were performed on
+Theta at the Argonne Leadership Computing Facility
+(ALCF). Theta is a Cray XC30 with a peak
+performance of X petaflops, 124, 608 compute cores, 332
+TiB of RAM, and 7.5 PiB of online disk storage. We used
+Edison Lustre file system (168 GiB/s, 24 I/O servers and 4
+Object Storage Targets). 
+
+%Default striping was used with the Lustre file system. Mira system contains 48 racks and 768K cores, and has a theoretical peak performance of 10 petaflops. Each node has 16 cores, with 16 GB of RAM per node. I/O and interprocessor communication travels on a 5D torus network. Every 128 compute nodes has two 2 GB/s bandwidth links to two different I/O nodes, making 4 GB/s bandwidth for I/O at most. I/O nodes are connected to file servers through QDR IB. Mira uses a GPFS file system with 24 PB of capacity and 240 GB/s bandwidth.
 
 
 \begin{figure*}[t]
@@ -41,6 +62,15 @@ Lorem ipsum dolar sit amat
 \end{figure*}
 
 
+\subsection{Relation}
+\label{sec:relation}
+-- Perform two benchmarks: insertion of tuples without any duplicate and insertion of tupes each with four duplicates.
+-- Relation class implemented with btrees outperforms relation with hashes.
+-- btree-relation scales with increase tuple count as opposed to hash based relation that fails to scale for large number of tuples.
+-- For example hash based relation takes X seconds to insert Y tuples as opposed to only Z seconds taken by btree based relation.
+
+
+
 \begin{figure*}[t]
 	{\includegraphics[width=.50\textwidth,  trim={0cm 0cm 0cm 0cm, 
 			clip}]{results/all_to_all_strong.pdf}}\hfill%
@@ -52,24 +82,33 @@ Lorem ipsum dolar sit amat
 \end{figure*}
 
 
-\subsection{Relation}
-\label{sec:relation}
-Lorem ipsum dolar sit amat
+\subsection{MPI\_All\_to\_Allv}
+\label{sec:all_to_all}
 
+-- perform both weak and strong scaling
+-- configuration
+-- weak scaling with accuracy X percent accuracy for per process load of Y versus Z percent accuracy for per process load of M.
+-- Exhibit poor weak scaling for small load, as opposed to good weak scaling with larger volume of data.
+-- X percent accuracy with strong scaling of X load. This corresponds to Y number of tuples.
+-- Overall very good indication as all to all scales well, aggregate accuracy
+-- different graphs would work better at different scales.
 
 \subsection{Parallel Union}
 \label{sec:union}
-Lorem ipsum dolar sit amat
+-- union of 7 graphs from table
+-- union comprises of an io phase followed by communication and then followed by inserts
+-- We compare two union types, one is where we perform io, comm and compute separates, the other is where we first perform io for all and then we bundle all our comm and then we have one phase of compute
+-- scales well upto X cores., this is strong scaling.
+-- faces work load deprecation at low core counts, needs more tuples for union to scale at high core counts
+-- overall a good sign
 
 
 \subsection{Parallel Join}
 \label{sec:join}
-Lorem ipsum dolar sit amat
-
-
-\subsection{All to all communication}
-\label{sec:ata}
-Lorem ipsum dolar sit amat
+-- setup, join of two of the largest graph, produces X number of tuples in output.
+-- similar to union join scales well upto X cores, after that there is shortage of work and we do not see proper scaling.
+-- communication stops to scale after X core counts. This is because there is lack of work.
+-- 
 
 
 \subsection{Transitive closure}
