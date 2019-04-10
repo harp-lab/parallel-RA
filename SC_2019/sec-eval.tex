@@ -4,12 +4,12 @@
 \label{sec:eval}
 
 %There are two goals of this sections 1) evaluate the performance of RA primitive operations Union and Join  2) evaluate the performance of transitive closure, which is a fixed point iteration algorithm.
-The goal of this section is to evaluate the performance of parallel join, parallel union and parallel transitive closure at scale.
-To this end, we individually study the computation and communication components of the RA operations.
+The goal of this section is to evaluate the performance of our implementation of parallel join, parallel union and parallel transitive closure at scale.
+We first individually study the computation and communication components of the RA operations.
 Computation is dominated by insertion of tuples and the major challenge faced is that of deduplication.
 We first study the efficacy of our btree-based relation container for inserts specifically in the context of deduplication.
-All our RA operations involve an all to communication phase, hence, we perform a detailed MPI all to all benchmark.
-Following these two experiments, we then benchmark the efficacy of parallel union, parallel join and parallel transitive closure over a wider range of graphs.
+All our RA operations involve an all to communication phase, hence, we perform a detailed benchmark of MPI's all to all communication capability.
+Finally we benchmark the efficacy of parallel union, parallel join and parallel transitive closure over a wider range of graphs.
 %We first study how our data structure performs, and how well are the all to all communication primitives are supported by super computers. More specifically, we study how fast can we insert into our btree based relation class, and how efficiently can it support the task of de-duplication. This is mostly studying the computation aspect of our algorithms. Next, with the all to all tests, we benchmark the communication aspect of our algorithms.
 
 
@@ -20,22 +20,24 @@ Following these two experiments, we then benchmark the efficacy of parallel unio
 
 \subsection{Dataset and HPC platforms}
 \label{sec:datasets}
-We have performed our experiments using open sourced graphs available at ~\cite{}.
-The graphs represent a wide range in terms of the number of edges. The last three graphs are the largest available graphs.
-Transitive closure of a graph with n edges can compute upto n^2 edges for a fully connected graph. The number of edges in the transitive closure of a graph depends on the connectivity of the input graph. We found our third graph with X edges to be highly connected; the transitive closure of the graph genertaed 260 billion edges, which is 3 terabytes in size.
--- wide range in terms of number of edges
--- The transitive closure of third graph generated 260 billion edges, which corresponds to 4 tera bytes of data.
+We have performed our experiments using SuiteSparse Matrix Collection available at ~\cite{}.
+SuiteSparse Matrix Collection (formerly known as the University of Florida Sparse Matrix Collection), is a large and actively growing set of sparse matrices that arise in real applications. The Collection is widely used by the numerical linear algebra community for the development and performance evaluation of sparse matrix algorithms. 
+For our experiments, we chose six graphs representing a wide range in terms of the number of edges. The last three graphs are the largest available graphs.
+Transitive closure of a graph with $n$ edges can generate upto $n^2$ edges (a fully connected graph). More generally, the number of edges in the transitive closure of a graph depends on the connectivity of the input graph. We found our third graph with X edges to be the most connected; the transitive closure of the graph generated 260 billion edges, which is 3 terabytes in size.
+%-- wide range in terms of number of edges
+%-- The transitive closure of third graph generated 260 billion edges, which corresponds to 4 tera bytes of data.
 
 \begin{table}[]
 	\begin{tabular}{lllll}
 		\begin{tabular}[c]{@{}l@{}}Input graph \\ edge count\end{tabular} & Union & Join & \begin{tabular}[c]{@{}l@{}}Transitive \\ Closure\end{tabular} & Graph name \\
-		412148                                                            & \checkmark      & \checkmark     &                                                               &            \\
-		2100225                                                           &       &      &                                                               &            \\
-		6291408                                                           &       &      &                                                               &            \\
-		59062957                                                          &       &      &                                                               &            \\
-		136024430                                                         &       &      &                                                               &            \\
-		180292586                                                         &       &      &                                                               &            \\
-		240023949                                                         &       &      &                                                               &           
+		\hline
+		412148                                                            & \checkmark      &      &                                                               &            \\
+		2100225                                                           & \checkmark       &      &                                                               &            \\
+		6291408                                                           & \checkmark       &      &                                                               &            \\
+		59062957                                                          & \checkmark       &      &                                                               &            \\
+		136024430                                                         & \checkmark       & \checkmark     &                                                               &            \\
+		180292586                                                         & \checkmark       & \checkmark      &                                                               &            \\
+		240023949                                                         & \checkmark       &      &                                                               &           
 	\end{tabular}
 \end{table}
 
@@ -62,12 +64,21 @@ Object Storage Targets).
 \end{figure*}
 
 
-\subsection{Relation}
+\subsection{Btree-Relation container}
 \label{sec:relation}
--- Perform two benchmarks: insertion of tuples without any duplicate and insertion of tupes each with four duplicates.
--- Relation class implemented with btrees outperforms relation with hashes.
--- btree-relation scales with increase tuple count as opposed to hash based relation that fails to scale for large number of tuples.
--- For example hash based relation takes X seconds to insert Y tuples as opposed to only Z seconds taken by btree based relation.
+
+In this section we evaluate the efficacy of our relation container.
+We measure performance for two cases: insertions of unique tuples and insertions of tuples with duplicates. With the later set of experiments, every tuple had four duplicates. For both set of experiments, we compare two implementations of the relation class, one with a Btree back-end and the other with an hash map back-end. For the hash map, we used unordered\_map from C++'s standard template library. The results can be seen in Figure~\ref{fig:tuple_inserts}. The X-axis corresponds to the total number of tuples being inserted and the Y-axis is the time taken for the task to finish. We observe that btree-based relation container outperforms the hash map based implementation for insertion of all tuple counts. Furthermore hash map based relation container fails to scale with insertion of very large number of tuples. For example hash based relation takes X seconds to insert Y tuples as opposed to only Z seconds taken by btree based relation. Similar results can be observed for insertion of tuples with duplicates. The btree based relation container successfully dedeuplicate tuples while maintaining high performance.
+%To facilitate fast inserts and lookups of tuples, we implemented a relation container.
+%We made two implementations of the container one using btrees and other using unordered\_map from the standard template library.
+%The relation container is a recursive, nested data-structure. \textbf{More stuff.}
+%, for example, for two-tuple we have a btree with keys as the first column-entries, and the value is a new btree which is again
+%Deduplication is a major challenge while inserting tuples, for example, join between two relation followed by projection of the common column often yields a lot of duplicate tuples. 
+
+
+%-- Perform two benchmarks: insertion of tuples without any duplicate and insertion of tupes each with four duplicates.
+%-- Relation class implemented with btrees outperforms relation with hashes.
+%-- 
 
 
 
@@ -85,16 +96,33 @@ Object Storage Targets).
 \subsection{MPI\_All\_to\_Allv}
 \label{sec:all_to_all}
 
--- perform both weak and strong scaling
--- configuration
--- weak scaling with accuracy X percent accuracy for per process load of Y versus Z percent accuracy for per process load of M.
--- Exhibit poor weak scaling for small load, as opposed to good weak scaling with larger volume of data.
--- X percent accuracy with strong scaling of X load. This corresponds to Y number of tuples.
--- Overall very good indication as all to all scales well, aggregate accuracy
--- different graphs would work better at different scales.
+
+%All our RA operations require all to all communication.
+All to all communication forms the core of all our RA algorithms (\textbf{refer to the algorithms}).
+We use MPI's MPI\_Alltoallv function to facilitate all to all data communication.
+MPI\_Alltoallv sends data from all to all processes where each process can send a different amount of data by providing displacements for the input and output data. In this section we study both weak and strong scaling characteristics of MPI\_Alltoallv.
+For both set of experiments, we varied the number of processes from $2048$ to $32768$. We performed 9 set of weak scaling experiments. For these 9 set of experiments, the amount of data transmitted by each process ($data_{process}$) was varied from 4 megabytes (1st set) to 1024 megabytes (9th set). For a $n$ process run, every process transmits $data_{process}/n$ units of data to every other process. With strong scaling experiments, we performed 6 set of experiments, varying the total amount of data generated across processes ($data_{total}$) from 64 gigabytes (1st set) to 2048 gigabytes (6th set). The amount of data generated by every process is the same, for example for a $n$ process run, and $data_{total}$ total amount of data, every process produces $data_{total}/n$ units of data. A process then transmits $data_{total}/n^2$ units of data to every other process.  The results of both weak and strong scaling experiments can be seen in Figure~\ref{fig:all_to_all}.
+
+For both strong and weak scaling runs, we observe a decline in performance with decreasing workload. For instance, with strong scaling, the 6th set of experiments where total workload is 2048 gigabytes, we observe near perfect scaling when the number of processes is doubled from 2048 (18.5 seconds) to 4096 (7.3 seconds) to 8192 (4.5 seconds). After 8192 processes, although total time continues to come down with increasing process count, we observe that the rate becomes much slower. Furthermore, looking at the 6th set of experiments where total workload is 64 gigabytes we observe relatively poor scaling characteristics across the entire process range. Both the observations can be attributed to reduced per-process workload. With less amount of data to transmit, total time is dominated by initialization costs as opposed to data transmission costs. Similarly for weak scaling experiments as well, when the amount of data exchanged is substantial, we see almost perfect scaling. For example, when the amount of data transmitted by every process is 1024 megabytes, we observe almost perfect scaling, whereas when the amount of data sent by every process is small (4MB) we observe poor scaling.
+
+
+With the context of communication requirements of RA operations, we find the scaling trends of MPI\_alltoallv to be encouraging. In general for a given workload (graph size for RA operations), there will always be a range of processes that exhibits good all to all scaling characteristics. We will have the challenging task to identify the right process count that balances the tradeoff between computation and communication. As we will see later in section~\ref{sec:tc} with larger per-process load computation cost dominates as opposed to smaller per-process workload where total cost is dominated by communication. 
+%As we will ee later the crucial part will be to identify the process count that balances computation and communication in the monst efficient way.
+
+%For every input graph, we need to find the range of process count that exhibits 
+%The trends suggests that there is a range of process count suitable for different graphs. There is a window of process count suitable for graphs of differeing sizes. As the number of processes increases the amount of data (tuples) held by every process starts t
+
+%-- perform both weak and strong scaling
+%-- configuration
+%-- weak scaling with accuracy X percent accuracy for per process load of Y versus Z percent accuracy for per process load of M.
+%-- Exhibit poor weak scaling for small load, as opposed to good weak scaling with larger volume of data.
+%-- X percent accuracy with strong scaling of X load. This corresponds to Y number of tuples.
+%-- Overall very good indication as all to all scales well, aggregate accuracy
+%-- different graphs would work better at different scales.
 
 \subsection{Parallel Union}
 \label{sec:union}
+
 -- union of 7 graphs from table
 -- union comprises of an io phase followed by communication and then followed by inserts
 -- We compare two union types, one is where we perform io, comm and compute separates, the other is where we first perform io for all and then we bundle all our comm and then we have one phase of compute
