@@ -122,18 +122,30 @@ With the context of communication requirements of RA operations, we find the sca
 
 \subsection{Parallel Union}
 \label{sec:union}
+We use strong scaling to benchmark the performance of parallel union operation. We measure the timing to perform union of all 7 graphs listed in table~\ref{table:graphs}. The number of processes are varied from $64$ to $4,096$. The total number of edges across all $7$ graphs is $664,659,334$ ($~9.9$ gigabytes of data). Union of the seven graphs result in a graph with $424,592,810$ edges, indicating significant overlap between the graphs.
 
--- union of 7 graphs from table
--- union comprises of an io phase followed by communication and then followed by inserts
--- We compare two union types, one is where we perform io, comm and compute separates, the other is where we first perform io for all and then we bundle all our comm and then we have one phase of compute
--- scales well upto X cores., this is strong scaling.
--- faces work load deprecation at low core counts, needs more tuples for union to scale at high core counts
--- overall a good sign
+We test the efficacy of both our implementations of parallel union, union\_x and union\_y. Union\_x involves seven epochs of communication and computation (one for every graph) as opposed to union\_y that uses buffering to limit the number of communication and computation epoch to one. For union\_x, we iterate through the seven graphs. The first phase is that of parallel I/O, where all processes access disjoint regions of the file to read equal number of tuples in parallel. Once the tuples are read, every process scans through the tuples and groups them into $nprocs$ (=$hashbuckets$) packets, ready to be sent across the network.
+The target process (hash-bucket) of a tuple is decided based on the hash of the key of the tuple. We also perform preliminary deduplication to eliminate duplicate tuples in the input graph. The scan step is followed actual by all to all communication phase where tuples are sent to the appropriate processes (hash buckets). Once tuples arrive at a process, they are inserted into the relation container. This step performs the important task of deduplication of tuples across the graphs. 
+
+With union\_y instead of processing the graphs one after the other, we read all the graphs at once and follow it with one cumulative step of hashing, communication and insertions. This implementation deploys buffering to restrict the number of communication epochs. Performance of both implementation can be seen in Figure~\ref{fig:parallel_union}. For both implementations, we present breakdown of time spent in each of the three phases: parallel I/O, all-to-all communication and insertions. We observe two trends, at all core counts, union\_y outperforms union\_x, this trend can be attributed to an optimized data communication phase. Union\_y leads to communication involving small number of large sized data packets as opposed to union\_x that involves communication with large number of small sized data packets. The other crucial trend is that the union phase scales only till 1024 cores, this can be attributes to increase in communication time at higher core counts. This result is in corroboration with the trend seen in Section~\ref{sec:datasets}. At 2048 and 4096 processes, even though the insertion time gets reduced, the per-process workload becomes very small impeding scalability of the communication phase. 
+It can be concluded that for this particular union task of $7$ graphs $1024$ is the ideal degree of parallelism, as that balances the communication and computation task best.
+
+%This step is followed by 
+
+%-- union of 7 graphs from table
+%-- union comprises of an io phase followed by communication and then followed by inserts
+%-- We compare two union types, one is where we perform io, comm and compute separates, the other is where we first perform io for all and then we bundle all our comm and then we have one phase of compute
+%-- scales well upto X cores., this is strong scaling.
+%-- faces work load deprecation at low core counts, needs more tuples for union to scale at high core counts
+%-- overall a good sign
 
 
 \subsection{Parallel Join}
 \label{sec:join}
--- setup, join of two of the largest graph, produces X number of tuples in output.
+Similar to parallel union, we use strong scaling to benchmark the performance of parallel join operation. 
+We perform join of two graphs with edges $136,024,430$ and $180,292,586$. The join operation yields a graph with X number of edges.
+The number of processes are varied from $64$ to $4,096$. Unlike union, where we maintained only one relation container for all input graphs, here we have separate relation containers for the two input graphs. Once the two relations are initialized across all processes (after parallel I/O, hashing, communication and insertions), we 
+
 -- similar to union join scales well upto X cores, after that there is shortage of work and we do not see proper scaling.
 -- communication stops to scale after X core counts. This is because there is lack of work.
 -- 
