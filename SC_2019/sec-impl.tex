@@ -10,12 +10,20 @@ This section discusses implementing relational algebra efficiently and in parall
 
 First, we review the two main approaches to encoding relations in a way that is amenable to fast RA algorithms. Unsurprisingly, algorithms for computing join, union, selection, etc, depend greatly on the representation used for relations themselves.
 
-\paragraph{Decision diagrams} Decision diagrams 
+\paragraph{Decision diagrams} Decision diagrams such as binary decision diagrams (BDDs) and zero-supressed binary decision diagrams (ZDDs) are compact representations of relations as decision trees. Each variable (column) storing an integer is broken down into one variable per bit---a relation R(a,b,c) where each column stores a 64bit integer is encoded as a set of binary strings, each 192 bits long.  
 
 
 \paragraph{Key-value stores} Another approach to encoding relations is to use a hash table, B-tree, prefix tree (trie), or other key-value store.
 
 
-\subsection{Hybrid hash-tree join}
+\paragraph{Hybrid hash-table and b-tree} Our approach is to use an efficient key-value store, but to
 
-Our approach is to 
+
+
+\subsection{Hybrid Join}
+
+...
+
+\subsection{Distributed Join}
+
+...

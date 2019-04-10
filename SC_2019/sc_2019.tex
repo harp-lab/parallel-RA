@@ -41,8 +41,16 @@
 % the next command will enable that style.
 %\citestyle{acmauthoryear}
 \usepackage{graphicx}
+\usepackage{tikz}
 \usepackage{caption}
 \usepackage{subcaption}
+
+
+%% Tikz
+\usetikzlibrary{positioning}
+\tikzset{main node/.style={circle,fill=gray!20,draw,minimum size=0.45cm,inner sep=0pt}, }
+\tikzset{invisible/.style={circle,fill=white!20,draw,minimum size=0.0cm,inner sep=0pt}, }
+
 
 %
 % end of the preamble, start of the body of the document source.
