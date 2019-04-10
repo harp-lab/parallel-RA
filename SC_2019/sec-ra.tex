@@ -205,7 +205,7 @@ The graph shown above can be produced by $F_G(G)$ and the graph G is returned if
 \end{tikzpicture}
 \end{center}
 
-In the general case, for any graph $G$, there exists some $n \in \mathbb{N}$ such that ${F_G}^n(\bot)$ encodes the transitive closure of $G$. The transitive closure may be computed by repeatedly applying $F_G$ in a loop until reaching an $n$ where ${F_G}^n(\bot) = {F_G}^{n-1}(\bot)$ in a process called \textit{fixed-point iteration}. In the first iteration paths of length 1 are computed, in the second paths of length 1 or two are computed, and so forth. After the longest path in $G$ is found, just one additional iteration is necessary as a fixed-point check to confirm that the final graph has stabilized. 
+In the general case, for any graph $G$, there exists some $n \in \mathbb{N}$ such that ${F_G}^n(\bot)$ encodes the transitive closure of $G$. The transitive closure may be computed by repeatedly applying $F_G$ in a loop until reaching an $n$ where ${F_G}^n(\bot) = {F_G}^{n-1}(\bot)$ in a process called \textit{fixed-point iteration}. In the first iteration, paths of length 1 are computed; in the second, paths of length 1 or two are computed, and so forth. After the longest path in $G$ is found, just one additional iteration is necessary as a fixed-point check to confirm that the final graph has stabilized. 
 
 
 \subsection{Application: Datalog}
@@ -233,5 +233,36 @@ The first says that any edge implies a path (taking the role of the left operand
 Each Datalog rule may be encoded as a function $F$ (between databases) where a fixed point for the function is guaranteed to be a database that satisfies the particular rule. Atoms in the body (premise) of the implication, where two columns are required to match, are refined using a selection operation; e.g., atom $S(a,b,b)$ is computed by RA $\sigma_{\alpha_1 = \alpha_2}(S)$. Conjunction of atoms in the body of the implication is computed with a join operation: e.g., in the second rule above, this is the second column of \texttt{path} joined with the first of \texttt{edge}, or $\rho_{0 / 1}(\texttt{path}) \bowtie_1 \texttt{edge}$. These steps are followed by projection to only the columns needed in the head of the rule and any necessary column reordering. Finally, the resulting relation is unioned with the existing relation in the head of the implication to produce $F$'s output, an updated database (e.g., with an updated \texttt{path} relation in the examples above).
 
 Once a set of functions $F_0 \ldots F_m$, one for each rule, are constructed, Datalog evaluation operates by iterating the IDB to a mutual fixed point for $F_0 \ldots F_m$.
+
+
+\subsection{Implementation approaches}
+
+In our previous discussion of both transitive closure and Datalog, we have elided important optimizations and implementation details in favor of focusing on the main ideas of both. In practice, however, it is inefficient to perform multiple granular RA operations separately to perform a selection, reorder columns, join relations, project out unneeded columns, reorder columns again, etc, when iteration overhead can be eliminated and cache coherence improved by performing loop fusion. In practice, high-performance Datalog solvers perform all necessary steps at once, supporting a generalization of the operations we've discussed that can join, select, reorder variables, project, and union, all at once.  
+
+In addition, both transitive closure and Datalog, as discussed above, are using na\"ive fixed-point iteration, recomputing all previously discovered edges (resp. facts) at every iteration. Efficient implementations are \emph{incrementalized}, only considering facts that can be extended to produce previously undiscovered facts. For example, when computing transitive closure, another relation $T_\Delta$ is used which only stores the longest paths---those discovered in the previous iteration. When computing paths of length $n$, in fixed-point iteration $n$, only new paths discovered in the previous iteration, paths of length $n-1$, need to be considered as shorter paths extended with edges from $G$ yield paths which must have been discovered already. In the more general cases of Datalog and database theory, this optimization is known as \emph{semi-na\"ive} evaluation.
+
+Now, we review the two main approaches to encoding relations in a manner amenable to fast RA algorithms. Unsurprisingly, algorithms for computing join, union, selection, etc, depend greatly on the representation used for relations themselves. 
+
+\paragraph{Decision diagrams} One approach is the use of decision trees to encode relations. \emph{Decision diagrams} (DDs) such as \emph{binary decision diagrams} (BDDs) and its variants, zero-supressed binary decision diagrams (ZDDs) and algebraic decision diagrams (ADDs), are potentially compact representations of relations, predicates, sets of strings, or sets of sets. In a BDD, each variable (column) storing an integer is decomposed into one variable per bit: a relation R(a,b,c) where each column stores a 64bit integer is encoded as a set of binary strings, each $192$ bits long. A BDD encodes the decision procedure of determining inclusion of a string (i.e., tuple, fact) in the set as a tree where each node has two subtrees, one for encoding string suffixes that follow a $0$, and one for encoding string suffixes that follow a $1$. The root node for a BDD encoding relation $R(a,b,c)$ has two subtrees, one for encoding a set of $191$-bit strings with a $0$ as the initial bit, and one for likewise encoding suffixes with a $1$ as the leading bit. The children of leaf nodes are one of two special ($\bot$ and $\top$) nodes that indicate no strings exist with the encoded prefix or that all strings with the encoded prefix are present in the set. 
+
+Algorithms for performing RA on decision diagrams recursively merge nodes of the tree according to the operation being performed, taking time proportional to the size of the structures, and can be highly efficient when the tree is compact. Performant DD libraries like CUDD (CU decision diagram library) perform recursive interning under the hood to improve space efficiency \cite{}. In practice, decision diagrams can be highly compact or can blow up exponentially, depending largely on variable ordering (i.e., what determines which bits are near the root). A major practical downside of DDs has been the difficulty of automatically determining a efficient variable ordering given that a representation of domain-specific problems in decision diagrams (via an encoding in Datalog) has already thoroughly obfuscated the meaning behind each bit. Much work has gone into simply trying to learn, or dynamically adapt, a DD's variable ordering to the problem at hand. 
+
+\paragraph{Key-value stores} Another approach to encoding relations that has recently shown far greater scalability \cite{}, although it is both older and apparently less sophisticated, is to use a hash table, B-tree, prefix tree (trie), or other key-value store to maintain a set of tuples, with support for efficient iterators to directly loop over all facts in a relation when performing RA.
+
+In this approach, a join becomes nested iteration over two or more relations to build up a set of output tuples that can be inserted into a new relation encoded as a key-value store. Unioning can be done by simply inserting tuples into an existing relation. Renaming, projection, and selection, can all be done trivially, on-the-fly, while performing a join, as these are as simple as reordering the variables of each tuple before an insertion, omitting values from a tuple before insertion, or omitting tuples that do not qualify before insertion.
+
+In a join operation, it is inefficient to iterate over all tuples of two relations if any variables are unified (if the join is not equivalent to Cartesian product). Instead, only the first relation is iterated over in its entirety and an efficient selecting iterator is used to iterate over only those tuples in the second relation where unified variables match. This is accomplished by using a key-value store for tuple keys that is implemented using nested key-value stores for integer keys. Here again variable ordering becomes crucial as columns being selected on must come first. Unlike for DDs however, the variable ordering issue can be solved precisely and statically (at compile time) as the structure of RA operations being performed implies the necessary indices.
+
+Consider the second Datalog rule implementing transitive closure, discussed previously, defining paths in terms of paths and edges. Each iteration of our function $F$ for this rule can be implemented as the following pseudocode:
+
+\begin{verbatim}
+  new_delta_path = {}
+  for [x,y] in delta_path.select_all():
+     for [y,z] in edge.select("y", y):
+        if path.insert([x,z]) == true:
+           new_delta_path.insert([x,z])
+  delta_path = new_delta_path   
+\end{verbatim}
+
 
 
