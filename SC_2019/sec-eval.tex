@@ -4,12 +4,12 @@
 \label{sec:eval}
 
 %There are two goals of this sections 1) evaluate the performance of RA primitive operations Union and Join  2) evaluate the performance of transitive closure, which is a fixed point iteration algorithm.
-The goal of this section is to evaluate the performance of our implementation of parallel join, parallel union and parallel transitive closure at scale.
-We first individually study the computation and communication components of the RA operations.
+The ultimate goal of this section is to evaluate the performance of our hash-tree implementations of join, union and transitive closure at scale.
+We start by individually studying the computation and communication components of the RA operations.
 Computation is dominated by insertion of tuples and the major challenge faced is that of deduplication.
-We first study the efficacy of our btree-based relation container for inserts specifically in the context of deduplication.
+We therefore study the efficacy of our btree-based relation container in the context of insertions.
 All our RA operations involve an all to communication phase, hence, we perform a detailed benchmark of MPI's all to all communication capability.
-Finally we benchmark the efficacy of parallel union, parallel join and parallel transitive closure over a wider range of graphs.
+Finally we benchmark the efficacy of distributed hash-tree union, parallel join and parallel transitive closure over a wider range of graphs.
 %We first study how our data structure performs, and how well are the all to all communication primitives are supported by super computers. More specifically, we study how fast can we insert into our btree based relation class, and how efficiently can it support the task of de-duplication. This is mostly studying the computation aspect of our algorithms. Next, with the all to all tests, we benchmark the communication aspect of our algorithms.
 
 
@@ -22,8 +22,10 @@ Finally we benchmark the efficacy of parallel union, parallel join and parallel 
 \label{sec:datasets}
 We have performed our experiments using SuiteSparse Matrix Collection available at ~\cite{}.
 SuiteSparse Matrix Collection (formerly known as the University of Florida Sparse Matrix Collection), is a large and actively growing set of sparse matrices that arise in real applications. The Collection is widely used by the numerical linear algebra community for the development and performance evaluation of sparse matrix algorithms. 
-For our experiments, we chose six graphs representing a wide range in terms of the number of edges. The last three graphs are the largest available graphs.
-Transitive closure of a graph with $n$ edges can generate upto $n^2$ edges (a fully connected graph). More generally, the number of edges in the transitive closure of a graph depends on the connectivity of the input graph. We found our third graph with X edges to be the most connected; the transitive closure of the graph generated 260 billion edges, which is 3 terabytes in size.
+For our experiments, we chose seven graphs (listed in Table~\ref{table:graph}) representing a wide range in terms of the number of edges.
+Transitive closure of a graph with $n$ edges can generate upto $n^2$ edges (a fully connected graph). The number of edges in the transitive closure of a graph depends on how connected the input graph is. For example, the transitive closure of our third graph with $2,100,225$ edges generated a graph with $276,491,930,625$ edges, amounting to $4.4$ terabytes of data.
+
+%We found our third graph with $2,100,225$ edges to be the most connected; the transitive closure of the graph generated 260 billion edges, which is 3 terabytes in size.
 %-- wide range in terms of number of edges
 %-- The transitive closure of third graph generated 260 billion edges, which corresponds to 4 tera bytes of data.
 
@@ -39,16 +41,19 @@ Transitive closure of a graph with $n$ edges can generate upto $n^2$ edges (a fu
 		180292586                                                         & \checkmark       & \checkmark      &                                                               &            \\
 		240023949                                                         & \checkmark       &      &                                                               &           
 	\end{tabular}
+	\label{table:graph}
+	\caption{List of seven graphs used in our evaluation.}
 \end{table}
 
 
+%a Cray machine with Intel Xeon Phi processors with Dragonfly topology network and Lustre file system [31].
+
 The experiments presented in this work were performed on
-Theta at the Argonne Leadership Computing Facility
-(ALCF). Theta is a Cray XC30 with a peak
-performance of X petaflops, 124, 608 compute cores, 332
-TiB of RAM, and 7.5 PiB of online disk storage. We used
-Edison Lustre file system (168 GiB/s, 24 I/O servers and 4
-Object Storage Targets). 
+Theta Supercomputer at the Argonne Leadership Computing Facility
+(ALCF). Theta is a Cray machine with a peak
+performance of X petaflops, Y compute cores, Z
+TiB of RAM, and A PiB of online disk storage. 
+The supercomputer has Dragonfly network topology and a Lustre filesystem.
 
 %Default striping was used with the Lustre file system. Mira system contains 48 racks and 768K cores, and has a theoretical peak performance of 10 petaflops. Each node has 16 cores, with 16 GB of RAM per node. I/O and interprocessor communication travels on a 5D torus network. Every 128 compute nodes has two 2 GB/s bandwidth links to two different I/O nodes, making 4 GB/s bandwidth for I/O at most. I/O nodes are connected to file servers through QDR IB. Mira uses a GPFS file system with 24 PB of capacity and 240 GB/s bandwidth.
 
@@ -59,7 +64,7 @@ Object Storage Targets).
 	{\includegraphics[width=.50\textwidth,  trim={0cm 0cm 0cm 0cm,
 			clip}]{results/inserts_with_no_duplicates.pdf}}\hfill%
 	\centering
-	\caption{Performance evaluation of relation class implemented with btree and unordered map. (left) All tuples are distinct, (right) There are four copies of every tuple being inserted. Relation implemented with btree out-performs the unordered-map implementation.}
+	\caption{Performance evaluation of relation class implemented with btree and unordered map. (left) All tuples are distinct, (right) There are four duplicates of every tuple. Relation implemented with btree out-performs the unordered-map implementation for both cases.}
 	\label{fig:tuple_inserts}
 \end{figure*}
 
@@ -88,7 +93,7 @@ We measure performance for two cases: insertions of unique tuples and insertions
 	{\includegraphics[width=.50\textwidth,  trim={0cm 0cm 0cm 0cm,
 			clip}]{results/all_to_all_weak.pdf}}\hfill%
 	\centering
-	\caption{Strong (left) and Weak (right) scaling evaluation of MPI\_alltoallv function of MPI.}
+	\caption{Strong (left) and Weak (right) scaling evaluation of MPI\_alltoallv function of MPI. }
 	\label{fig:all_to_all}
 \end{figure*}
 
@@ -101,12 +106,12 @@ We measure performance for two cases: insertions of unique tuples and insertions
 All to all communication forms the core of all our RA algorithms (\textbf{refer to the algorithms}).
 We use MPI's MPI\_Alltoallv function to facilitate all to all data communication.
 MPI\_Alltoallv sends data from all to all processes where each process can send a different amount of data by providing displacements for the input and output data. In this section we study both weak and strong scaling characteristics of MPI\_Alltoallv.
-For both set of experiments, we varied the number of processes from $2048$ to $32768$. We performed 9 set of weak scaling experiments. For these 9 set of experiments, the amount of data transmitted by each process ($data_{process}$) was varied from 4 megabytes (1st set) to 1024 megabytes (9th set). For a $n$ process run, every process transmits $data_{process}/n$ units of data to every other process. With strong scaling experiments, we performed 6 set of experiments, varying the total amount of data generated across processes ($data_{total}$) from 64 gigabytes (1st set) to 2048 gigabytes (6th set). The amount of data generated by every process is the same, for example for a $n$ process run, and $data_{total}$ total amount of data, every process produces $data_{total}/n$ units of data. A process then transmits $data_{total}/n^2$ units of data to every other process.  The results of both weak and strong scaling experiments can be seen in Figure~\ref{fig:all_to_all}.
+For both set of experiments, we varied the number of processes from $2048$ to $32768$. We performed $9$ set of weak scaling experiments. For these $9$ set of experiments, the amount of data transmitted by each process ($data_{process}$) was varied from $4$ megabytes ($1^{st}$ set) to $1,024$ megabytes ($9^{th}$ set). For a $n$ process run, every process transmits $data_{process}/n$ units of data to every other process. With strong scaling experiments, we performed 6 set of experiments, varying the total amount of data generated across processes ($data_{total}$) from $64$ gigabytes ($1^{st}$ set) to $2,048$ gigabytes ($6^{th}$ set). The amount of data generated by every process is the same, for example for a $n$ process run, and $data_{total}$ total amount of data, every process produces $data_{total}/n$ units of data. A process then transmits $data_{total}/n^2$ units of data to every other process.  The results of both weak and strong scaling experiments can be seen in Figure~\ref{fig:all_to_all}.
 
-For both strong and weak scaling runs, we observe a decline in performance with decreasing workload. For instance, with strong scaling, the 6th set of experiments where total workload is 2048 gigabytes, we observe near perfect scaling when the number of processes is doubled from 2048 (18.5 seconds) to 4096 (7.3 seconds) to 8192 (4.5 seconds). After 8192 processes, although total time continues to come down with increasing process count, we observe that the rate becomes much slower. Furthermore, looking at the 6th set of experiments where total workload is 64 gigabytes we observe relatively poor scaling characteristics across the entire process range. Both the observations can be attributed to reduced per-process workload. With less amount of data to transmit, total time is dominated by initialization costs as opposed to data transmission costs. Similarly for weak scaling experiments as well, when the amount of data exchanged is substantial, we see almost perfect scaling. For example, when the amount of data transmitted by every process is 1024 megabytes, we observe almost perfect scaling, whereas when the amount of data sent by every process is small (4MB) we observe poor scaling.
+For both strong and weak scaling runs, we observe a decline in performance with overall decreasing workload. For instance, with strong scaling, the 6th set of experiments where total workload is $2,048$ gigabytes, we observe near perfect scaling when the number of processes is doubled from 2048 (18.5 seconds) to 4096 (7.3 seconds) to 8192 (4.5 seconds). After $8,192$ processes, although total time continues to come down with increasing process count, we observe that the rate becomes much slower. Furthermore, looking at the $6^{th}$ set of experiments where total workload is $64$ gigabytes we observe relatively poor scaling characteristics across the entire process range. Both the observations can be attributed to an overall reduction in per-process workload. With less amount of data to transmit, total time is dominated by initialization costs as opposed to actual data transmission cost. For example, with total workload of $64$ gigabytes, at $4,096$ processes, every process gets workload of only $16$ $(64 gigabytes / 4096)$ megabytes, and ends up sending $8$ ($16 megabytes / 4096$) kilobytes of data to every other process. Similarly for weak scaling experiments as well, when the amount of data exchanged is substantial, we see almost perfect scaling. For example, when the amount of data transmitted by every process is $1024$ megabytes, we observe almost perfect scaling, whereas when the amount of data sent by every process is small $(4 megabytes)$ we observe poor scaling.
 
 
-With the context of communication requirements of RA operations, we find the scaling trends of MPI\_alltoallv to be encouraging. In general for a given workload (graph size for RA operations), there will always be a range of processes that exhibits good all to all scaling characteristics. We will have the challenging task to identify the right process count that balances the tradeoff between computation and communication. As we will see later in section~\ref{sec:tc} with larger per-process load computation cost dominates as opposed to smaller per-process workload where total cost is dominated by communication. 
+Within the context of communication requirements of RA operations, we find the scaling trends of MPI\_alltoallv to be encouraging. In general for a given workload (graph size for RA operations), there will always be a range of processes that exhibits good all to all scaling characteristics. We will have the challenging task to identify the right process count that balances the tradeoff between computation and communication. As we will see later in section~\ref{sec:tc} with larger per-process workload computation cost dominates as opposed to smaller per-process workload where total cost is dominated by communication. 
 %As we will ee later the crucial part will be to identify the process count that balances computation and communication in the monst efficient way.
 
 %For every input graph, we need to find the range of process count that exhibits 
@@ -125,20 +130,20 @@ With the context of communication requirements of RA operations, we find the sca
 
 \begin{figure*}[t]
 	{\includegraphics[width=.50\textwidth,  trim={0cm 0cm 0cm 0cm, 
-			clip}]{results/TC_1_6Billion.pdf}}\hfill%
+			clip}]{results/union_without_buffering_final.pdf}}\hfill%
 	{\includegraphics[width=.50\textwidth,  trim={0cm 0cm 0cm 0cm,
-			clip}]{results/TC_1_6Billion_breakdown.pdf}}\hfill%
+			clip}]{results/union_with_buffering_final.pdf}}\hfill%
 	\centering
-	\caption{Transitive closure of a graph with X edges.}
-	\label{fig:tc_small}
+	\caption{Distributed union.}
+	\label{fig:dist_union}
 \end{figure*}
 
-We use strong scaling to benchmark the performance of distributed union operation. We measure the timing to perform union of all 7 graphs listed in table~\ref{table:graphs}. The number of processes are varied from $64$ to $4,096$. The total number of edges across all $7$ graphs is $664,659,334$ ($~9.9$ gigabytes of data). Union of the seven graphs result in a graph with $424,592,810$ edges, indicating significant overlap between the graphs.
+We use strong scaling to benchmark the performance of distributed union operation. We measure the timing to perform union of all 7 graphs listed in table~\ref{table:graphs}. The number of processes are varied from $64$ to $4,096$. The total number of edges across all $7$ graphs is $664,659,334$ ($~9.9$ gigabytes of data). Union of the seven graphs result in a graph with $424,592,810$ edges, indicating significant overlap among the graphs.
 
-We benchmark the performance of both union\_x and union\_y. Union\_x involves seven epochs of communication and computation (one for every graph) as opposed to union\_y that uses buffering to limit the number of communication and computation epochs to one. With union\_x, all processes iterate through all seven graphs. The first phase is that of parallel I/O, where processes access disjoint regions of the file to read equal number of tuples in parallel. Once the tuples are read, every process scans through the tuples and groups them into $nprocs$ (=$hashbuckets$) packets, ready to be sent across the network.
-Target process (hash-bucket) of a tuple is computed based on the hash outcome of its key. For instance, target rank of a two column tuple $(a, b)$ would be $hash(a)\%nprocs$. We also perform preliminary deduplication to eliminate duplicate tuples in the input graph. The scan step is followed actual by all to all communication phase where tuples are sent to the appropriate processes (hash buckets). Once tuples arrive at a process, they are inserted into the relation container. This step performs the important task of deduplication of tuples across the graphs. 
+We benchmark the performance of both union\_x and union\_y. 
 
-With union\_y instead of processing the graphs one after the other, we read all the graphs at once, buffer the tuples and follow it with one cumulative step of hashing, communication and insertion. This implementation deploying buffering restricts the number of communication epochs. Performance of both implementation can be seen in Figure~\ref{fig:parallel_union}. For both implementations, we present breakdown of time spent in each of the three phases: parallel I/O, all-to-all communication and insertions. We observe two trends: at all core counts, union\_y outperforms union\_x, this trend can be attributed to an optimized data communication phase. Union\_y leads to communication involving small number of large sized data packets as opposed to union\_x that involves communication with large number of small sized data packets. The other crucial trend is that the union phase scales only till 1024 cores, this can be attributes to increase in communication time at higher core counts. This result is in corroboration with the trend seen in Section~\ref{sec:datasets}. At 2048 and 4096 processes, even though the insertion time gets reduced, the per-process workload becomes very small impeding scalability of the communication phase. It can be concluded that for this particular union task ($7$ graphs) $1024$ is the ideal degree of parallelism, as that balances the communication and computation task best.
+
+ This implementation deploying buffering restricts the number of communication epochs. Performance of both implementation can be seen in Figure~\ref{fig:dist_union}. For both implementations, we present breakdown of time spent in each of the three phases: parallel I/O, all-to-all communication and insertions. We observe two trends: at all core counts, union\_y outperforms union\_x, this trend can be attributed to an optimized data communication phase. Union\_y leads to communication involving small number of large sized data packets as opposed to union\_x that involves communication with large number of small sized data packets. The other crucial trend is that the union phase scales only till 1024 cores, this can be attributes to increase in communication time at higher core counts. This result is in corroboration with the trend seen in Section~\ref{sec:datasets}. At 2048 and 4096 processes, even though the insertion time gets reduced, the per-process workload becomes very small impeding scalability of the communication phase. It can be concluded that for this particular union task ($7$ graphs) $1024$ is the ideal degree of parallelism, as that balances the communication and computation task best.
 
 %This step is followed by 
 
@@ -152,12 +157,22 @@ With union\_y instead of processing the graphs one after the other, we read all 
 
 \subsection{Distributed Join}
 \label{sec:join}
+
+\begin{figure*}[t]
+	{\includegraphics[width=.50\textwidth,  trim={0cm 0cm 0cm 0cm, 
+			clip}]{results/join.pdf}}\hfill%
+	\centering
+	\caption{Transitive closure of a graph with X edges.}
+	\label{fig:dist_join}
+\end{figure*}
+
+
 Similar to distributed union, we use strong scaling to benchmark the performance of distributed join as well.
 We perform join of two graphs with edges $136,024,430$ and $180,292,586$. The join operation yields a graph with X number of edges.
 The number of processes are varied from $64$ to $4,096$. 
 %Unlike union, where we maintained only one relation container for all input graphs, here we have separate relation containers for the two input graphs. 
 Once the two relations are initialized across all processes (after parallel I/O, hashing, communication and insertions), we initiate the join operation. 
-We plot the result of join operation in Figure~\ref{fig:join}. We observe trends similar to distributed union.
+We plot the result of join operation in Figure~\ref{fig:dist_join}. We observe trends similar to distributed union.
 Join only scales upto X cores, after which communication cost starts to dominate and we observe overall decline in performance.
 
 
@@ -189,21 +204,21 @@ higher ones) and it gives us the opportunity to optimize the computation phase
 
 \begin{figure*}[t]
 	{\includegraphics[width=.50\textwidth,  trim={0cm 0cm 0cm 0cm, 
-			clip}]{results/TC_1_6Billion.pdf}}\hfill%
+			clip}]{results/TC_1_6_Billion_final.pdf}}\hfill%
 	{\includegraphics[width=.50\textwidth,  trim={0cm 0cm 0cm 0cm,
-			clip}]{results/TC_1_6Billion_breakdown.pdf}}\hfill%
+			clip}]{results/TC_260Billion_Final.pdf}}\hfill%
 	\centering
 	\caption{Transitive closure of a graph with X edges.}
 	\label{fig:tc_small}
 \end{figure*}
 
 
-\begin{figure*}[t]
-	{\includegraphics[width=.50\textwidth,  trim={0cm 0cm 0cm 0cm, 
-			clip}]{results/TC_260Billion.pdf}}\hfill%
-	{\includegraphics[width=.50\textwidth,  trim={0cm 0cm 0cm 0cm,
-			clip}]{results/TC_260Billion_breakdown.pdf}}\hfill%
-	\centering
-	\caption{Transitive closure of a graph with X edges.}
-	\label{fig:tc_large}
-\end{figure*}
+%\begin{figure*}[t]
+%	{\includegraphics[width=.50\textwidth,  trim={0cm 0cm 0cm 0cm, 
+%			clip}]{results/TC_260Billion_Final.pdf}}\hfill%
+%	{\includegraphics[width=.50\textwidth,  trim={0cm 0cm 0cm 0cm,
+%			clip}]{results/TC_260Billion_breakdown.pdf}}\hfill%
+%	\centering
+%	\caption{Transitive closure of a graph with X edges.}
+%	\label{fig:tc_large}
+%\end{figure*}
