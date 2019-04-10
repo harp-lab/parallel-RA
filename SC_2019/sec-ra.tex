@@ -3,21 +3,235 @@
 \section{Relational Algebra}
 \label{sec:ra}
 %
-Relational algebra provides a basis of operations on relations (i.e., predicates, or sets of tuples) sufficient to implement a broad range of algorithms for databases and queries, data analysis, machine learning, graph problems, and constraint logic problems \cite{}. Scaling these underlying primitives, and finding an effective strategy for parallel communication to distribute them across multiple nodes, is thus a avenue for scaling and distributing algorithms for high-performance program analyses, deductive databases, and other vital applications. This section reviews the most standard relational operations union, product, intersection, natural join, selection, renaming, and projection, along with their use in two related applications: graph problems and datalog solvers.
+Relational algebra (RA) provides a basis of operations on relations (i.e., predicates, or sets of tuples) sufficient to implement a broad range of algorithms for databases and queries, data analysis, machine learning, graph problems, and constraint logic problems \cite{}. Scaling these underlying primitives, and finding an effective strategy for parallel communication to distribute them across multiple nodes, is thus a avenue for scaling and distributing algorithms for high-performance program analyses, deductive databases, among other applications. This section reviews the standard relational operations union, product, intersection, natural join, selection, renaming, and projection, along with their use in implementing two closely related example applications: graph problems and bottom-up datalog solvers.
 
-The Cartesian product of two finite enumerations $D_0$ and $D_1$ is defined $D_0 \times D_1 = \{ (d_0, d_1) \ |\ \forall d_0 \in D_0, d_1 \in D_1 \}$. A relation $R \subseteq D_0 \times D_1$ is some subset of this product that defines a set of \textit{related} pairs of elements drawn from the two domains. For example, if R were the relation $(\geq)$ over natural numbers, both domains $D_0$ and $D_1$ would be $\mathbb{N}$ and the relation could be defined $(\geq) = \{ (n_0, n_1) \ |\ n_0 \in \mathbb{N} \wedge n_1 \in \mathbb{N} \wedge n_0 \geq n_1 \}$.
+The Cartesian product of two finite enumerations $D_0$ and $D_1$ is defined $D_0 \times D_1 = \{ (d_0, d_1) \ |\ \forall d_0 \in D_0, d_1 \in D_1 \}$. A \textit{relation} $R \subseteq D_0 \times D_1$ is some subset of this product that defines a set of associated pairs of elements drawn from the two domains. For example, if R were the relation $(\geq)$ over natural numbers, both domains $D_0$ and $D_1$ would be $\mathbb{N}$ and the relation could be defined $(\geq) = \{ (n_0, n_1) \ |\ n_0, n_1 \in \mathbb{N} \wedge n_0 \geq n_1 \}$. Any relation $R$ can also be viewed as a predicate $P_R$ where $P_R(d_0, \ldots, d_k) \iff (d_0, \ldots, d_k) \in R$, or as a set of tuples, or as a database table.
+
+We make some standard assumptions about relational algebra that differ from those of traditional set operations. Specifically, we assume that all our relations are sets of flat (first-order) tuples of natural numbers with a fixed, homogeneous arity. This means that the relation $(\mathbb{N} \times \mathbb{N}) \times \mathbb{N}$ contains the tuple $(1,2,3)$, and not $((1,2),3)$. It also means that although our approach extends naturally to relations over arbitrary enumerable domains (such as integers, booleans, symbols/strings, lists of integers, etc)---we make the assumption that natural numbers may be used in the place of other enumerable domains when they are needed. Finally, this means that for operations like union or intersection, both relations must by union-compatable by having the same arity and column names.    
+
+... talk about names as indices?
 
 
-
-
-\subsection{Transitive closure}
+\subsection{Standard RA operations}
 \label{sec:ra:tc}
 %
-One of the simplest common algorithms that may be implemented as a loop over fast relational algebra primitives, is computing the transitive closure of a relation or graph. Consider a relation $G \in \mathbb{N}^2$ encoding a graph where each point $(a,b) \in G$ encodes the existence of an edge from node $a$ to node $b$.
+...
+
+\paragraph{Cartesian product} The product of two relations $R$ and $S$ is defined: $R \times S = \{ (r_0, \ldots, r_k, s_0, \ldots, s_j) \ |\ (r_0, \ldots, r_k) \in R \wedge (s_0, \ldots, s_j) \in S \}$.
 
 
-\subsection{Datalog}
+\paragraph{Union} The union of two relations $R$ and $R'$ may only be performed if both relations have the same arity but is otherwise set union: $R \cup R' = \{ (r_0, \ldots, r_k) \ |\ (r_0, \ldots, r_k) \in R \vee (r_0, \ldots, r_k) \in R' \}$.
+
+
+\paragraph{Intersection} The intersection of two relations $R$ and $R'$ may only be performed if both have $k$ arity but is otherwise set intersection: $R \cap R' = \{ (r_0, \ldots, r_k) \ |\ (r_0, \ldots, r_k) \in R \wedge (r_0, \ldots, r_k) \in R' \}$.
+
+
+\paragraph{Projection} Projection is a unary operation that removes a column or columns from a relation---and thus any duplicate tuples that result from removing these columns. Projection of a relation $R$ restricts $R$ to a particular set of dimensions ${\alpha_0, \ldots, \alpha_j}$, where $\alpha_0 < \ldots < \alpha_j$, and is written $\Pi_{\alpha_0,\ldots,\alpha_j}(R)$. For each tuple, projection retains only stated columns: $\Pi_{\alpha_0,\ldots,\alpha_j}(R) = \{ (r_{\alpha_0}, \ldots, r_{\alpha_j}) \ |\  (r_0, \ldots, r_k) \in R \}$.
+
+
+\paragraph{Renaming} Renaming is a unary operation that renames (i.e., reorders) columns. Renaming columns can be defined in several different ways, including renaming all columns at once. We define our renaming operator, $\rho_{\alpha_i / \alpha_j}(R)$, to swap two columns, $\alpha_i$ and $\alpha_j$ where $\alpha_i < \alpha_j$---an operation that can be repeated to rename/reorder as many columns as desired: \newline$\rho_{\alpha_i / \alpha_j}(R) = \{ (\ldots,r_{\alpha_j},\ldots,r_{\alpha_{i}},\ldots) \ |\ (\ldots,r_{\alpha_{i}},\ldots,r_{\alpha_{j}},\ldots) \in R \}$.
+
+
+\paragraph{Selection} Selection is a unary operation that restricts a relation to tuples where a particular column matches a particular value. As with renaming, a selection operator may alternatively be defined to allow multiple columns to be matched at once, or to allow inequality or other predicates to be used in matching tuples. In our formulation, selection on multiple columns can be accomplished by repeated selection on a single column at a time. Selecting just those tuples from relation R where column $\alpha_i$ matches a value $v$ is defined: \newline$\sigma_{\alpha_i = v}(R) = \{ (r_{\alpha_0}, \ldots, r_{\alpha_k}) \in R \ |\ r_{\alpha_i} = v \}$.
+
+Selecting just those tuples from relation R where the values in columns $\alpha_i$ and $\alpha_j$ must match is defined: \newline$\sigma_{\alpha_i = \alpha_j}(R) = \{ (r_{\alpha_0}, \ldots, r_{\alpha_k}) \in R \ |\ r_{\alpha_i} = r_{\alpha_j} \}$.
+
+\paragraph{Natural Join} Two relations can also be \textit{joined} into one on a subset of columns they have in common. Join is a particularly important operation that combines two relations into one, where a subset of columns are required to have matching values, and generalizes both intersection and Cartesian product operations.
+
+Consider an example of two tables in a database, one that encodes a system's users' \texttt{emails} (including their username, email address, and whether it's verified) and another that encodes successful \texttt{logins} (including a username, timestamp, and ip address):
+
+\begin{center}
+  \textbf{\texttt{emails}} \vspace{0.05cm} \\
+  \begin{tabular}{ | c | c | c | }
+    \hline
+    \textbf{username} & \textbf{email} & \textbf{verified} \\
+    \hline
+    \texttt{samp} & \texttt{samwow@gmail.com} & \texttt{1} \\ \hline
+    \texttt{samp} & \texttt{samp9@uab.edu} & \texttt{0} \\ \hline
+    \texttt{karenk} & \texttt{karenk5@uab.edu} & \texttt{1} \\ \hline
+  \end{tabular}
+  \vspace{0.3cm} \\
+  \textbf{\texttt{logins}} \vspace{0.05cm} \\
+  \begin{tabular}{ | c | c | c | }
+    \hline
+    \textbf{\texttt{username}} & \textbf{\texttt{timestamp}} & \textbf{\texttt{ipaddr}} \\
+    \hline
+    \texttt{samp} & \texttt{1554291414} & \texttt{162.103.150.12} \\ \hline
+    \texttt{karenk} & \texttt{1554181337} & \texttt{171.31.15.120} \\ \hline
+    \texttt{karenk} & \texttt{1554219962} & \texttt{155.28.11.102} \\ \hline
+    \texttt{karenk} & \texttt{1554133720} & \texttt{171.31.15.120} \\ \hline
+  \end{tabular}
+\end{center}
+
+A join operation on these two relations, written $\texttt{users} \bowtie \texttt{logins}$,
+yields a single relation with all five columns: username, email, passhash, timestamp, address. For columns the two relations have in common, the natural join only considers pairs of tuples from the two input relations where the values for those columns match, as in an intersection operation; for other columns, the natural join computes all possible combinations of their values as in Cartesian product. If both input relations share all columns in common, a join is simply intersection and if both input relations share no columns in common, a join is simply Cartesian product. For the above tables, the natural join is shown:
+
+\begin{center}
+  $\textbf{\texttt{emails}} \bowtie \textbf{\texttt{logins}}$ \vspace{0.05cm} \\
+  \begin{tabular}{ | c | c | c | c | c | }
+    \hline
+    \textbf{\texttt{username}} & \textbf{email} & \textbf{verified} & \textbf{\texttt{timestamp}} & \textbf{\texttt{ipaddr}} \\
+    \hline
+    \texttt{samp} & \texttt{samwow@}\ldots & \texttt{1} & \ldots\texttt{414} & \texttt{162}\ldots \\ \hline
+    \texttt{samp} & \texttt{samp9@}\ldots & \texttt{0} & \ldots\texttt{414} & \texttt{162}\ldots \\ \hline
+    \texttt{karenk} & \texttt{karenk5@}\ldots & \texttt{1} & \ldots\texttt{337} & \texttt{171}\ldots \\ \hline
+    \texttt{karenk} & \texttt{karenk5@}\ldots & \texttt{1} & \ldots\texttt{962} & \texttt{155}\ldots \\ \hline
+    \texttt{karenk} & \texttt{karenk5@}\ldots & \texttt{1} & \ldots\texttt{720} & \texttt{171}\ldots \\ \hline
+  \end{tabular}
+\end{center}
+
+For example, if we wanted to compute all email addresses and ip addresses that may be associated, we could compute the join of these two relations and then project the join down to these two attributes alone. Note that one row is removed because it becomes a duplicate after projection:
+
+\begin{center}
+  $\Pi_{\textbf{\texttt{email}},\textbf{\texttt{ipaddr}}}(\textbf{\texttt{emails}} \bowtie \textbf{\texttt{logins}})$ \vspace{0.05cm} \\
+  \begin{tabular}{ | c | c | }
+    \hline
+    \textbf{email} & \textbf{\texttt{ipaddr}} \\
+    \hline
+    \texttt{samwow@gmail.com} & \texttt{162.103.150.12} \\ \hline
+    \texttt{samp9@uab.edu} & \texttt{162.103.150.12} \\ \hline
+    \texttt{karenk5@uab.edu} & \texttt{171.31.15.120} \\ \hline
+    \texttt{karenk5@uab.edu} & \texttt{155.28.11.102} \\ \hline
+  \end{tabular}
+\end{center}
+
+In this example, we've shown relations with associated attribute (column) names (e.g., \texttt{email}, \texttt{ipaddr}). In our formalization of relations, we treat columns as ordered and identified by their index instead---naturally a programming model, RDBMS, or API for relations will likely associate these indices with their symbolic names. As formalized, the \texttt{emails} relation would be a set of tuples:
+%
+\begin{align*}
+  R_\texttt{emails} = \{
+  &
+  \ (0,0,1),
+  \\
+  &\ (0,1,0),
+  \\
+  &\ (1,2,1)\ \},
+\end{align*}
+%
+Where the attributes \texttt{username}, \texttt{email}, and \texttt{verified} are stored in columns 0, 1, and 2, respectively, the string ``\texttt{samp}'' is interned as username $0$, the string ``\texttt{karenk}'' is interned as username $1$, and the three emails are interned as emails 0, 1, and 2.  
+
+To formalize natural join as a operation on such a relation, we parameterize it by the number of indices that must match, assumed to be the first $j$ of each relation (if they are not, a renaming operation must come first). The join of relations $R$ and $S$ on the first $j$ columns is written $R \bowtie_j S$ and defined:
+
+\begin{align*}
+  R \bowtie_j S = \{\ & (r_0,\ldots,r_k,s_j,\ldots,s_m)\
+  \\
+  &\ \vert\ (\ldots,r_k) \in R \wedge (\ldots,s_m) \in S \wedge \!\!\!\!\bigwedge_{i=0..{j-1}}\!\!\!\! r_i = s_i \ \}
+\end{align*}
+
+\subsection{Application: transitive closure}
 \label{sec:ra:tc}
 %
-Transitive closure is a simple example of deduction. At each...
+One of the simplest common algorithms that may be implemented efficiently as a loop over high-performance relational algebra primitives, is computing the transitive closure of a relation or graph. Consider a relation $G \subseteq \mathbb{N}^2$ encoding a graph where each point $(a,b) \in G$ encodes the existence of an edge from node $a$ to node $b$.
+
+For example, consider graph $G$ (shown below) where \newline$G = \{(0,1), (1,3), (0,2), (2,3), (3,4)\}$. 
+
+\begin{center}
+\begin{tikzpicture}
+    \node[main node] (0) {$0$};
+    \node[main node] (1) [above right = 0.6cm and 0.7cm of 0]  {$1$};
+    \node[main node] (2) [below right = 0.6cm and 0.7cm of 0] {$2$};
+    \node[main node] (3) [right = 1.4cm of 0] {$3$};
+    \node[main node] (4) [right = 0.7cm of 3] {$4$};
+
+    \path[draw,->,thick]
+    (0) edge node {} (1)
+    (1) edge node {} (3)
+    (3) edge node {} (4);
+    \path[draw,->,thick]
+    (0) edge node {} (2)
+    (2) edge node {} (3);
+\end{tikzpicture}
+\end{center}
+
+Renaming to swap the columns of G, results in a graph $\rho_{0 / 1}(G)$ where all arrows are reversed in direction. If this graph is joined with G on only the first column (meaning G is joined on its second columns with G on its first column), we get a set of triples $(b,a,c)$---specifically $\{(1,0,3),(2,0,3),(3,1,4),(3,2,4)\}$---representing paths of length two in the original graph where $a$ leads to $b$ which leads to $c$. Projecting out the first column yields pairs $(a,c)$ encoding paths of length two from $a$ to $c$ in the original graph G. If this is unioned with the original G, we obtain a relation encoding paths of length one or two in G. This graph, $G \cup \Pi_{\alpha_1,\alpha_2}(\rho_{0 / 1}(G) \bowtie_1 G)$, is shown below with new edges (paths of length two) shown in dashes.
+
+\begin{center}
+\begin{tikzpicture}
+    \node[main node] (0) {$0$};
+    \node[main node] (1) [above right = 0.6cm and 0.7cm of 0]  {$1$};
+    \node[main node] (2) [below right = 0.6cm and 0.7cm of 0] {$2$};
+    \node[main node] (3) [right = 1.4cm of 0] {$3$};
+    \node[main node] (4) [right = 0.7cm of 3] {$4$};
+
+    \path[draw,->,thick]
+    (0) edge node {} (1)
+    (1) edge node {} (3)
+    (3) edge node {} (4);
+    \path[draw,->,thick]
+    (0) edge node {} (2)
+    (2) edge node {} (3);
+    \path[draw,->,dashed]
+    (0) edge node {} (3);
+    \path[draw,->,dashed]
+    (1) edge [out=0,in=130] node {} (4);
+    \path[draw,->,dashed]
+    (2) edge [out=0,in=230] node {} (4);
+\end{tikzpicture}
+\end{center}
+
+We can encapsulate this step in a function $F_G$ which takes as input a relation $T$ encoding a graph and returns the graph G unioned with $T$'s edges extended with $G$'s edges.
+
+\[
+  F_G(T) \overset{\Delta}{=} G \cup \Pi_{\alpha_1,\alpha_2}(\rho_{0 / 1}(G) \bowtie_1 T)
+\]
+
+The graph shown above can be produced by $F_G(G)$ and the graph G is returned if the input graph $T$ is empty: $F_G(\varnothing)$, or $F_G(\bot)$. If $F_G$ is repeatedly applied, the results encodes ever longer paths through $G$. In this case for example, the graph $F_G(F_G(G))$ or ${F_G}^3(\bot)$ encodes the transitive closure of $G$---all paths in G reified as edges.
+
+\begin{center}
+\begin{tikzpicture}
+    \node[main node] (0) {$0$};
+    \node[main node] (1) [above right = 0.6cm and 0.7cm of 0]  {$1$};
+    \node[main node] (2) [below right = 0.6cm and 0.7cm of 0] {$2$};
+    \node[main node] (3) [right = 1.4cm of 0] {$3$};
+    \node[main node] (4) [right = 0.7cm of 3] {$4$};
+    \node[invisible] (5) [above right = 1.2cm and 1.2cm of 0] {};
+
+    \path[draw,->,thick]
+    (0) edge node {} (1)
+    (1) edge node {} (3)
+    (3) edge node {} (4);
+    \path[draw,->,thick]
+    (0) edge node {} (2)
+    (2) edge node {} (3);
+    \path[draw,->,thick]
+    (0) edge node {} (3);
+    \path[draw,->,thick]
+    (1) edge [out=0,in=130] node {} (4);
+    \path[draw,->,thick]
+    (2) edge [out=0,in=230] node {} (4);
+    \path[draw,dashed]
+    (0) edge [out=90,in=180] node {} (5);
+    \path[draw,->,dashed]
+    (5) edge [out=0,in=90] node {} (4);
+\end{tikzpicture}
+\end{center}
+
+In the general case, for any graph $G$, there exists some $n \in \mathbb{N}$ such that ${F_G}^n(\bot)$ encodes the transitive closure of $G$. The transitive closure may be computed by repeatedly applying $F_G$ in a loop until reaching an $n$ where ${F_G}^n(\bot) = {F_G}^{n-1}(\bot)$ in a process called \textit{fixed-point iteration}. In the first iteration paths of length 1 are computed, in the second paths of length 1 or two are computed, and so forth. After the longest path in $G$ is found, just one additional iteration is necessary as a fixed-point check to confirm that the final graph has stabilized. 
+
+
+\subsection{Application: Datalog}
+\label{sec:ra:tc}
+%
+Computing transitive closure is a simple example of logical deduction. From paths of length $0$ (an empty graph) and the existence of edges in graph $G$, we may deduce the existance of paths of length $0 \ldots 1$. From paths of length $0 \ldots n$ and the original edges in graph $G$, we may deduce the existance of paths $0 \ldots n+1$ edges long. The function $F_G$ above performs a single round of this inference, finding paths one edge longer than any found previously and exposing new deductions for the next iteration of $F_G$ to make. When the computation reaches its fixed point, a solution has been found because no further paths may be deduced from the available facts.
+
+In fact, the function $F_G$ is just an encoding in relational algebra of the transitivity propery itself, $T(a,b) \wedge T(b,c) \implies T(a,c)$, a logical constraint for which we desire a minimal solution. A graph $T$ satisfies this property exactly when $T$ is a fixed-point for $F_T$.
+
+Solving logical problems in this way is precisely the strategy of \emph{bottom-up logic programming}. Bottom-up logic programming begins with a set of facts (such as $T(a,b)$---the existence of an edge in a graph $T$) and a set of inference rules (such as $T(a,b) \wedge T(b,c) \implies T(a,c)$) and performs a fixed-point calculation, accumulating new facts that are immediately derivable, until reaching a minimal set of facts consistant with all rules.
+
+\emph{Datalog} is a bottom-up logic programming language supporting a restricted logic corresponding to first-order HornSAT---the satisfiability problem for conjunctions of Horn clauses. A \emph{Horn clause} is a disjunction of atoms where all but one is negated: $a_0 \vee \neg a_1 \vee \ldots \vee \neg a_j$. By DeMorgan's laws we may rewrite this as $a_0 \vee \neg (a_1 \wedge \ldots \wedge a_j)$ and note that this is an implication: $a_0 \leftarrow a_1 \wedge \ldots \wedge a_j$. In first-order logic, atoms are predicates with universally quantified variables.
+
+A Datalog program is a set of rules $P(x_0,\ldots,x_k) \leftarrow Q(y_0,\ldots,y_j) \wedge \ldots \wedge S(z_0,\ldots,z_m)$ and its input is a database of facts called the \emph{intensional database} (IDB). Running the datalog program yields the \emph{extensional database} (EDB) which extends all facts from the IDB with all facts transitively derivable via the program's rules.
+
+In the typical notation of datalog, computing transitive closure of a graph is accomplished with just two rules:
+
+\begin{verbatim}
+         path(x,y) :- edge(x,y).
+         path(x,z) :- path(x,y), edge(y,z).
+\end{verbatim}
+
+The first says that any edge implies a path (taking the role of the left operand of union in $F_G$), and the second says that any path $(x,y)$ and edge $(y,z)$ imply a path $(x,z)$ (adding edges for the right operand of union in $F_G$).
+
+Each Datalog rule may be encoded as a function $F$ (between databases) where a fixed point for the function is guaranteed to be a database that satisfies the particular rule. Atoms in the body (premise) of the implication, where two columns are required to match, are refined using a selection operation; e.g., atom $S(a,b,b)$ is computed by RA $\sigma_{\alpha_1 = \alpha_2}(S)$. Conjunction of atoms in the body of the implication is computed with a join operation: e.g., in the second rule above, this is the second column of \texttt{path} joined with the first of \texttt{edge}, or $\rho_{0 / 1}(\texttt{path}) \bowtie_1 \texttt{edge}$. These steps are followed by projection to only the columns needed in the head of the rule and any necessary column reordering. Finally, the resulting relation is unioned with the existing relation in the head of the implication to produce $F$'s output, an updated database (e.g., with an updated \texttt{path} relation in the examples above).
+
+Once a set of functions $F_0 \ldots F_m$, one for each rule, are constructed, Datalog evaluation operates by iterating the IDB to a mutual fixed point for $F_0 \ldots F_m$.
+
 
