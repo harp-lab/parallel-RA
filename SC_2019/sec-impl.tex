@@ -3,5 +3,19 @@
 \section{Implementation}
 \label{sec:impl}
 %
-Lorem ipsum dolar sit amat
+This section discusses implementing relational algebra efficiently and in parallel. We take a hybrid approach of nesting key-value stores within a hash-table that can be partitioned across multiple cores or nodes. 
 
+
+\subsection{Representations}
+
+First, we review the two main approaches to encoding relations in a way that is amenable to fast RA algorithms. Unsurprisingly, algorithms for computing join, union, selection, etc, depend greatly on the representation used for relations themselves.
+
+\paragraph{Decision diagrams} Decision diagrams 
+
+
+\paragraph{Key-value stores} Another approach to encoding relations is to use a hash table, B-tree, prefix tree (trie), or other key-value store.
+
+
+\subsection{Hybrid hash-tree join}
+
+Our approach is to 
