@@ -389,15 +389,26 @@ int main(int argc, char **argv)
     u64 total_sum = 0;
     MPI_Allreduce(&jcount, &total_sum, 1, MPI_UNSIGNED_LONG_LONG, MPI_SUM, comm);
 
+    double elapsed_time = join_end - G_ior_start;
+    double max_time = 0;
 
-    if (rank == 0)
+    MPI_Allreduce(&elapsed_time, &max_time, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
+
+    if (elapsed_time == max_time)
     {
         std::cout << "n: "
                   << nprocs
-                  << " G: "
+                  << " rank: "
+                  << rank
+                  << " G local: "
                   << G_hash_entry_count
-                  << " T: "
+                  << " T local: "
                   << T_hash_entry_count
+                  << std::endl
+                  << "G global: "
+                  << G_global_row_count
+                  << " T global: "
+                  << T_global_row_count
                   << " Join count: " << total_sum
                   << std::endl
                   << "G Read time: " << (G_ior_end - G_ior_start)
