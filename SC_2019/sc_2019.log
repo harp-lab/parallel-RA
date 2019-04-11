@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.14159265-2.6-1.40.18 (TeX Live 2017/Debian) (preloaded format=pdflatex 2019.1.31)  11 APR 2019 01:08
+This is pdfTeX, Version 3.14159265-2.6-1.40.18 (TeX Live 2017/Debian) (preloaded format=pdflatex 2019.1.31)  11 APR 2019 01:25
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -1525,6 +1525,10 @@ LaTeX Warning: `h' float specifier changed to `ht'.
 
 ) (./sec-eval.tex
 
+Package natbib Warning: Citation `Davis:2011:UFS:2049662.2049663' on page 5 und
+efined on input line 23.
+
+
 Package caption Warning: \label without proper reference on input line 44.
 See the caption package documentation for explanation.
 
@@ -1679,7 +1683,7 @@ Package pdftex.def Info: results/join.pdf  used on input line 170.
 Class acmart Warning: A possible image without description on input line 173.
 
 
-LaTeX Warning: Reference `' on page 8 undefined on input line 193.
+LaTeX Warning: Reference `' on page 8 undefined on input line 189.
 
 [8.8 <./results/hash_tree_union.pdf> <./results/join.pdf
 
@@ -1688,54 +1692,110 @@ s with page group included in a single page
 >]
 
 Class acmart Warning: \vspace should only be used to provide space above/below 
-surrounding objects on input line 212.
+surrounding objects on input line 214.
 
 
 Class acmart Warning: \vspace should only be used to provide space above/below 
-surrounding objects on input line 212.
+surrounding objects on input line 214.
 
 
 
 pdfTeX warning: pdflatex (file ./results/TC_1_6_Billion_final.pdf): PDF inclusi
 on: found PDF version <1.7>, but at most version <1.5> allowed
-<results/TC_1_6_Billion_final.pdf, id=277, 794.97pt x 614.295pt>
+<results/TC_1_6_Billion_final.pdf, id=278, 794.97pt x 614.295pt>
 File: results/TC_1_6_Billion_final.pdf Graphic file (type pdf)
 <use results/TC_1_6_Billion_final.pdf>
 Package pdftex.def Info: results/TC_1_6_Billion_final.pdf  used on input line 2
-14.
+16.
 (pdftex.def)             Requested size: 253.14749pt x 195.61295pt.
 
 
 pdfTeX warning: pdflatex (file ./results/TC_260Billion_Final.pdf): PDF inclusio
 n: found PDF version <1.7>, but at most version <1.5> allowed
-<results/TC_260Billion_Final.pdf, id=278, 794.97pt x 614.295pt>
+<results/TC_260Billion_Final.pdf, id=279, 794.97pt x 614.295pt>
 File: results/TC_260Billion_Final.pdf Graphic file (type pdf)
 <use results/TC_260Billion_Final.pdf>
 Package pdftex.def Info: results/TC_260Billion_Final.pdf  used on input line 21
-6.
+8.
 (pdftex.def)             Requested size: 253.14749pt x 195.61295pt.
 
-Class acmart Warning: A possible image without description on input line 220.
+Class acmart Warning: A possible image without description on input line 222.
 
-) (./sec-related.tex) Excluding 'acks' comment.
+) (./sec-related.tex
+
+Package natbib Warning: Citation `Valduriez:1988:PET:54616.54618' on page 9 und
+efined on input line 8.
+
+
+Package natbib Warning: Citation `Cheiney:1990:PST:94362.94445' on page 9 undef
+ined on input line 9.
+
+
+Package natbib Warning: Citation `Cacace:1991:OPS:111828.111831' on page 9 unde
+fined on input line 9.
+
+
+Package natbib Warning: Citation `Barthels:2017:DJA:3055540.3055545' on page 9 
+undefined on input line 14.
+
+
+Package natbib Warning: Citation `Wu:2014:RFE:2581122.2544166' on page 9 undefi
+ned on input line 22.
+
+
+Package natbib Warning: Citation `Martinez-Angeles:2016:RLG:2932241.2932244' on
+ page 9 undefined on input line 22.
+
+
+Package natbib Warning: Citation `Zinn:2016:GJA:2884045.2884054' on page 9 unde
+fined on input line 22.
+
+
+Package natbib Warning: Citation `cpmd-web' on page 9 undefined on input line 2
+6.
+
+
+Package natbib Warning: Citation `1592872' on page 9 undefined on input line 26
+.
+
+
+Package natbib Warning: Citation `4536141' on page 9 undefined on input line 27
+.
+
+
+Package natbib Warning: Citation `642949' on page 9 undefined on input line 27.
+
+
+
+Package natbib Warning: Citation `Thakur:2005:OCC:2747766.2747771' on page 9 un
+defined on input line 27.
+
+
+Underfull \vbox (badness 3049) has occurred while \output is active []
+
+)
 No file sc_2019.bbl.
+
+Package natbib Warning: There were undefined citations.
+
 
 Class acmart Warning: Some images may lack descriptions.
 
 
-Overfull \vbox (1.999pt too high) has occurred while \output is active []
+Package balance Warning: You have called \balance in second column
+(balance)                Columns might not be balanced.
 
- [9.9]
-[10.10 <./results/TC_1_6_Billion_final.pdf> <./results/TC_260Billion_Final.pdf
+[9.9] [10.10 <./results/TC_1_6_Billion_final.pdf> <./results/TC_260Billion_Fina
+l.pdf
 
 pdfTeX warning: pdflatex (file ./results/TC_260Billion_Final.pdf): PDF inclusio
 n: multiple pdfs with page group included in a single page
 >]
-Package atveryend Info: Empty hook `BeforeClearDocument' on input line 173.
-Package atveryend Info: Empty hook `AfterLastShipout' on input line 173.
+Package atveryend Info: Empty hook `BeforeClearDocument' on input line 175.
+Package atveryend Info: Empty hook `AfterLastShipout' on input line 175.
  (./sc_2019.aux)
-Package atveryend Info: Executing hook `AtVeryEndDocument' on input line 173.
-Package atveryend Info: Executing hook `AtEndAfterFileList' on input line 173.
+Package atveryend Info: Executing hook `AtVeryEndDocument' on input line 175.
+Package atveryend Info: Executing hook `AtEndAfterFileList' on input line 175.
 Package rerunfilecheck Info: File `sc_2019.out' has not changed.
 (rerunfilecheck)             Checksum: 34BDB1CA841083CE228DA1CAF7A1B17B;3242.
 
@@ -1747,11 +1807,11 @@ LaTeX Warning: There were multiply-defined labels.
 
  ) 
 Here is how much of TeX's memory you used:
- 27880 strings out of 492982
- 486701 string characters out of 6134896
+ 27910 strings out of 492982
+ 487476 string characters out of 6134896
  584374 words of memory out of 5000000
- 30317 multiletter control sequences out of 15000+600000
- 200504 words of font info for 376 fonts, out of 8000000 for 9000
+ 30329 multiletter control sequences out of 15000+600000
+ 202142 words of font info for 388 fonts, out of 8000000 for 9000
  1302 hyphenation exceptions out of 8191
  60i,16n,94p,1585b,782s stack positions out of 5000i,500n,10000p,200000b,80000s
 {/usr/share/texlive/texmf-dist/fonts/enc/dvips/libertine/lbtn_kijugd.enc}{/us
@@ -1781,10 +1841,10 @@ xsya.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/txfonts/txsyb.pfb></
 usr/share/texlive/texmf-dist/fonts/type1/public/newtx/txsys.pfb></usr/share/tex
 live/texmf-dist/fonts/type1/public/newtx/zxlr.pfb></usr/share/texlive/texmf-dis
 t/fonts/type1/public/newtx/zxlri.pfb>
-Output written on sc_2019.pdf (10 pages, 1462136 bytes).
+Output written on sc_2019.pdf (10 pages, 1463396 bytes).
 PDF statistics:
- 425 PDF objects out of 1000 (max. 8388607)
- 330 compressed objects within 4 object streams
+ 426 PDF objects out of 1000 (max. 8388607)
+ 331 compressed objects within 4 object streams
  52 named destinations out of 1000 (max. 500000)
  56552 words of extra memory for PDF output out of 61914 (max. 10000000)
 
