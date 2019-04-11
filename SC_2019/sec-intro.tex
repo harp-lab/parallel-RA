@@ -3,24 +3,22 @@
 \section{Introduction}
 \label{sec:intro}
 %
+Implementing application-specific code on supercomputers requires addressing the fundamental underlying primitives of an algorithm in a way that is flexible and scalable. Significant progress has been made on a wide variety of important problems due to a rigorous exploration of common high-performance primitives such as stencil computations, floating-point arithmetic, numerical integration, and sparse linear algebra. 
+
+Relational algebra is crucial primitive for a wide range of analytic problems in graphs, machine learning, logic programming, program analysis, deductive databases, and formal verification, that has been the subject of great interest in the literature, but has had limited exploration on supercomputers, and at scale. Two central problems to scaling operations on relations, such as union, selection, projection, and join, have been (a) how to represent distributed relations in a way that is amenable to efficient parallel operations, and (b) how to handle communication to coordinate distinct portions of the distributed workload.
+
+While some recent progress has been made in addressing these issues, (a) in particular, no approach has yet provided a general framework that makes applications using a pipeline of \emph{repeated} operations on relations---for fixed-point interation, supporting applications such as Datalog and program analysis---possible at scale. For such applications to be implemented on distributed, many-core systems, existing algorithms that distribute relations among available cores, perform a single operation, and return in map-reduce fashion are not suitable as repeated operations require efficient granular communication at each step. 
+
+In this paper, we present a hybrid approach to representing relations on networked machines and performing efficient distributed operations on them, building on the current state of the art for single-node parallelism. Interestingly, in addressing the communication issue, we find that MPI's all-to-all communication paradigm suits relational algebra best. Today's supercomputers have very high speed interconnects---data can be transmitted between processes with very low latency. When used under the right configuration, all-to-all communication which is known to be the most intensive mode of communication can scale well.
 
 
--- What is RA \\
--- Why RA at scale ? \\
--- What are the challenges to do RA at scale ? \\
--- How is our approach solving these problems ?
-
-Today's supercomputers have very high speed interconnects, data can be transmitted between processes with very low latency. 
-When used under the right configuration, all to all communication which is known to be the most intensive mode of communication can scale well.
-
-
-In particular, following are our key contributions:
+\paragraph{Contributions} In particular, we make the following specific contributions to the literature:
 \begin{tightenumerate}
-	\item We present a novel hybrid hash-tree based algorithm for distributed unions and joins.
-	\item We present scalable impelemtation of fixed point algorithm transitive closure.
-	\item We demonstrate scalability of transitive closure till 65536 processes, producing a graph with upwards of 260 billion edges. 
+	\item We present novel hybrid hash-tree based algorithms for distributed relational algebra.
+	\item We present a scalable implemetation and experiments for a fixed-point algorithm employing distributed relational algebra: computing the transitive closure of a graph.
+	\item We demonstrate scalability of transitive closure up to $65,\!536$ processes, producing a graph with more than 260 billion edges. To the best of our knowledge, this is the largest transitive closure discussed in the literature. 
 \end{tightenumerate}
 
-As per our knowledge this is the first fully scalable implementation of Relational algebra.
+We understand our implementation to be the first truly scalable distributed relational algebra that addresses inter-process communication, permitting fixed-point interation, and laying the foundation for solving massive logical inference problems, graph problems, and more on supercomputers.
 
 
