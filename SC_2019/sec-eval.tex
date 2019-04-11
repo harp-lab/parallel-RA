@@ -20,7 +20,7 @@ Finally we benchmark the efficacy of distributed hash-tree union, parallel join 
 
 \subsection{Dataset and HPC platforms}
 \label{sec:datasets}
-We have performed our experiments using SuiteSparse Matrix Collection available at ~\cite{}.
+We have performed our experiments using SuiteSparse Matrix Collection available at ~\cite{Davis:2011:UFS:2049662.2049663}.
 SuiteSparse Matrix Collection (formerly known as the University of Florida Sparse Matrix Collection), is a large and actively growing set of sparse matrices that arise in real applications. The Collection is widely used by the numerical linear algebra community for the development and performance evaluation of sparse matrix algorithms. 
 For our experiments, we chose seven graphs (listed in Table~\ref{table:graph}) representing a wide range in terms of the number of edges.
 Transitive closure of a graph with $n$ edges can generate upto $n^2$ edges (a fully connected graph). The number of edges in the transitive closure of a graph depends on how connected the input graph is. For example, the transitive closure of our third graph with $2,100,225$ edges generated a graph with $276,491,930,625$ edges, amounting to $4.4$ terabytes of data.

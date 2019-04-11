@@ -2,7 +2,29 @@
 \section{Related Work}
 \label{sec:related}
 %
-Lorem ipsum dolar sit amat 
+
+Hash join is the most popularly used method to parallelize inner join
+operation. This algorithm involve partitioning the input data so that they can be efficiently distributed
+to the participating processes. This approach was first introduced in ~\cite{Valduriez:1988:PET:54616.54618} in 1988.
+A lot of work such ~\cite{Cheiney:1990:PST:94362.94445} and ~\cite{Cacace:1991:OPS:111828.111831} since then has built on top of this approach. 
+Our approach differs from this method as we implement an hybrid approach 
+where we add an extra layer of fast access and lookup data structure at every process. 
+Moreover, ours is the first real demonstration of relational algebra at HPC scale.
+
+More recently ~\cite{Barthels:2017:DJA:3055540.3055545}, there has been a concerted effort to implement JOIN operations on
+clusters using an MPI backend. The commonly used radix-hash join and merge-sort join have been re-designed
+for this purpose. Both these algorithms involve a hash-based partitioning of data so that they are be efficiently
+distributed to the participating processes and are designed such that inter-process communication is minimized.
+In both of these implementations one-sided communication is used for transferring data between process. This implementation
+only involved 
+
+There has been some work in the past to scale RA operations on GPUs. For example,
+Redfox is a single-node GPU ~\cite{Wu:2014:RFE:2581122.2544166} implementation of RA primitives. Other work such as ~\cite{Martinez-Angeles:2016:RLG:2932241.2932244} and ~\cite{Zinn:2016:GJA:2884045.2884054} have also explored the usage of GPUs to scale dedicated RA task like the triangle listing problem.
+
+Our implementation heavily relies on all to all data communication. We use MPI\_alltoallv function to transmit data from all processes to every other process.
+MPI\_Alltoallv is one of the most communication intense collective operation used across parallel applications such as 
+CPMD ~\cite{cpmd-web}, NAMD ~\cite{1592872}, LU factorization, Fast Fourier Transform and matrix transpose.
+A lot of research ~\cite{4536141}, ~\cite{642949}, ~\cite{Thakur:2005:OCC:2747766.2747771} has gone into developing scalable implementations of collective operations; most of the existing HPC platforms therefore have scalable implementation of all to all operations. 
 
 
 
