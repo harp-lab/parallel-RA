@@ -3,19 +3,17 @@
 \section{Relational Algebra}
 \label{sec:ra}
 %
-Relational algebra (RA) provides a basis of operations on relations (i.e., predicates, or sets of tuples) sufficient to implement a broad range of algorithms for databases and queries, data analysis, machine learning, graph problems, and constraint logic problems \cite{}. Scaling these underlying primitives, and finding an effective strategy for parallel communication to distribute them across multiple nodes, is thus a avenue for scaling and distributing algorithms for high-performance program analyses, deductive databases, among other applications. This section reviews the standard relational operations union, product, intersection, natural join, selection, renaming, and projection, along with their use in implementing two closely related example applications: graph problems and bottom-up datalog solvers.
+Relational algebra (RA) provides a basis of operations on relations (i.e., predicates, or sets of tuples) sufficient to implement a broad range of algorithms for databases and queries, data analysis, machine learning, graph problems, and constraint logic problems. Scaling these underlying primitives, and finding an effective strategy for parallel communication to distribute them across multiple nodes, is thus a avenue for scaling and distributing algorithms for high-performance program analyses and deductive databases, among other applications. This section reviews the standard relational operations union, product, intersection, natural join, selection, renaming, and projection, along with their use in implementing two closely related example applications: graph problems and bottom-up datalog solvers.
 
 The Cartesian product of two finite enumerations $D_0$ and $D_1$ is defined $D_0 \times D_1 = \{ (d_0, d_1) \ |\ \forall d_0 \in D_0, d_1 \in D_1 \}$. A \textit{relation} $R \subseteq D_0 \times D_1$ is some subset of this product that defines a set of associated pairs of elements drawn from the two domains. For example, if R were the relation $(\geq)$ over natural numbers, both domains $D_0$ and $D_1$ would be $\mathbb{N}$ and the relation could be defined $(\geq) = \{ (n_0, n_1) \ |\ n_0, n_1 \in \mathbb{N} \wedge n_0 \geq n_1 \}$. Any relation $R$ can also be viewed as a predicate $P_R$ where $P_R(d_0, \ldots, d_k) \iff (d_0, \ldots, d_k) \in R$, or as a set of tuples, or as a database table.
 
 We make some standard assumptions about relational algebra that differ from those of traditional set operations. Specifically, we assume that all our relations are sets of flat (first-order) tuples of natural numbers with a fixed, homogeneous arity. This means that the relation $(\mathbb{N} \times \mathbb{N}) \times \mathbb{N}$ contains the tuple $(1,2,3)$, and not $((1,2),3)$. It also means that although our approach extends naturally to relations over arbitrary enumerable domains (such as integers, booleans, symbols/strings, lists of integers, etc)---we make the assumption that natural numbers may be used in the place of other enumerable domains when they are needed. Finally, this means that for operations like union or intersection, both relations must by union-compatable by having the same arity and column names.    
 
-... talk about names as indices?
-
 
 \subsection{Standard RA operations}
 \label{sec:ra:tc}
 %
-...
+While many operations on relations exist, several are especially standard and form a useful basis for more complex compound operations:
 
 \paragraph{Cartesian product} The product of two relations $R$ and $S$ is defined: $R \times S = \{ (r_0, \ldots, r_k, s_0, \ldots, s_j) \ |\ (r_0, \ldots, r_k) \in R \wedge (s_0, \ldots, s_j) \in S \}$.
 
