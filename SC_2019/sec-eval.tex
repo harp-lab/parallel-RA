@@ -32,7 +32,7 @@ Finally, we benchmark the scaling properties of our distributed parallel union, 
 \label{sec:datasets}
 We performed our experiments using the SuiteSparse Matrix Collection available at ~\cite{Davis:2011:UFS:2049662.2049663}.
 The SuiteSparse Matrix Collection (formerly known as the University of Florida Sparse Matrix Collection), is a large and actively maintained set of sparse matrices that arise in real applications. The Collection is widely used by the numerical linear algebra community for the development and performance evaluation of sparse matrix algorithms. 
-For our experiments, we chose seven graphs (listed in Table~\ref{table:graph}) representing a wide range in terms of the number of edges.
+For our experiments, we chose seven graphs (listed in Table 1) representing a wide range in terms of the number of edges.
 The transitive closure of a graph with $n$ edges can contain up to $n^2$ edges (a fully connected graph). The number of edges in the transitive closure of a graph depends on the connectedness and topology of the input graph. For example, the transitive closure of our third graph with $2,\!100,\!225$ edges contains $276,\!491,\!930,\!625$ edges, amounting to $4.4$ terabytes of data.
 
 %We found our third graph with $2,100,225$ edges to be the most connected; the transitive closure of the graph generated 260 billion edges, which is 3 terabytes in size.
@@ -43,17 +43,19 @@ The transitive closure of a graph with $n$ edges can contain up to $n^2$ edges (
 	\begin{tabular}{lllll}
 		\begin{tabular}[c]{@{}l@{}}Input graph \\ edge count\end{tabular} & Union & Join & \begin{tabular}[c]{@{}l@{}}Transitive \\ Closure\end{tabular} & Graph name \\
 		\hline
-		412148                                                            & \checkmark      &      &                                                               &            \\
-		2100225                                                           & \checkmark       &      &                                                               &            \\
-		6291408                                                           & \checkmark       &      &                                                               &            \\
-		59062957                                                          & \checkmark       &      &                                                               &            \\
-		136024430                                                         & \checkmark       & \checkmark     &                                                               &            \\
-		180292586                                                         & \checkmark       & \checkmark      &                                                               &            \\
-		240023949                                                         & \checkmark       &      &                                                               &           
+		412148     & \checkmark       &      &  1676697757    &            \\
+		2100225    & \checkmark       &      &  276491930625  &            \\
+		6291408    & \checkmark       &      &  308759592     &            \\
+		40451631   & \checkmark       &      &  --   			  &            \\
+		59062957   & \checkmark       &      &  11687744437                                                             &            \\
+		136024430  & \checkmark       & \checkmark     & 178113958                                                              &            \\
+		180292586  & \checkmark       & \checkmark      &136525288391                                                             &            \\
+		240023949  & 			      &      &  --                                                             &           
 	\end{tabular}
-	\label{table:graph}
+	\label{table:graph1}
 	\caption{List of seven graphs used in our evaluation.}
 \end{table}
+
 
 
 %a Cray machine with Intel Xeon Phi processors with Dragonfly topology network and Lustre file system [31].
@@ -71,7 +73,7 @@ The supercomputer has Dragonfly network topology and a Lustre filesystem.
 \subsection{Relation container}
 \label{sec:relation}
 
-In this section we evaluate the efficacy and scaling of our per-bucket relation container. We measure performance for two cases: insertions of unique tuples and insertions of tuples with duplicates. In the later set of experiments, each tuple had four duplicates. For both sets of experiments, we compare two implementations of the relation class, one with our B-tree back-end and the other with a hash table back-end. For the hash table experiments, we used \texttt{unordered\_map} from C++'s standard template library. The results can be seen in Figure~\ref{fig:tuple_inserts}. The x-axis corresponds to the total number of tuples being inserted and the y-axis is the time taken for this task to finish. We observe that our B-tree-based relation container outperforms the hash-table-based implementation for insertion of all tuple counts. Furthermore, the hash-table-based relation container fails to scale with the insertion of a very large number of tuples. For example, the hash-based relation takes X seconds to insert Y tuples as opposed to only Z seconds taken by the B-tree-based relation. Similar results can be observed for insertion of tuples with duplicates. The B-tree-based relation container successfully deduplicates tuples while maintaining high performance.
+In this section we evaluate the efficacy and scaling of our per-bucket relation container. We measure performance for two cases: insertions of unique tuples and insertions of tuples with duplicates. In the later set of experiments, each tuple had four duplicates. For both sets of experiments, we compare two implementations of the relation class, one with our B-tree back-end and the other with a hash table back-end. For the hash table experiments, we used \texttt{unordered\_map} from C++'s standard template library. The results can be seen in Figure~\ref{fig:tuple_inserts}. The x-axis corresponds to the total number of tuples being inserted (successfully) and the y-axis is the time taken for this task to finish. We observe that our B-tree-based relation container outperforms the hash-table-based implementation for insertion of all tuple counts. Furthermore, the hash-table-based relation container fails to scale with the insertion of a very large number of tuples. For example, the hash-based relation takes $59.45$ seconds to insert $3000000$ tuples as opposed to only $6.58$ seconds taken by the B-tree-based relation. Similar results can be observed for insertion of tuples with duplicates. The B-tree-based relation container successfully deduplicates tuples while maintaining high performance.
 %To facilitate fast inserts and lookups of tuples, we implemented a relation container.
 %We made two implementations of the container one using btrees and other using unordered\_map from the standard template library.
 %The relation container is a recursive, nested data-structure. \textbf{More stuff.}
@@ -135,7 +137,7 @@ In the context of communication requirements for distributed RA operations, we f
 %	\label{fig:dist_union}
 %\end{figure*}
 
-We examine strong scaling to benchmark the performance of our distributed hash-tree union. We measure the time to union all $7$ graphs listed in table~\ref{table:graphs}. The number of processes are varied from $64$ to $4,\!096$. The total number of edges across all $7$ graphs is $664,\!659,\!334$ ($9.9$ gigabytes of data). The union of all $7$ graphs has $424,\!592,\!810$ edges, indicating significant overlap among the graphs.
+We examine strong scaling to benchmark the performance of our distributed hash-tree union. We measure the time to union $7$ graphs listed in table 1. The number of processes are varied from $64$ to $4,\!096$. The total number of edges across all $7$ graphs is $664,\!659,\!334$ ($9.9$ gigabytes of data). The union of all $7$ graphs has $424,\!592,\!810$ edges, indicating significant overlap among the graphs.
 
 \begin{figure}[h]
 	\includegraphics[width=\columnwidth]{results/hash_tree_union.pdf}
@@ -145,7 +147,7 @@ We examine strong scaling to benchmark the performance of our distributed hash-t
 
 We benchmark the performance of both buffered hash-tree join and na\"ive hash-tree join. 
 Performance of both techniques can be seen in Figure~\ref{fig:dist_union}. We observe two trends: at all process counts, buffered hash-tree union outperforms na\"ive hash-tree union. This trend can be attributed to an optimized data communication phase associated with buffered unions. Na\"ive one-by-one union leads to communication involving a small number of large-sized data packets as opposed to the buffered union that involves communication with a large number of small-sized data packets. 
-The other crucial trend is that the union phase only scales to $1024$ cores, this can be attributed to an increase in communication time at higher core counts associated with movement of many small-sized data packets. This result corroborates the trend seen in Section~\ref{}. At $2,\!048$ and $4,\!096$ processes, even though the insertion time is reduced, the per-process workload becomes small, impeding scalability of the communication phase. 
+The other crucial trend is that the union phase only scales to $1024$ cores, this can be attributed to an increase in communication time at higher core counts associated with movement of many small-sized data packets. This result corroborates the trend seen in Section~\ref{sec:all_to_all}. At $2,\!048$ and $4,\!096$ processes, even though the insertion time is reduced, the per-process workload becomes small, impeding scalability of the communication phase. 
 
 It can be concluded that for this particular union task ($7$ graphs) $1024$ is the ideal degree of parallelism, as that balances the communication and computation tasks best.
 
@@ -169,12 +171,14 @@ It can be concluded that for this particular union task ($7$ graphs) $1024$ is t
 \end{figure}
 
 As with distributed union, we examine strong scaling to benchmark the performance of our distributed join.
-We perform hash-tree join between two graphs with edge counts $136,\!024,\!430$ and $180,\!292,\!586$. The join operation yields a graph with X number of edges.
+We perform hash-tree join between two graphs with edge counts $136,\!024,\!430$ and $180,\!292,\!586$. The join operation yields a graph with $126,\!290,\!622$ number of edges.
 The number of processes are varied from $64$ to $4,096$. 
 %Unlike union, where we maintained only one relation container for all input graphs, here we have separate relation containers for the two input graphs. 
 Once both relations are initialized across all processes (after parallel I/O, hashing, communication and insertions), we initiate the join operation. 
-We plot the scaling results for join in Figure~\ref{fig:dist_join}. We observe trends similar to distributed union.
-Join only scales up to X cores, after which communication cost starts to dominate and we observe overall decline in performance. %% Do we really see any decline? Up to 4k it still looks great!
+We plot the scaling results for join in Figure~\ref{fig:dist_join}.
+%We observe trends similar to distributed union.
+Unlike unions, distributed joins demonstrates perfect scaling all the way to $4096$ processes. At $4096$ processes join between the two graphs takes $0.575$ seconds. The trend can be attributed to the fact that overall performance is dominated by computation and not by communication.
+%Join only scales up to X cores, after which communication cost starts to dominate and we observe overall decline in performance. %% Do we really see any decline? Up to 4k it still looks great!
 
 
 \subsection{Transitive closure}
@@ -190,7 +194,7 @@ We performed detailed strong scaling analysis for two graphs, with edge count $4
 For $G1$ we varied the number of processes from $64$ to $8,\!192$, while for $G2$ we varied the number of processes from $4,096$ to $65,\!536$. 
 $G1$ attained its fixed point after $2,\!933$ iterations, generating a total of $1,\!676,\!697,\!415$ edges ($25$ gigabytes).
 $G2$ attained its fixed point after $2,\!956$ iterations, generating a total of $276,\!491,\!930,\!625$ edges $(4 terabytes)$.
-The results are plotted in Figure~\ref{fig:tc_small}. As can be seen in the figure, our approach takes $1000$ seconds at $65,\!536$ cores to compute the transitive closure of graph $G2$. To the best of our knowledge, this is the first implementation that has successfully computed the transitive closure of such a large graph.
+The results for graph $G1$ and $G2$ are respectively plotted in Figure~\ref{fig:tc_small} and Figure~\ref{fig:tc_big}. As can be seen in the Figure~\ref{fig:tc_big}, our approach takes $922$ seconds at $65,\!536$ cores to compute the transitive closure of graph $G2$. To the best of our knowledge, this is the first implementation that has successfully computed the transitive closure of such a large graph.
 
 Further, looking at the graph we obtain for $G1$ we observe considerable scaling up to $1,024$ processes; for $2,048$ and $4,096$ processes, the runs are completely dominated by communication time. This observation again corroborates our strong scaling benchmarking results, where all-to-all communication stops scaling in the presence of many small-sized data packets. For $G1$ we can conclude that $1024$ is the ideal scale for computing transitive closure.
 We observe similar trend with graph $G2$: communication time begins to dominate performance at high core counts of $32,\!768$ and $65,\!536$. %%~\textbf{more stuff, conclude}
@@ -210,7 +214,7 @@ We observe similar trend with graph $G2$: communication time begins to dominate 
 	{\includegraphics[width=.50\textwidth,  trim={0cm 0cm 0cm 0cm,
 			clip}]{results/TC_1_break_down_final.pdf}}\hfill%
 	\centering
-	\caption{Transitive closure of a graph with X edges.}
+	\caption{(Left) Strong scaling result for computing transitive closure of graph $G1$. (Right) Percentage breakdown of the four phases; communication starts to dominate after $1024$ processes. }
 	\label{fig:tc_small}
 \end{figure*}
 
@@ -220,7 +224,7 @@ We observe similar trend with graph $G2$: communication time begins to dominate 
 	{\includegraphics[width=.50\textwidth,  trim={0cm 0cm 0cm 0cm,
 			clip}]{results/TC_2_break_down_final.pdf}}\hfill%
 	\centering
-	\caption{Transitive closure of a graph with X edges.}
+	\caption{(Left) Strong scaling result for computing transitive closure of graph $G2$. (Right) Percentage breakdown of the four phases; communication starts to dominate after $16,384$ processes.}
 	\label{fig:tc_big}
 \end{figure*}
 
