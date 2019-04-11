@@ -30,8 +30,8 @@
 
 
 
-The hash join and double-hashing approach is the most commonly used method to parallelize join
-operations. This algorithm involve partitioning the input data so that they can be efficiently distributed
+The hash join, and double-hashing, approach is the most commonly used method to parallelize join
+operations. This algorithm involves partitioning the input data so that they can be efficiently distributed
 to the participating processes. This early approach was first introduced in~\cite{Valduriez:1988:PET:54616.54618}. Much work such as ~\cite{Cheiney:1990:PST:94362.94445} and ~\cite{Cacace:1991:OPS:111828.111831} since then has built on top of this approach. Our approach differs from this method in several respects. We take lessons from state-of-the-art approaches to parallelism on single-node machines and use a nested tree-based structure to encode relations \cite{btree-ppopp,brie-pmam}. In addition, we are the first to address efficient communication and using MPI's all-to-all communication paradigm to permit fixed-point iterations. Finally, ours is the first demonstration of a complete relational algebra application at HPC scale.   
 
 More recently with ~\cite{Barthels:2017:DJA:3055540.3055545}, there has been a concerted effort to implement join operations on clusters using MPI. The commonly used radix-hash join and merge-sort join have been re-designed for this purpose. Both these algorithms involve a hash-based partitioning of data so that they are be efficiently distributed to the participating processes and are designed such that inter-process communication is minimized. In both of these implementations one-sided communication is used for transferring data between process. This implementation only involved scaling to $4,\!096$ nodes and did not address the communication challenges required to implement fixed-point algorithms over RA.

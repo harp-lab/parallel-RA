@@ -4,6 +4,11 @@
 {CPMD} home page.
 \newblock http://www.cpmd.org/.
 
+\bibitem{abiteboul1995foundations}
+S.~Abiteboul, R.~Hull, and V.~Vianu.
+\newblock {\em Foundations of databases: the logical level}.
+\newblock Addison-Wesley Longman Publishing Co., Inc., 1995.
+
 \bibitem{Barthels:2017:DJA:3055540.3055545}
 C.~Barthels, I.~M\"{u}ller, T.~Schneider, G.~Alonso, and T.~Hoefler.
 \newblock Distributed join algorithms on thousands of cores.
@@ -36,6 +41,12 @@ J.-P. Cheiney and C.~de~Maindreville.
 T.~A. Davis and Y.~Hu.
 \newblock The university of florida sparse matrix collection.
 \newblock {\em ACM Trans. Math. Softw.}, 38(1):1:1--1:25, Dec. 2011.
+
+\bibitem{1586251}
+S.~J. {Friedman} and K.~J. {Supowit}.
+\newblock Finding the optimal variable ordering for binary decision diagrams.
+\newblock In {\em 24th ACM/IEEE Design Automation Conference}, pages 348--356,
+  June 1987.
 
 \bibitem{10.1007/978-3-319-41540-6_23}
 H.~Jordan, B.~Scholz, and P.~Suboti{\'{c}}.
@@ -74,6 +85,12 @@ J.~C. {Phillips}, , S.~{Kumar}, and L.~V. {Kale}.
 \newblock Namd: Biomolecular simulation on thousands of processors.
 \newblock In {\em SC '02: Proceedings of the 2002 ACM/IEEE Conference on
   Supercomputing}, pages 36--36, Nov 2002.
+
+\bibitem{580029}
+R.~{Rudell}.
+\newblock Dynamic variable ordering for ordered binary decision diagrams.
+\newblock In {\em Proceedings of 1993 International Conference on Computer
+  Aided Design (ICCAD)}, pages 42--47, Nov 1993.
 
 \bibitem{Scholz:2016:FLP:2892208.2892226}
 B.~Scholz, H.~Jordan, P.~Suboti\'{c}, and T.~Westmann.
