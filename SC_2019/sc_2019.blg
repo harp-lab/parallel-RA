@@ -1,0 +1,53 @@
+This is BibTeX, Version 0.99d (TeX Live 2017/Debian)
+Capacity: max_strings=100000, hash_size=100000, hash_prime=85009
+The top-level auxiliary file: sc_2019.aux
+The style file: abbrv.bst
+Database file #1: sample-base.bib
+Repeated entry---line 6 of file sample-base.bib
+ : @misc{cpmd-web
+ :               ,
+I'm skipping whatever remains of this entry
+Warning--I didn't find a database entry for ""
+Warning--to sort, need author or key in cpmd-web
+You've used 21 entries,
+            2118 wiz_defined-function locations,
+            658 strings with 8799 characters,
+and the built_in function-call counts, 9244 in all, are:
+= -- 948
+> -- 444
+< -- 11
++ -- 177
+- -- 152
+* -- 697
+:= -- 1440
+add.period$ -- 71
+call.type$ -- 21
+change.case$ -- 138
+chr.to.int$ -- 0
+cite$ -- 22
+duplicate$ -- 351
+empty$ -- 688
+format.name$ -- 152
+if$ -- 2001
+int.to.chr$ -- 0
+int.to.str$ -- 21
+missing$ -- 20
+newline$ -- 107
+num.names$ -- 42
+pop$ -- 137
+preamble$ -- 1
+purify$ -- 117
+quote$ -- 0
+skip$ -- 272
+stack$ -- 0
+substring$ -- 639
+swap$ -- 114
+text.length$ -- 11
+text.prefix$ -- 0
+top$ -- 0
+type$ -- 84
+warning$ -- 1
+while$ -- 89
+width$ -- 23
+write$ -- 253
+(There was 1 error message)
