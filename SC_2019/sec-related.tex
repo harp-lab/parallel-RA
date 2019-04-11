@@ -1,7 +1,34 @@
 
 \section{Related Work}
 \label{sec:related}
-%
+
+B-trees and data structures
+B-tree for datalog ~\cite{btree-ppopp}\\
+Trie for datalog ~\cite{brie-pmam}
+\\
+
+Relational Algebra at scale\\
+Parallel join ~\cite{Barthels:2017:DJA:3055540.3055545} \\
+TC with double hashing ~\cite{Cheiney:1990:PST:94362.94445} \\
+Parallel evaluation of the transitive closure of a database relation (can’t find PDF)\\
+parallel TC ~\cite{Cacace:1991:OPS:111828.111831}\\
+
+
+Datalog\\
+automatic generation of indices ~\cite{Subotic:2018:AIS:3282495.3302538}\\
+souffle ~\cite{10.1007/978-3-319-41540-6_23}
+souffle ~\cite{Scholz:2016:FLP:2892208.2892226}
+Doop, program analysis ~\cite{Smaragdakis:2010:UDF:2185923.2185939}
+
+
+BDDs
+http://www.cs.cmu.edu/afs/cs/academic/class/15745-s05/www/papers/p131-whaley.pdf ~\cite{Whaley:2004:CCP:996893.996859}
+CUDD: CU decision diagram package (tech report?)
+var ordering ~\cite{580029}
+(var ordering) ~\cite{1586251}
+
+
+
 
 Hash join is the most popularly used method to parallelize inner join
 operation. This algorithm involve partitioning the input data so that they can be efficiently distributed
@@ -11,7 +38,7 @@ Our approach differs from this method as we implement an hybrid approach
 where we add an extra layer of fast access and lookup data structure at every process. 
 Moreover, ours is the first real demonstration of relational algebra at HPC scale.
 
-More recently ~\cite{Barthels:2017:DJA:3055540.3055545}, there has been a concerted effort to implement JOIN operations on
+More recently with ~\cite{Barthels:2017:DJA:3055540.3055545}, there has been a concerted effort to implement JOIN operations on
 clusters using an MPI backend. The commonly used radix-hash join and merge-sort join have been re-designed
 for this purpose. Both these algorithms involve a hash-based partitioning of data so that they are be efficiently
 distributed to the participating processes and are designed such that inter-process communication is minimized.

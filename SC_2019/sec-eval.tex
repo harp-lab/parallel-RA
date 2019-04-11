@@ -41,19 +41,19 @@ The transitive closure of a graph with $n$ edges can contain up to $n^2$ edges (
 
 \begin{table}[]
 	\begin{tabular}{lllll}
-		\begin{tabular}[c]{@{}l@{}}Input graph \\ edge count\end{tabular} & Union & Join & \begin{tabular}[c]{@{}l@{}}Transitive \\ Closure\end{tabular} & Graph name \\
+		\begin{tabular}[c]{@{}l@{}}Input graph \\ edge count\end{tabular} & Union & Join & \begin{tabular}[c]{@{}l@{}}Transitive \\ Closure\end{tabular} \\
 		\hline
-		412148     & \checkmark       &      &  1676697757    &            \\
-		2100225    & \checkmark       &      &  276491930625  &            \\
-		6291408    & \checkmark       &      &  308759592     &            \\
-		40451631   & \checkmark       &      &  --   			  &            \\
-		59062957   & \checkmark       &      &  11687744437                                                             &            \\
-		136024430  & \checkmark       & \checkmark     & 178113958                                                              &            \\
-		180292586  & \checkmark       & \checkmark      &136525288391                                                             &            \\
-		240023949  & 			      &      &  --                                                             &           
+		412148     & \checkmark       &      &  1676697757 \\
+		2100225    & \checkmark       &      &  276491930625\\
+		6291408    & \checkmark       &      &  308759592                \\
+		40451631   & \checkmark       &      &  --   			              \\
+		59062957   & \checkmark       &      &  11687744437        \\
+		136024430  & \checkmark       & \checkmark     & 178113958 \\
+		180292586  & \checkmark       & \checkmark      &136525288391 \\
+%		240023949  & 			      &      &  --                                                             &           
 	\end{tabular}
 	\label{table:graph1}
-	\caption{List of seven graphs used in our evaluation.}
+	\caption{List of seven graphs used in our evaluation. Also listed is the number of edges in the transitive closure of every graph.}
 \end{table}
 
 
@@ -165,19 +165,22 @@ It can be concluded that for this particular union task ($7$ graphs) $1024$ is t
 \label{sec:join}
 
 \begin{figure}[h]
-	\includegraphics[width=\columnwidth]{results/join.pdf}
+	\includegraphics[width=\columnwidth]{results/join_new_final.pdf}
 	\caption{Strong scaling result of hash-tree join.}
 	\label{fig:dist_join}
 \end{figure}
 
 As with distributed union, we examine strong scaling to benchmark the performance of our distributed join.
 We perform hash-tree join between two graphs with edge counts $136,\!024,\!430$ and $180,\!292,\!586$. The join operation yields a graph with $126,\!290,\!622$ number of edges.
-The number of processes are varied from $64$ to $4,096$. 
+The number of processes are varied from $64$ to $16,384$. 
 %Unlike union, where we maintained only one relation container for all input graphs, here we have separate relation containers for the two input graphs. 
 Once both relations are initialized across all processes (after parallel I/O, hashing, communication and insertions), we initiate the join operation. 
 We plot the scaling results for join in Figure~\ref{fig:dist_join}.
 %We observe trends similar to distributed union.
-Unlike unions, distributed joins demonstrates perfect scaling all the way to $4096$ processes. At $4096$ processes join between the two graphs takes $0.575$ seconds. The trend can be attributed to the fact that overall performance is dominated by computation and not by communication.
+Unlike unions, distributed joins demonstrates perfect scaling all the way to $4096$ processes. At $4096$ processes join between the two graphs takes $0.575$ seconds. The trend can be attributed to the fact all-to-all communication phase continues to scale till $4096$ processes.
+Though it stops to scale after $4096$ processes, leading to slight dip in performance at $8,192$ and $16,384$ processes.
+
+
 %Join only scales up to X cores, after which communication cost starts to dominate and we observe overall decline in performance. %% Do we really see any decline? Up to 4k it still looks great!
 
 
