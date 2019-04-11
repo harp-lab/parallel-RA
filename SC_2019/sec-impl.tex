@@ -1,5 +1,13 @@
 
 
+\begin{figure*}[h]
+	\includegraphics[width=\textwidth]{results/join_new.pdf}
+	\caption{Schematic Diagram to show different phases of hash-tree join.}
+	\label{fig:join}
+\end{figure*}
+
+
+
 \section{Hash-Tree Relational Algebra}
 \label{sec:impl}
 %
@@ -25,14 +33,6 @@ In our implementation, a relation $R(a,b)$ indexed on $a$ is encapsulated in a t
 Our hybrid hash-tree structure for relations makes this partitioning explicit as physically separate relations stored in distinct hash-table buckets---each owned by a dedicated MPI process. Join operations then decompose into a separate join for each bucket, followed by hashing of output tuples, and a communication phase to insert these tuples into the output relation. In experiments designing our join operation, we found that, as hashing distributes key values evenly across buckets, MPI's all-to-all communication paradigm was actually most efficient for inserting output tuples in their receiving buckets (i.e., on processes hosting in the output relation).
 
 In Figure~\ref{fig:join} we show the process for computing a single iteration of a distributed transitive closure computation. $T$ (i.e., $T_\Delta$ as we implement an incrementalized TC algorithm) is joined with $G$ on a per-bucket basis (the diagram shows three color-coded buckets). Tuples in $T(x,y)$ are indexed on the second column ($y$) and tuples in $G(y,z)$ are indexed on the first column ($y$). This makes it possible to perform local (intra-bucket) joins as each tuple $(x,y) \in T$ is guaranteed to have all matching tuples $(y,z) \in G$ stored in the same bucket, managed by the same MPI process. Each resulting triple $(x,y,z)$ has its middle column projected out on-the-fly as it is produced, and, as the resulting tuple $(x,z)$ must be inserted into $T$, a relation indexed on its second column, each new edge is hashed and assigned to bucket $\mathit{hash}(z)\%\mathit{nprocs}$ in the output relation ($T$). As this bucket will likely not be managed by the local MPI process, a communication phase is required to actually perform insertion of each output tuple in its output relation. As each output tuple is produced it is staged in one of $\mathit{nprocs}$ packets, ready to be sent across the network to the MPI process managing its bucket. Finally, an all-to-all communication phase is used to reorganize the output of the join operation---preparing $T$ for subsequent fixed-point iterations. As tuples are received by their host process, they are inserted into the local B-tree structure, eliminating duplicates.  
-
-
-\begin{figure*}[h]
-	\includegraphics[width=\textwidth]{results/join_new.pdf}
-	\caption{Schematic Diagram to show different phases of hash-tree join.}
-	\label{fig:join}
-\end{figure*}
-
 
 
 \subsection{Distributed hash-tree union}
