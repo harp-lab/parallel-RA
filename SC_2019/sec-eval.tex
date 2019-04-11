@@ -4,12 +4,12 @@
 \label{sec:eval}
 
 %There are two goals of this sections 1) evaluate the performance of RA primitive operations Union and Join  2) evaluate the performance of transitive closure, which is a fixed point iteration algorithm.
-The ultimate goal of this section is to evaluate the performance of our hash-tree implementations of join, union and transitive closure at scale.
+The goal of this section is to evaluate the performance of our distributed hash-tree implementations of join, union and transitive closure at scale.
 We start by individually studying the computation and communication components of the RA operations.
 Computation is dominated by insertion of tuples and the major challenge faced is that of deduplication.
-We therefore study the efficacy of our btree-based relation container in the context of insertions.
-All our RA operations involve an all to communication phase, hence, we perform a detailed benchmark of MPI's all to all communication capability.
-Finally we benchmark the efficacy of distributed hash-tree union, parallel join and parallel transitive closure over a wider range of graphs.
+We therefore study the efficacy of our B-tree-based relation container in isolation.
+As all our RA operations involve an all-to-all communication phase, we perform a detailed benchmark of MPI's all-to-all communication capability in isolation as well.
+Finally, we benchmark the scaling properties of our distributed parallel union, join, and transitive closure operations over a range of large graphs.
 %We first study how our data structure performs, and how well are the all to all communication primitives are supported by super computers. More specifically, we study how fast can we insert into our btree based relation class, and how efficiently can it support the task of de-duplication. This is mostly studying the computation aspect of our algorithms. Next, with the all to all tests, we benchmark the communication aspect of our algorithms.
 
 
@@ -20,10 +20,10 @@ Finally we benchmark the efficacy of distributed hash-tree union, parallel join 
 
 \subsection{Dataset and HPC platforms}
 \label{sec:datasets}
-We have performed our experiments using SuiteSparse Matrix Collection available at ~\cite{Davis:2011:UFS:2049662.2049663}.
-SuiteSparse Matrix Collection (formerly known as the University of Florida Sparse Matrix Collection), is a large and actively growing set of sparse matrices that arise in real applications. The Collection is widely used by the numerical linear algebra community for the development and performance evaluation of sparse matrix algorithms. 
+We performed our experiments using the SuiteSparse Matrix Collection available at ~\cite{Davis:2011:UFS:2049662.2049663}.
+The SuiteSparse Matrix Collection (formerly known as the University of Florida Sparse Matrix Collection), is a large and actively maintained set of sparse matrices that arise in real applications. The Collection is widely used by the numerical linear algebra community for the development and performance evaluation of sparse matrix algorithms. 
 For our experiments, we chose seven graphs (listed in Table~\ref{table:graph}) representing a wide range in terms of the number of edges.
-Transitive closure of a graph with $n$ edges can generate upto $n^2$ edges (a fully connected graph). The number of edges in the transitive closure of a graph depends on how connected the input graph is. For example, the transitive closure of our third graph with $2,100,225$ edges generated a graph with $276,491,930,625$ edges, amounting to $4.4$ terabytes of data.
+The transitive closure of a graph with $n$ edges can contain up to $n^2$ edges (a fully connected graph). The number of edges in the transitive closure of a graph depends on the connectedness and topology of the input graph. For example, the transitive closure of our third graph with $2,\!100,\!225$ edges contains $276,\!491,\!930,\!625$ edges, amounting to $4.4$ terabytes of data.
 
 %We found our third graph with $2,100,225$ edges to be the most connected; the transitive closure of the graph generated 260 billion edges, which is 3 terabytes in size.
 %-- wide range in terms of number of edges
@@ -49,7 +49,7 @@ Transitive closure of a graph with $n$ edges can generate upto $n^2$ edges (a fu
 %a Cray machine with Intel Xeon Phi processors with Dragonfly topology network and Lustre file system [31].
 
 The experiments presented in this work were performed on
-Theta Supercomputer at the Argonne Leadership Computing Facility
+the Theta Supercomputer at the Argonne Leadership Computing Facility
 (ALCF). Theta is a Cray machine with a peak
 performance of X petaflops, Y compute cores, Z
 TiB of RAM, and A PiB of online disk storage. 
