@@ -186,28 +186,30 @@ Join only scales upto X cores, after which communication cost starts to dominate
 \subsection{Transitive closure}
 \label{sec:tc}
 
-Computing the transitive closure of a graph involves repeated join operations until a fixed point is reached. 
-Iteration ($i$) adds new paths of length $i$, until a fixed point is reached and no new edges are added.
-We use the hash-join (\textbf{TODO: refer} to distribute the tuples across all processes.
-Every iteration comprises of four phases: 1) Join 2) network communication 3) insertion 4) checking for a
-fixed point. In the join phase every process concurrently computes the join of relations $G$ and $T = \rho_{0 / 1}(G)$ which creates new edges. Following the semi-naive evaluation (discussed in Section~\ref{}), the new edges are then added back to relation $T$. This step of adding newly created edges entail all to all communication. The new edges need to be rehashed and sent to appropriate hash-buckets (processes). 
-We accomplish this all-to-all communication using MPI’s MPI\_alltoallv routine where newly created edges are transmitted to all the processes.
-Following the insertion phase, the newly created edges are inserted to the relation T.
-In the final step we check if the size of the relation $T$ changed on any process, if it does then we have not yet reached a fixed point and we continue to
-another iteration of these 4 steps.
+In this section we benchmark the efficacy of computing the transitive closure (T) of an input graph (G) using the algorithm presented in section ~\ref{}.
+Transitive closure is iteratively built by adding new paths every iteration until fixed point is reached, and no new edges can be added to T.
+Every iteration comprises of four phases: 1) local join 2) all to all network communication 3) insertion of new tuples 4) checking for a
+fixed point.
+
+% In the local join phase every process concurrently computes the join of relations $G$ and $T = \rho_{0 / 1}(G)$ which creates new edges. Following the semi-naive evaluation (discussed in Section~\ref{}), the new edges then need to be added back to relation $T$. This step of adding the newly created edges to T, entails all to all communication, as the new new edges need to be rehashed and transmitted to the appropriate process (hash-bucket). This all-to-all communication is accomplished using MPI’s MPI\_alltoallv. Once the new edges arrive at a process they are inserted to Following the insertion phase, the newly created edges are inserted to the relation T. In the final step we check if the size of the relation $T$ changed on any process, if it does then we have not yet reached a fixed point and we continue to another iteration of these 4 steps.
+
+We performed detailed strong scaling analysis for two graphs, with edge count $412,148$ (graph $G1$) and $2,100,225$ (graph $G2$).
+For the $G1$ we varied the number of processes from $64$ to $8,192$, while for $G2$ we varied the number of processes from $4,096$ to $65.536$. 
+$G1$ attained fixed point after $2,933$ iterations generating a total of $1,676,697,415$ edges $(~25 gigabytes)$.
+While, $G2$ attained fixed point after $2,956$ iterations generating a total of $276,491,930,625$ edges $(~4 terabytes)$.
+The results are plotted in Figure~\ref{fig:tc_small}. As can be seen in the figure, our approach takes $1000$ seconds at $65,536$ cores to compute the transitive closure of graph $G2$. According to our study, this is the first ever implementation that has successfully computed the transitive closure of such a large graph.
+
+Further looking at the graph we observe for $G1$ we obtain considerable scaling till $1,024$ processes, $2,048$ and $4,096$ process runs are completely dominated by communication time. This observation is again in corroboration with our strong scaling benchmarking results, where all-to-all communication phase stops to scale with small sized data packets. For $G1$ we can conclude that $1,024$ is the apt scale for computing transitive closure.
+We observe similar trend with graph $G2$, communication time starts to dominate performance at high core counts of $32,768$ and $65,536$. ~\textbf{more stuff, conclude}
 
 
-We performed a set of strong-scaling experiments to compute the transitive closure of graph with 412148
-edges—the largest graph in the U. Florida Sparse Matrix set (Davis and Hu 2011). We used the Quartz supercomputer
-at the Lawrence Livermore National Laboratory (LLNL). For our runs, we varied the number of processes
-from 64 to 2048. A fixed point was attained after 2933 iterations, with the resulting graph containing 1676697415
-edges. As can be seen in Figure 1, our approach takes 462 seconds at 64 cores and 235 seconds at 2048 cores, corresponds
-to an overall efficiency of 6.25%. We investigated these timings further by plotting the timing breakdown
-of by the four major components (join, network communication, join, fixed-point check) of the algorithm. We
-observe (see Figure 2) that for all our runs the total time is dominated by computation rather than communication;
-insert and join together tended to take up close to 90% of the total time. This is quite an encouraging result
-as it shows that we are not bound primarily by the network bandwidth (at these scales and likely moderately
-higher ones) and it gives us the opportunity to optimize the computation phase
+%seconds at 64 cores and 235 seconds at 2048 cores, corresponds
+%to an overall efficiency of 6.25%. We investigated these timings further by plotting the timing breakdown
+%of by the four major components (join, network communication, join, fixed-point check) of the algorithm. We
+%observe (see Figure 2) that for all our runs the total time is dominated by computation rather than communication;
+%insert and join together tended to take up close to 90% of the total time. This is quite an encouraging result
+%as it shows that we are not bound primarily by the network bandwidth (at these scales and likely moderately
+%higher ones) and it gives us the opportunity to optimize the computation phase
 
 \begin{figure*}[t]
 	{\includegraphics[width=.50\textwidth,  trim={0cm 0cm 0cm 0cm, 
