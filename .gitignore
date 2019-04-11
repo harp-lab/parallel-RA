@@ -1,0 +1,7 @@
+compiled
+*.pdf
+*.out
+*.log
+*.aux
+*#*
+*~
