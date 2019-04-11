@@ -359,9 +359,11 @@ int main(int argc, char **argv)
 
     relation<2> O;
 
+    MPI_Barrier(MPI_COMM_WORLD);
 
     double join_start = MPI_Wtime();
     u64 jcount = parallel_join(O, G, T);
+    double join_end = MPI_Wtime();
 
 #if 0
     tuple<2> t;
@@ -383,12 +385,10 @@ int main(int argc, char **argv)
         std::cout << (*dit)[0] << "\t" << (*dit)[1] << std::endl;
 #endif
 
-    double join_end = MPI_Wtime();
-
     u64 total_sum = 0;
     MPI_Allreduce(&jcount, &total_sum, 1, MPI_UNSIGNED_LONG_LONG, MPI_SUM, comm);
 
-    double elapsed_time = join_end - G_ior_start;
+    double elapsed_time = join_end - join_start;
     double max_time = 0;
 
     MPI_Allreduce(&elapsed_time, &max_time, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
@@ -421,6 +421,7 @@ int main(int argc, char **argv)
                   << " [" << (G_ior_end - G_ior_start) + (T_ior_end - T_ior_start) + (G_hash_end - G_hash_start) + (T_hash_end - T_hash_start) + (G_hash_init_end - G_hash_init_start) + (T_hash_init_end - T_hash_init_start) + (join_end - join_start) << "]" << std::endl;
 
 
+        std::cout << "Max time: " << max_time << std::endl;
         std::cout << "Local Join: " << (j2 - j1x)
                   << " Comm: " << (c2 - c1)
                   << " Insert: " << (i2 - i1)

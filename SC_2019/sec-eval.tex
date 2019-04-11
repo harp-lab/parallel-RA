@@ -174,8 +174,8 @@ It can be concluded that for this particular union task ($7$ graphs) $1024$ is t
 
 
 
-Similar to distributed union, we use strong scaling to benchmark the performance of distributed join as well.
-We perform join of two graphs with edges $136,024,430$ and $180,292,586$. The join operation yields a graph with X number of edges.
+Similar to distributed union, we use strong scaling to benchmark the performance of distributed join.
+We perform join between two graphs with edges $136,024,430$ and $180,292,586$. The join operation yields a graph with X number of edges.
 The number of processes are varied from $64$ to $4,096$. 
 %Unlike union, where we maintained only one relation container for all input graphs, here we have separate relation containers for the two input graphs. 
 Once the two relations are initialized across all processes (after parallel I/O, hashing, communication and insertions), we initiate the join operation. 
