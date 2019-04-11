@@ -25,6 +25,9 @@ static int rank = 0;
 static u32 nprocs = 1;
 static MPI_Comm comm;
 
+double j1x, j2;
+double c1 = 0, c2 = 0;
+double i1 = 0, i2 = 0;
 
 #if 1
 inline u64 tunedhash(const u8* bp, const u32 len)
@@ -167,11 +170,7 @@ void buffer_data_to_hash_buffer(u32 local_number_of_rows, u64* input_data, u64**
 
 u64 parallel_join(relation<2>& O, relation<2>& G, relation<2>& T)
 {
-    double j1, j2;
-    double c1 = 0, c2 = 0;
-    double i1 = 0, i2 = 0;
-
-    j1 = MPI_Wtime();
+    j1x = MPI_Wtime();
 
     tuple<2> t;
     t[0] = -1;
@@ -285,14 +284,14 @@ u64 parallel_join(relation<2>& O, relation<2>& G, relation<2>& T)
     i2 = MPI_Wtime();
 
 
-    if (rank == 0)
-        std::cout << "Join: " << (j2 - j1)
-                  << " Comm: " << (c2 - c1)
-                  << " Insert: " << (i2 - i1)
-                  << " Total: " << (i2 - j1)
-                  << " [" << (j2 - j1) + (c2 - c1) + (i2 - i1) << "]"
-                  << " Delta: " << tcount
-                  << std::endl;
+    //if (rank == 0)
+    //    std::cout << "Join: " << (j2 - j1x)
+    //              << " Comm: " << (c2 - c1)
+    //              << " Insert: " << (i2 - i1)
+    //              << " Total: " << (i2 - j1x)
+    //              << " [" << (j2 - j1x) + (c2 - c1) + (i2 - i1) << "]"
+    //              << " Delta: " << tcount
+    //              << std::endl;
 
     return tcount;
 }
@@ -420,6 +419,14 @@ int main(int argc, char **argv)
                   << " Join: " << (join_end - join_start)
                   << " Total: " << (join_end - G_ior_start)
                   << " [" << (G_ior_end - G_ior_start) + (T_ior_end - T_ior_start) + (G_hash_end - G_hash_start) + (T_hash_end - T_hash_start) + (G_hash_init_end - G_hash_init_start) + (T_hash_init_end - T_hash_init_start) + (join_end - join_start) << "]" << std::endl;
+
+
+        std::cout << "Local Join: " << (j2 - j1x)
+                  << " Comm: " << (c2 - c1)
+                  << " Insert: " << (i2 - i1)
+                  << " Total: " << (i2 - j1x)
+                  << " [" << (j2 - j1x) + (c2 - c1) + (i2 - i1) << "]"
+                  << std::endl;
     }
 
     // Finalizing MPI

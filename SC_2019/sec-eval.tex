@@ -144,12 +144,13 @@ Within the context of communication requirements of RA operations, we find the s
 %	\label{fig:dist_union}
 %\end{figure*}
 
-We use strong scaling to benchmark the performance of distributed union operation. We measure the timing to perform union of all 7 graphs listed in table~\ref{table:graphs}. The number of processes are varied from $64$ to $4,096$. The total number of edges across all $7$ graphs is $664,659,334$ ($~9.9$ gigabytes of data). Union of the seven graphs result in a graph with $424,592,810$ edges, indicating significant overlap among the graphs.
+We use strong scaling to benchmark the performance of our distributed hast-tree union. We measure the time to union all $7$ graphs listed in table~\ref{table:graphs}. The number of processes are varied from $64$ to $4,096$. The total number of edges across all $7$ graphs is $664,659,334$ ($~9.9$ gigabytes of data). Union of the $7$ graphs result in a graph with $424,592,810$ edges, indicating significant overlap among the graphs.
 
-We benchmark the performance of both union\_x and union\_y. 
+We benchmark the performance of both buffered-hash tree join and naive hash-tree join. 
+Performance of both techniques can be seen in Figure~\ref{fig:dist_union}. We observe two trends: at all core counts, buffered hash-tree union outperforms naive hash-tree unions. This trend can be attributed to an optimized data communication phase associated with buffered unions. Naive technique leads to communication involving small number of large sized data packets as opposed to buffered technique that involves communication with large number of small sized data packets. 
+The other crucial trend is that the union phase scales only till 1024 cores, this can be attributes to increase in communication time at higher core counts, associated with movement of small sized data packets. This result is in corroboration with the trend seen in Section~\ref{}. At 2048 and 4096 processes, even though the insertion time gets reduced, the per-process workload becomes small impeding scalability of the communication phase. 
 
-
-This implementation deploying buffering restricts the number of communication epochs. Performance of both implementation can be seen in Figure~\ref{fig:dist_union}. For both implementations, we present breakdown of time spent in each of the three phases: parallel I/O, all-to-all communication and insertions. We observe two trends: at all core counts, union\_y outperforms union\_x, this trend can be attributed to an optimized data communication phase. Union\_y leads to communication involving small number of large sized data packets as opposed to union\_x that involves communication with large number of small sized data packets. The other crucial trend is that the union phase scales only till 1024 cores, this can be attributes to increase in communication time at higher core counts. This result is in corroboration with the trend seen in Section~\ref{sec:datasets}. At 2048 and 4096 processes, even though the insertion time gets reduced, the per-process workload becomes very small impeding scalability of the communication phase. It can be concluded that for this particular union task ($7$ graphs) $1024$ is the ideal degree of parallelism, as that balances the communication and computation task best.
+It can be concluded that for this particular union task ($7$ graphs) $1024$ is the ideal degree of parallelism, as that balances the communication and computation task best.
 
 %This step is followed by 
 
