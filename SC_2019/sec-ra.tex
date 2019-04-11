@@ -219,7 +219,7 @@ Solving logical problems in this way is precisely the strategy of \emph{bottom-u
 
 \emph{Datalog} is a bottom-up logic programming language supporting a restricted logic corresponding to first-order HornSAT---the satisfiability problem for conjunctions of Horn clauses. A \emph{Horn clause} is a disjunction of atoms where all but one is negated: $a_0 \vee \neg a_1 \vee \ldots \vee \neg a_j$. By DeMorgan's laws we may rewrite this as $a_0 \vee \neg (a_1 \wedge \ldots \wedge a_j)$ and note that this is an implication: $a_0 \leftarrow a_1 \wedge \ldots \wedge a_j$. In first-order logic, atoms are predicates with universally quantified variables.
 
-A Datalog program is a set of rules $P(x_0,\ldots,x_k) \leftarrow Q(y_0,\ldots,y_j) \wedge \ldots \wedge S(z_0,\ldots,z_m)$ and its input is a database of facts called the \emph{intensional database} (IDB). Running the datalog program yields the \emph{extensional database} (EDB) which extends all facts from the IDB with all facts transitively derivable via the program's rules.
+A Datalog program is a set of rules $P(x_0,\ldots,x_k) \leftarrow Q(y_0,\ldots,y_j) \wedge \ldots \wedge S(z_0,\ldots,z_m)$ and its input is a database of facts called the \emph{extensional database} (EDB). Running the datalog program reifies the \emph{intensional database} (IDB) which extends facts from the EDB with all facts transitively derivable via the program's rules.
 
 In the typical notation of datalog, computing transitive closure of a graph is accomplished with just two rules:
 
@@ -256,12 +256,12 @@ In a join operation, it is inefficient to iterate over all tuples of two relatio
 Consider the second Datalog rule implementing transitive closure, discussed previously, defining paths in terms of paths and edges. Each iteration of our function $F$ for this rule can be implemented as the following pseudocode:
 
 \begin{verbatim}
-  new_delta_path = {}
-  for [x,y] in delta_path.select_all():
-     for [y,z] in edge.select("y", y):
-        if path.insert([x,z]) == true:
-           new_delta_path.insert([x,z])
-  delta_path = new_delta_path   
+       new_delta_path = {}
+       for [x,y] in delta_path.select_all():
+          for [y,z] in edge.select("y", y):
+             if path.insert([x,z]) == true:
+                new_delta_path.insert([x,z])
+       delta_path = new_delta_path   
 \end{verbatim}
 
 
