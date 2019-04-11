@@ -79,6 +79,25 @@
   \postcode{35233}
 }
 
+\newenvironment{tightenumerate}{
+	\edef\backupindent{\the\parindent}
+	\begin{enumerate}
+		\setlength{\itemsep}{1pt}
+		\setlength{\parskip}{0pt}
+		\setlength{\parsep}{0pt}
+		\setlength{\parindent}{\backupindent}
+	}{\end{enumerate}
+}
+\newenvironment{tightitemize}{
+	\edef\backupindent{\the\parindent}
+	\begin{itemize}
+		\setlength{\itemsep}{1pt}
+		\setlength{\parskip}{0pt}
+		\setlength{\parsep}{0pt}
+		\setlength{\parindent}{\backupindent}
+	}{\end{itemize}
+}
+
 %\author{Julius P. Kumquat}
 %\affiliation{\institution{The Kumquat Consortium}}
 %\email{jpkumquat@consortium.net}
@@ -92,9 +111,12 @@
 %
 % The abstract is a short summary of the work to be presented in the article.
 \begin{abstract}
-Relational algebra forms a basis of primitive operations useful for applications in graphs, networks, program analysis, deductive databases, and logic. Despite its expressive power, relational algebra has not received the same attention in high-performance computing research as linear algebra, X, Y, or Z.
+%Relational algebra forms a basis of primitive operations useful for applications in graphs, networks, program analysis, deductive databases, and logic. Despite its expressive power, relational algebra has not received the same attention in high-performance computing research as linear algebra, stencil computation, map-reduce and graph analytics.
 
-In this paper we present a set of efficient algorithms that tackle the problem of distributed, parallel relational algebra and use experiments from applications in graphs, program analysis, and datalog to evaluate our approach.
+%In this paper we present a set of efficient algorithms that tackle the problem of distributed, parallel relational algebra and use experiments from applications in graphs, program analysis, and datalog to evaluate our approach.
+Relational algebra forms a basis of primitive operations useful for applications in graphs, networks, program analysis, deductive databases, and logic. Despite its expressive power, relational algebra has not received the same attention in high-performance computing research as linear algebra, stencil computation, map-reduce or graph analytics. 
+In this paper we present a set of efficient algorithms to effectively parallelize key relational algebra primitives. We introduce an hash-tree approach to  
+Finally we demonstrate the scalibility of our relational algebra primitives through the fixed point algorithm that computes the transitive closure of a large graph at scale.
 \end{abstract}
 
 %
