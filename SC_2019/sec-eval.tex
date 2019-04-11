@@ -128,22 +128,28 @@ Within the context of communication requirements of RA operations, we find the s
 \subsection{Distributed Union}
 \label{sec:union}
 
-\begin{figure*}[t]
-	{\includegraphics[width=.50\textwidth,  trim={0cm 0cm 0cm 0cm, 
-			clip}]{results/union_without_buffering_final.pdf}}\hfill%
-	{\includegraphics[width=.50\textwidth,  trim={0cm 0cm 0cm 0cm,
-			clip}]{results/union_with_buffering_final.pdf}}\hfill%
-	\centering
-	\caption{Distributed union.}
+\begin{figure}[h]
+	\includegraphics[width=\columnwidth]{results/hash_tree_union.pdf}
+	\caption{Strong scaling result of hash-tree Union.}
 	\label{fig:dist_union}
-\end{figure*}
+\end{figure}
+
+%\begin{figure*}[t]
+%	{\includegraphics[width=.50\textwidth,  trim={0cm 0cm 0cm 0cm, 
+%			clip}]{results/union_without_buffering_final.pdf}}\hfill%
+%	{\includegraphics[width=.50\textwidth,  trim={0cm 0cm 0cm 0cm,
+%			clip}]{results/union_with_buffering_final.pdf}}\hfill%
+%	\centering
+%	\caption{Distributed union.}
+%	\label{fig:dist_union}
+%\end{figure*}
 
 We use strong scaling to benchmark the performance of distributed union operation. We measure the timing to perform union of all 7 graphs listed in table~\ref{table:graphs}. The number of processes are varied from $64$ to $4,096$. The total number of edges across all $7$ graphs is $664,659,334$ ($~9.9$ gigabytes of data). Union of the seven graphs result in a graph with $424,592,810$ edges, indicating significant overlap among the graphs.
 
 We benchmark the performance of both union\_x and union\_y. 
 
 
- This implementation deploying buffering restricts the number of communication epochs. Performance of both implementation can be seen in Figure~\ref{fig:dist_union}. For both implementations, we present breakdown of time spent in each of the three phases: parallel I/O, all-to-all communication and insertions. We observe two trends: at all core counts, union\_y outperforms union\_x, this trend can be attributed to an optimized data communication phase. Union\_y leads to communication involving small number of large sized data packets as opposed to union\_x that involves communication with large number of small sized data packets. The other crucial trend is that the union phase scales only till 1024 cores, this can be attributes to increase in communication time at higher core counts. This result is in corroboration with the trend seen in Section~\ref{sec:datasets}. At 2048 and 4096 processes, even though the insertion time gets reduced, the per-process workload becomes very small impeding scalability of the communication phase. It can be concluded that for this particular union task ($7$ graphs) $1024$ is the ideal degree of parallelism, as that balances the communication and computation task best.
+This implementation deploying buffering restricts the number of communication epochs. Performance of both implementation can be seen in Figure~\ref{fig:dist_union}. For both implementations, we present breakdown of time spent in each of the three phases: parallel I/O, all-to-all communication and insertions. We observe two trends: at all core counts, union\_y outperforms union\_x, this trend can be attributed to an optimized data communication phase. Union\_y leads to communication involving small number of large sized data packets as opposed to union\_x that involves communication with large number of small sized data packets. The other crucial trend is that the union phase scales only till 1024 cores, this can be attributes to increase in communication time at higher core counts. This result is in corroboration with the trend seen in Section~\ref{sec:datasets}. At 2048 and 4096 processes, even though the insertion time gets reduced, the per-process workload becomes very small impeding scalability of the communication phase. It can be concluded that for this particular union task ($7$ graphs) $1024$ is the ideal degree of parallelism, as that balances the communication and computation task best.
 
 %This step is followed by 
 
@@ -158,13 +164,13 @@ We benchmark the performance of both union\_x and union\_y.
 \subsection{Distributed Join}
 \label{sec:join}
 
-\begin{figure*}[t]
-	{\includegraphics[width=.50\textwidth,  trim={0cm 0cm 0cm 0cm, 
-			clip}]{results/join.pdf}}\hfill%
-	\centering
-	\caption{Transitive closure of a graph with X edges.}
+
+\begin{figure}[h]
+	\includegraphics[width=\columnwidth]{results/join.pdf}
+	\caption{Strong scaling result of hash-tree join.}
 	\label{fig:dist_join}
-\end{figure*}
+\end{figure}
+
 
 
 Similar to distributed union, we use strong scaling to benchmark the performance of distributed join as well.

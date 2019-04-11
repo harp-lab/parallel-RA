@@ -16,14 +16,31 @@ This section discusses our implementation of efficient distributed relational al
 ...
 
 \subsection{Distributed Join}
-
+\begin{figure*}[h]
+	\includegraphics[width=\textwidth]{results/join_new.pdf}
+	\caption{Schematic Diagram to show different phases of hash-tree join.}
+	\label{fig:join}
+\end{figure*}
 ...
 
 
 \subsection{Distributed Union}
+\begin{figure*}[h]
+	\includegraphics[width=\textwidth]{results/union_1.pdf}
+	\caption{Schematic Diagram to show different phases of naive hash-tree union.}
+	\label{fig:union_1}
+\end{figure*}
+
+
 We present two algorithms for distributed unions, buffered-hash-tree union and naive hash-tree union. As the name suggests buffered-hash-tree union buffers data across all sets that needs to be unioned before performing any communication or insertion related task. Buffered implementation has an extra memory overhead as opposed to the naive implementation where all graphs that needs to be unioned are processed one at a time.
 
 While performing union of $n$ graphs, naive-hash-tree union involves $n$ epochs of communication and computation (one for every graph) as opposed to buffered-hash-tree union that uses buffering to limit the number of communication and computation epochs to one. 
+
+\begin{figure}[h]
+	\includegraphics[width=\columnwidth]{results/union_2.pdf}
+	\caption{Schematic Diagram to show different phases of buffered hash-tree union.}
+	\label{fig:union_2}
+\end{figure}
 
 With the naive approach, all processes iterate through the $n$ graphs one by one.
 The input graphs can be read from files stored on the disk or can be read from the memory. If the graphs are red from disk, then first phase is that of parallel I/O, where processes access disjoint regions of the file to read equal number of tuples in parallel. Once the tuples are read, every process scans through the tuples and groups them into $nprocs$ (=$hashbuckets$) packets, ready to be sent across the network.
