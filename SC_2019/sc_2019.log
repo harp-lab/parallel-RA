@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.14159265-2.6-1.40.16 (TeX Live 2015/Debian) (preloaded format=pdflatex 2018.11.7)  11 APR 2019 04:41
+This is pdfTeX, Version 3.14159265-2.6-1.40.16 (TeX Live 2015/Debian) (preloaded format=pdflatex 2018.11.7)  11 APR 2019 05:13
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -1712,18 +1712,30 @@ Package pdftex.def Info: results/TC_2_break_down_final.pdf used on input line 2
 Class acmart Warning: A possible image without description on input line 232.
 
 ) (./sec-related.tex
-Underfull \vbox (badness 10000) has occurred while \output is active []
+Underfull \hbox (badness 10000) in paragraph at lines 5--9
 
- [9.9 <./results/hash_tree_union.pdf> <./results/join_new_final.pdf
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 10--15
+
+ []
+
+
+Overfull \hbox (63.15749pt too wide) in paragraph at lines 24--29
+[]\T1/LinuxLibertineT-TLF/m/n/9 (-20) BDDs http://www.cs.cmu.edu/afs/cs/academi
+c/class/15745-s05/www/papers/p131-
+ []
+
+[9.9 <./results/hash_tree_union.pdf> <./results/join_new_final.pdf
 
 pdfTeX warning: /usr/bin/pdflatex (file ./results/join_new_final.pdf): PDF incl
 usion: multiple pdfs with page group included in a single page
 >]
 Underfull \vbox (badness 10000) has occurred while \output is active []
 
-)
-(./sc_2019.bbl
-Underfull \vbox (badness 3872) has occurred while \output is active []
+
+Underfull \vbox (badness 10000) has occurred while \output is active []
 
  [10.10 <./results/TC_1_final.pdf> <./results/TC_1_break_down_final.pdf
 
@@ -1737,9 +1749,16 @@ n: multiple pdfs with page group included in a single page
 
 pdfTeX warning: /usr/bin/pdflatex (file ./results/TC_2_break_down_final.pdf): P
 DF inclusion: multiple pdfs with page group included in a single page
->])
+>]) (./sc_2019.bbl
+Underfull \vbox (badness 5260) has occurred while \output is active []
+
+)
 
 Class acmart Warning: Some images may lack descriptions.
+
+
+Package balance Warning: You have called \balance in second column
+(balance)                Columns might not be balanced.
 
 [11.11]
 Package atveryend Info: Empty hook `BeforeClearDocument' on input line 197.
@@ -1755,11 +1774,11 @@ LaTeX Warning: There were multiply-defined labels.
 
  ) 
 Here is how much of TeX's memory you used:
- 27762 strings out of 493029
- 485912 string characters out of 6136234
- 586158 words of memory out of 5000000
- 30084 multiletter control sequences out of 15000+600000
- 204753 words of font info for 417 fonts, out of 8000000 for 9000
+ 27822 strings out of 493029
+ 487529 string characters out of 6136234
+ 586302 words of memory out of 5000000
+ 30111 multiletter control sequences out of 15000+600000
+ 207221 words of font info for 433 fonts, out of 8000000 for 9000
  1302 hyphenation exceptions out of 8191
  60i,17n,94p,1629b,782s stack positions out of 5000i,500n,10000p,200000b,80000s
 {/usr/share/texlive/texmf-dist/fonts/enc/dvips/libertine/lbtn_xogrpz.enc}{/us
@@ -1788,10 +1807,10 @@ ype1/public/txfonts/txex.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/
 txfonts/txsy.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/txfonts/txsy
 b.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/newtx/zxlr.pfb></usr/sh
 are/texlive/texmf-dist/fonts/type1/public/newtx/zxlri.pfb>
-Output written on sc_2019.pdf (11 pages, 1564081 bytes).
+Output written on sc_2019.pdf (11 pages, 1568712 bytes).
 PDF statistics:
- 492 PDF objects out of 1000 (max. 8388607)
- 392 compressed objects within 4 object streams
- 73 named destinations out of 1000 (max. 500000)
+ 515 PDF objects out of 1000 (max. 8388607)
+ 414 compressed objects within 5 object streams
+ 82 named destinations out of 1000 (max. 500000)
  56574 words of extra memory for PDF output out of 61914 (max. 10000000)
 
