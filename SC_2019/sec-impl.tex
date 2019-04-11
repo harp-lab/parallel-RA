@@ -37,15 +37,15 @@ In Figure~\ref{fig:join} we show the process for computing a single iteration of
 
 \subsection{Distributed hash-tree union}
 
-\begin{figure*}[h]
-	\includegraphics[width=\textwidth]{results/union_1.pdf}
-	\caption{Schematic Diagram to show different phases of naive hash-tree union.}
-	\label{fig:union_1}
-\end{figure*}
+%\begin{figure*}[h]
+%	\includegraphics[width=\textwidth]{results/union_1.pdf}
+%	\caption{Schematic Diagram to show different phases of naive hash-tree union.}
+%	\label{fig:union_1}
+%\end{figure*}
 
 We present two algorithms for distributed unions, na\"ive hash-tree union and buffered hash-tree union. As the name suggests buffered hash-tree union buffers data across all relations that need to be unioned before performing any communication or insertions and performs the union concurrently in a single step. While performing a union of $n$ relations, na\"ive hash-tree union involves $n$ epochs of communication and computation---one for each relation---as opposed to buffered hash-tree union (see Figure~\ref{fig:union_2}) that uses buffering to limit the number of communication and computation epochs to one.
 
-Na\"ive hash-tree union (see Figure~\ref{fig:union_1}) is concurrent in processing each relation being unioned, but unions each relation in a separate step. Naturally, our buffered implementation has an extra memory overhead as opposed to the na\"ive implementation where all graphs that need to be unioned are processed one at a time, however it is more representative of real applications (such as Datalog, program analysis, etc) where each relation being unioned would have a set of nodes hosting it and tuples across multiple relations could all be transmitted and inserted into a new relation concurrently.
+Na\"ive hash-tree union is concurrent in processing each relation being unioned, but unions each relation in a separate step. Naturally, our buffered implementation has an extra memory overhead as opposed to the na\"ive implementation where all graphs that need to be unioned are processed one at a time, however it is more representative of real applications (such as Datalog, program analysis, etc) where each relation being unioned would have a set of nodes hosting it and tuples across multiple relations could all be transmitted and inserted into a new relation concurrently.
 
 \begin{figure}[h]
 	\includegraphics[width=\columnwidth]{results/union_2.pdf}

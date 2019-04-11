@@ -88,6 +88,11 @@ Y.~Smaragdakis and M.~Bravenboer.
   Reloaded}, Datalog'10, pages 245--251, Berlin, Heidelberg, 2011.
   Springer-Verlag.
 
+\bibitem{somenzi1998cudd}
+F.~Somenzi.
+\newblock Cudd: Cu decision diagram package release 2.3. 0.
+\newblock {\em University of Colorado at Boulder}, 1998.
+
 \bibitem{Subotic:2018:AIS:3282495.3302538}
 P.~Suboti\'{c}, H.~Jordan, L.~Chang, A.~Fekete, and B.~Scholz.
 \newblock Automatic index selection for large-scale datalog computation.
