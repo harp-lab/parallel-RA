@@ -110,6 +110,12 @@ For both sets of experiments, we varied the number of processes from $2,\!048$ t
 
 For both strong and weak scaling runs, we observe a decline in performance with overall decreasing workload. For instance, with strong scaling, the $6$\textsuperscript{th} set of experiments, where total workload is $2,\!048$ gigabytes, shows near perfect scaling when the number of processes is doubled from $2,\!048$ ($18.5$ seconds) to $4,\!096$ ($7.3$ seconds) to $8,\!192$ ($4.5$ seconds). After $8,\!192$ processes, although total time continues to come down with increasing process count, we observe that the rate of improvement drops off. Furthermore, looking at the $6$\textsuperscript{th} set of experiments, where total workload is $64$ gigabytes, we observe relatively poor scaling characteristics across the entire process range. Both these observations may be attributed to an overall reduction in per-process workload. With less data to transmit, total time is dominated by initialization costs as opposed to actual data-transmission cost. For example, with a total workload of $64$ gigabytes, at $4,\!096$ processes, every process gets a workload of only $16$ megabytes ($64$ gigabytes $/ 4096$), and ends up sending $8$ kilobytes ($16$ megabytes $/ 4096$) of data to every other process. Similarly, for weak scaling experiments as well, when the amount of data exchanged is substantial, we see almost perfect scaling. For example, when the amount of data transmitted by every process is $1024$ megabytes, we observe almost perfect scaling, whereas when the amount of data sent by every process is small (e.g., $4$ megabytes) we observe poor scaling.
 
+\begin{figure}[h]
+	\includegraphics[width=\columnwidth]{results/hash_tree_union.pdf}
+	\caption{Strong scaling result of hash-tree union.}
+	\label{fig:dist_union}
+\end{figure}
+
 In the context of communication requirements for distributed RA operations, we find the scaling trends of \texttt{MPI\_Alltoallv} to be encouraging. In general, for a given workload (i.e., overall tuple count for RA operations), there will always be a range of processes that exhibits good all-to-all scaling characteristics. What remains is the challenge of identifying the ideal process count to balance the trade-off between computation and communication. As we observe in section~\ref{sec:tc}, below, with larger per-process workload, computation cost dominates, as opposed to smaller per-process workload where total cost is dominated by communication. 
 %As we will ee later the crucial part will be to identify the process count that balances computation and communication in the monst efficient way.
 
@@ -123,6 +129,19 @@ In the context of communication requirements for distributed RA operations, we f
 %-- X percent accuracy with strong scaling of X load. This corresponds to Y number of tuples.
 %-- Overall very good indication as all to all scales well, aggregate accuracy
 %-- different graphs would work better at different scales.
+
+
+\begin{figure*}[t]
+	{\includegraphics[width=.50\textwidth,  trim={0cm 0cm 0cm 0cm, 
+			clip}]{results/TC_1_final.pdf}}\hfill%
+	{\includegraphics[width=.50\textwidth,  trim={0cm 0cm 0cm 0cm,
+			clip}]{results/TC_1_break_down_final.pdf}}\hfill%
+	\centering
+	\caption{(Left) Strong scaling result for computing transitive closure of graph $G1$. (Right) Percentage breakdown of the four phases; communication starts to dominate after $1024$ processes. }
+	\label{fig:tc_small}
+\end{figure*}
+
+
 
 \subsection{Distributed Union}
 \label{sec:union}
@@ -139,16 +158,9 @@ In the context of communication requirements for distributed RA operations, we f
 
 We examine strong scaling to benchmark the performance of our distributed hash-tree union. We measure the time to union $7$ graphs listed in table 1. The number of processes are varied from $64$ to $4,\!096$. The total number of edges across all $7$ graphs is $664,\!659,\!334$ ($9.9$ gigabytes of data). The union of all $7$ graphs has $424,\!592,\!810$ edges, indicating significant overlap among the graphs.
 
-\begin{figure}[h]
-	\includegraphics[width=\columnwidth]{results/hash_tree_union.pdf}
-	\caption{Strong scaling result of hash-tree union.}
-	\label{fig:dist_union}
-\end{figure}
-
-
 We benchmark the performance of both buffered hash-tree join and na\"ive hash-tree join. 
 Performance of both techniques can be seen in figure~\ref{fig:dist_union}. We observe two trends. First, at all process counts, buffered hash-tree union outperforms na\"ive hash-tree union. This trend can be attributed to an optimized data communication phase associated with buffered unions. Na\"ive one-by-one union leads to communication involving a small number of large-sized data packets as opposed to the buffered union that involves communication with a large number of small-sized data packets. 
-The other crucial trend is that the union phase only scales to $1024$ cores, this can be attributed to an increase in communication time at higher core counts associated with movement of many small-sized data packets. This result corroborates the trend seen in section~\ref{sec:all_to_all}. At $2,\!048$ and $4,\!096$ processes, even though the insertion time is reduced, the per-process workload becomes small, impeding scalability of the communication phase. 
+The other crucial trend is that the union phase only scales to $1024$ cores, this can be attributed to an increase in communication time at higher core counts associated with movement of many small-sized data packets. This result corroborates the trend seen in section~\ref{sec:all_to_all}. At $2,\!048$ and $4,\!096$ processes, even though the insertion time is reduced, the per-process workload becomes small, impeding scalability of the communication phase.
 
 It can be concluded that for this particular union task ($7$ graphs) $1024$ is the ideal degree of parallelism, as that balances the communication and computation tasks best.
 
@@ -160,7 +172,6 @@ It can be concluded that for this particular union task ($7$ graphs) $1024$ is t
 %-- scales well upto X cores., this is strong scaling.
 %-- faces work load deprecation at low core counts, needs more tuples for union to scale at high core counts
 %-- overall a good sign
-
 
 
 
@@ -178,7 +189,7 @@ Unlike unions, distributed join demonstrates perfect scaling all the way to $4,\
 As it stops scaling perfectly at $4,\!096$ processes, we observe a slight dip in performance speedup at $8,\!192$ and $16,\!384$ processes.
 
 
-\begin{figure}[t]
+\begin{figure}[h]
 	\includegraphics[width=\columnwidth]{results/join_new_final.pdf}
 	\caption{Strong scaling result of hash-tree join.}
 	\label{fig:dist_join}
@@ -187,16 +198,6 @@ As it stops scaling perfectly at $4,\!096$ processes, we observe a slight dip in
 
 %Join only scales up to X cores, after which communication cost starts to dominate and we observe overall decline in performance. %% Do we really see any decline? Up to 4k it still looks great!
 
-
-\begin{figure*}[t]
-	{\includegraphics[width=.50\textwidth,  trim={0cm 0cm 0cm 0cm, 
-			clip}]{results/TC_1_final.pdf}}\hfill%
-	{\includegraphics[width=.50\textwidth,  trim={0cm 0cm 0cm 0cm,
-			clip}]{results/TC_1_break_down_final.pdf}}\hfill%
-	\centering
-	\caption{(Left) Strong scaling result for computing transitive closure of graph $G1$. (Right) Percentage breakdown of the four phases; communication starts to dominate after $1024$ processes. }
-	\label{fig:tc_small}
-\end{figure*}
 
 \begin{figure*}[t]
 	{\includegraphics[width=.50\textwidth,  trim={0cm 0cm 0cm 0cm, 
