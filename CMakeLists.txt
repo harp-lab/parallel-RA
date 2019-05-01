@@ -1,5 +1,10 @@
 cmake_minimum_required (VERSION 2.6)
+
 project (BTree)
+
+add_compile_options(--std=c++14 -Wno-strict-aliasing)
+
+
 
 find_package(MPI REQUIRED)
 find_package(OpenMP)
@@ -20,8 +25,10 @@ file (GLOB source_files_aggregated_union "${source_dir}/aggregated_union.cpp")
 file (GLOB source_files_join "${source_dir}/join.cpp")
 file (GLOB source_files_ata "${source_dir}/all_to_all.cpp")
 file (GLOB source_files_mpitc_map "${source_dir}/mpi_tc_unordered_map.cpp")
+file (GLOB source_files_mpitc_google_map "${source_dir}/mpi_tc_google_map.cpp")
 file (GLOB source_files_otc "${source_dir}/optimized_transitive_closure.cpp")
 file (GLOB source_files_relation "${source_dir}/relation.cpp")
+file (GLOB source_files_dup_relation "${source_dir}/dup_relation.cpp")
 
 add_executable(BTree ${source_files_btree})
 
@@ -55,6 +62,12 @@ add_executable(mpiTCmap ${source_files_mpitc_map})
 INCLUDE_DIRECTORIES(${MPI_INCLUDE_PATH})
 TARGET_LINK_LIBRARIES(mpiTCmap ${MPI_LIBRARIES})
 
+
+add_executable(mpiTCGoogleMap ${source_files_mpitc_google_map})
+INCLUDE_DIRECTORIES(${MPI_INCLUDE_PATH})
+TARGET_LINK_LIBRARIES(mpiTCGoogleMap ${MPI_LIBRARIES})
+
 #add_executable(oTC ${source_files_otc})
 
 add_executable(relation ${source_files_relation})
+add_executable(dup_relation ${source_files_dup_relation})

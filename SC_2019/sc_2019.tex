@@ -1,6 +1,6 @@
 %
 % The first command in your LaTeX source must be the \documentclass command.
-\documentclass[sigconf,review]{acmart}
+\documentclass[sigconf,review,anonymous]{acmart}
 
 
 %
@@ -108,7 +108,7 @@
 %In this paper we present a set of efficient algorithms that tackle the problem of distributed, parallel relational algebra and use experiments from applications in graphs, program analysis, and datalog to evaluate our approach.
   Relational algebra forms a basis of primitive operations suitable for applications in graphs and networks, program analysis, deductive databases, and constraint logic programming. Despite its expressive power, relational algebra has not received the same attention in high-performance-computing research as more common primitives like stencil computations, floating-point operations, numerical integration, and sparse linear algebra. Furthermore, specific challenges in addressing representation and communication among distributed portions of a relation have previously thwarted successful scaling of relational algebra applications to supercomputers.
   
-In this paper, we present a set of efficient algorithms to effectively parallelize and scale key relational algebra primitives. We introduce a hybrid hash-tree approach to representing distributed relations and permitting efficient communication. Finally, we demonstrate the scalability of our implementation with a fixed-point algorithm computing the transitive closure of a large graph (generating over $276$ billion edges) on $65,\!536$ nodes.
+In this paper, we present a set of efficient algorithms to effectively parallelize and scale key relational algebra primitives. We introduce a hybrid hash-tree approach to representing distributed relations and permitting efficient communication. Finally, we demonstrate the scalability of our implementation with a fixed-point algorithm computing the transitive closure of a large graph (generating over $276$ billion edges) on $65,\!536$ processes.
 \end{abstract}
 
 %
@@ -169,7 +169,7 @@ In this paper, we present a set of efficient algorithms to effectively paralleli
 
 \section{Conclusion}
 
-We have presented the first general algorithms for scalable relational algebra on supercomputers. Our approach addresses both representation and communication among portions of a distributed relation, laying the groundwork for scaling algorithms that require a pipeline of repeated operations on relations, or fixed-point iteration, such as logical and constraint problems, deductive databases, and static program analyses. We discovered that MPI's all-to-all communication paradigm is scalable, and suitable for relational algebra. Finally, we demonstrated the scalability of our operations, up to $65,\!536$ nodes, in the context of a fixed-point algorithm for computing transitive closure.
+We have presented the first general algorithms for scalable relational algebra on supercomputers. Our approach addresses both representation and communication among portions of a distributed relation, laying the groundwork for scaling algorithms that require a pipeline of repeated operations on relations, or fixed-point iteration, such as logical and constraint problems, deductive databases, and static program analyses. We discovered that MPI's all-to-all communication paradigm is scalable, and suitable for relational algebra. Finally, we demonstrated the scalability of our operations, up to $65,\!536$ processes, in the context of a fixed-point algorithm for computing transitive closure.
 
 In future work, we plan to address distributing relations via hashing on multiple variables to improve performance for highly non-uniform relations. We also have plans to address combining task-level and data-level parallelism in the context of Datalog solvers---a problem that must naturally extend to large numbers of relations and fixed-point interation over equally large numbers of constraints.
 

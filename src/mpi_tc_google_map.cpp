@@ -12,13 +12,18 @@
 #include <iostream>
 #include <fstream>
 #include <mpi.h>
-#include <unordered_map>
-#include <unordered_set>
+#include "compat.h"
+#include "tuple.h"
+
+#include "btree/btree_map.h"
+
+typedef btree::btree_map<u64, u64> Relation0Map;
+typedef btree::btree_map<u64, btree::btree_map<u64, u64>* > Relation1Map;
 
 //#include <omp.h>
 
-#include "btree.h"
-#include "btree_relation.h"
+//#include "btree.h"
+//#include "btree_relation.h"
 
 static int rank = 0;
 static u32 nprocs = 1;
@@ -214,9 +219,9 @@ void buffer_data_to_hash_buffer(u32 local_number_of_rows, int col_count, u64* in
 }
 
 
-std::unordered_map<u64, std::unordered_set<u64>> * parallel_map_join(std::unordered_map<u64, std::unordered_set<u64>>* delT, std::unordered_map<u64, std::unordered_set<u64>>& G, std::unordered_map<u64, std::unordered_set<u64>>& T, int lc, int* lb, int* running_t_count, double* running_time)
+Relation1Map * parallel_map_join(Relation1Map* delT, Relation1Map& G, Relation1Map& T, int lc, int* lb, int* running_t_count, double* running_time)
 {
-    std::unordered_map<u64, std::unordered_set<u64>> * delTT = new std::unordered_map<u64, std::unordered_set<u64>>;
+    Relation1Map * delTT = new Relation1Map;
 
     double j1, j2;
     double c1 = 0, c2 = 0;
@@ -224,16 +229,13 @@ std::unordered_map<u64, std::unordered_set<u64>> * parallel_map_join(std::unorde
     double v1 = 0;
     double v2 = 0;
 
-
     j1 = MPI_Wtime();
-
 
     tuple<2> t;
     t[0] = -1;
     t[1] = -1;
     //tuple<2> selectall(t);
-    std::unordered_map<u64, std::unordered_set<u64>> tempT;
-
+    Relation1Map tempT;
 
     // Send Join output
     // process_size[j] stores the number of samples to be sent to process with rank j
@@ -259,10 +261,10 @@ std::unordered_map<u64, std::unordered_set<u64>> * parallel_map_join(std::unorde
     //u64 k;
 #if 0
     std::cout << "----G-------" << std::endl;
-    for ( auto local_it = G.begin(); local_it!= G.end(); ++local_it )
+    for ( auto local_it = G->begin(); local_it!= G->end(); ++local_it )
     {
         std::unordered_set<u64> k = local_it->second;
-        for (auto it2 = k.begin(); it2 != k.end(); it2++)
+        for (auto it2 = k->begin(); it2 != k->end(); it2++)
         {
             std::cout << local_it->first << "\t" << *it2 << std::endl;
         }
@@ -272,7 +274,7 @@ std::unordered_map<u64, std::unordered_set<u64>> * parallel_map_join(std::unorde
     for ( auto local_it = delT->begin(); local_it!= delT->end(); ++local_it )
     {
         std::unordered_set<u64> k = local_it->second;
-        for (auto it2 = k.begin(); it2 != k.end(); it2++)
+        for (auto it2 = k->begin(); it2 != k->end(); it2++)
         {
             std::cout << local_it->first << "\t" << *it2 << std::endl;
         }
@@ -280,40 +282,40 @@ std::unordered_map<u64, std::unordered_set<u64>> * parallel_map_join(std::unorde
 #endif
     for (auto it = delT->begin(); it != delT->end(); it++)
     {
-        std::unordered_set<u64> it2 = it->second;
-        for (auto dit2 = it2.begin(); dit2 != it2.end(); dit2++)
+        Relation0Map* it2 = it->second;
+        for (auto dit2 = it2->begin(); dit2 != it2->end(); dit2++)
         {
-            auto itd = G.find(*dit2);
+            auto itd = G.find(dit2->first);
             if( itd != G.end() ) {
-                std::unordered_set<u64> Git = itd->second;
-                for (auto it2 = Git.begin(); it2 != Git.end(); it2++)
+                Relation0Map* Git = itd->second;
+                for (auto it2 = Git->begin(); it2 != Git->end(); it2++)
                 {
                     tuple_count++;
 
                     auto itx = tempT.find(it->first);
                     if( itx != tempT.end() ) {
-                        auto it2x = (itx->second).find(*it2);
-                        if( it2x != (itx->second).end() ) {
+                        auto it2x = (itx->second)->find(it2->first);
+                        if( it2x != (itx->second)->end() ) {
                             ;
                         }
                         else{
-                            (itx->second).insert(*it2);
+                            (itx->second)->insert(std::make_pair(it2->first, 0));
                             tempT[it->first] = itx->second;
-                            index = outer_hash(*it2)%nprocs;
+                            index = outer_hash(it2->first)%nprocs;
                             dt[0] = it->first;
-                            dt[1] = *it2;
+                            dt[1] = it2->first;
                             process_data_vector[index].push_back(dt);
                             //row_count++;
                         }
                     }
                     else {
-                        std::unordered_set<u64> k;
-                        k.insert(*it2);
+                        Relation0Map* k = new Relation0Map();
+                        k->insert(std::make_pair(it2->first, 0));
                         //tempT.insert(std::make_pair(it->first,k));
                         tempT[it->first] = k;
-                        index = outer_hash(*it2)%nprocs;
+                        index = outer_hash(it2->first)%nprocs;
                         dt[0] = it->first;
-                        dt[1] = *it2;
+                        dt[1] = it2->first;
                         process_data_vector[index].push_back(dt);
                         //row_count++;
                     }
@@ -321,6 +323,9 @@ std::unordered_map<u64, std::unordered_set<u64>> * parallel_map_join(std::unorde
             }
         }
     }
+    Relation1Map::iterator ix = tempT.begin();
+    for(; ix != tempT.end(); ix++)
+        delete (ix->second);
     j2 = MPI_Wtime();
 #if 1
 
@@ -399,9 +404,11 @@ std::unordered_map<u64, std::unordered_set<u64>> * parallel_map_join(std::unorde
 #if 1
     i1 = MPI_Wtime();
 
+#if 0
+
     char TCname[1024];
     sprintf(TCname, "%d_T", lc);
-    //std::cout << "Filename " << TCname << std::endl;
+    std::cout << "Filename " << TCname << std::endl;
 
     std::ofstream myfile;
     myfile.open (TCname);
@@ -410,20 +417,20 @@ std::unordered_map<u64, std::unordered_set<u64>> * parallel_map_join(std::unorde
     for ( auto local_it = T.begin(); local_it!= T.end(); ++local_it )
     {
         std::unordered_set<u64> k = local_it->second;
-        for (auto it2 = k.begin(); it2 != k.end(); it2++)
+        for (auto it2 = k->begin(); it2 != k->end(); it2++)
             counter++;
     }
 
 
     u64* buffer = new u64[counter * 2 + outer_hash_buffer_size];
-    //std::cout << "Buffer size: " << counter * 2 + outer_hash_buffer_size << std::endl;
+    std::cout << "Buffer size: " << counter * 2 + outer_hash_buffer_size << std::endl;
     //std::cout << "Buffer size: " << counter * 2  << std::endl;
 
     counter = 0;
     for ( auto local_it = T.begin(); local_it!= T.end(); ++local_it )
     {
         std::unordered_set<u64> k = local_it->second;
-        for (auto it2 = k.begin(); it2 != k.end(); it2++)
+        for (auto it2 = k->begin(); it2 != k->end(); it2++)
         {
             memcpy(buffer + counter, &(local_it->first), sizeof(u64));
             counter++;
@@ -449,39 +456,39 @@ std::unordered_map<u64, std::unordered_set<u64>> * parallel_map_join(std::unorde
         fwrite (buffer , sizeof(u64), counter, pFile);
     fclose(pFile);
 
-
     delete[] buffer;
+#endif
 
     int count = 0;
     u64 tduplicates = 0;
     for(u32 ko = 0; ko < outer_hash_buffer_size; ko = ko + 2)
     {
-        myfile << hash_buffer[ko] << "\t" << hash_buffer[ko + 1] << "\n";
+        //myfile << hash_buffer[ko] << "\t" << hash_buffer[ko + 1] << "\n";
         auto it = T.find(hash_buffer[ko]);
         if( it != T.end() ) {
-            auto it2 = (it->second).find(hash_buffer[ko + 1]);
-            if( it2 != (it->second).end() ) {
+            auto it2 = (it->second)->find(hash_buffer[ko + 1]);
+            if( it2 != (it->second)->end() ) {
                 tduplicates++;
             }
             else
             {
-                (it->second).insert(hash_buffer[ko + 1]);
+                (it->second)->insert(std::make_pair(hash_buffer[ko + 1], 0));
 
                 //T.insert(std::make_pair(hash_buffer[ko],it->second));
                 T[hash_buffer[ko]] = it->second;
                 tcount++;
 
-                auto sit = (*delTT).find(hash_buffer[ko]);
-                if( sit != (*delTT).end() ) {
+                auto sit = delTT->find(hash_buffer[ko]);
+                if( sit != delTT->end() ) {
                     //(sit->second).insert(hash_buffer[ko + 1]);
-                    (sit->second).insert(hash_buffer[ko + 1]);
+                    (sit->second)->insert(std::make_pair(hash_buffer[ko + 1], 0));
                     //(*delTT).insert(std::make_pair(hash_buffer[ko],sit->second));
                     (*delTT)[hash_buffer[ko]] = sit->second;
                     count++;
                 }
                 else {
-                    std::unordered_set<u64> k;
-                    k.insert(hash_buffer[ko + 1]);
+                    Relation0Map *k = new Relation0Map;
+                    k->insert(std::make_pair(hash_buffer[ko + 1], 0));
                     //(*delTT).insert(std::make_pair(hash_buffer[ko],k));
                     (*delTT)[hash_buffer[ko]] = k;
                     count++;
@@ -489,23 +496,23 @@ std::unordered_map<u64, std::unordered_set<u64>> * parallel_map_join(std::unorde
             }
         }
         else {
-            std::unordered_set<u64> k;
-            k.insert(hash_buffer[ko + 1]);
+            Relation0Map *k = new Relation0Map;
+            k->insert(std::make_pair(hash_buffer[ko + 1], 0));
 
             //T.insert(std::make_pair(hash_buffer[ko],k));
             T[hash_buffer[ko]] = k;
             tcount++;
 
-            auto sit = (*delTT).find(hash_buffer[ko]);
-            if( sit != (*delTT).end() ) {
-                (sit->second).insert(hash_buffer[ko + 1]);
+            auto sit = delTT->find(hash_buffer[ko]);
+            if( sit != delTT->end() ) {
+                (sit->second)->insert(std::make_pair(hash_buffer[ko + 1], 0));
                 //(*delTT).insert(std::make_pair(hash_buffer[ko],sit->second));
                 (*delTT)[hash_buffer[ko]] = sit->second;
                 count++;
             }
             else {
-                std::unordered_set<u64> k;
-                k.insert(hash_buffer[ko + 1]);
+                Relation0Map *k = new Relation0Map;
+                k->insert(std::make_pair(hash_buffer[ko + 1], 0));
                 //(*delTT).insert(std::make_pair(hash_buffer[ko],k));
                 (*delTT)[hash_buffer[ko]] = k;
                 count++;
@@ -513,7 +520,7 @@ std::unordered_map<u64, std::unordered_set<u64>> * parallel_map_join(std::unorde
         }
     }
 
-    myfile.close();
+    //myfile.close();
     //dfile.close();
 
     delete[] hash_buffer;
@@ -552,6 +559,9 @@ std::unordered_map<u64, std::unordered_set<u64>> * parallel_map_join(std::unorde
                   << " T : " << *running_t_count
                   << std::endl;
 
+    Relation1Map::iterator iy = delT->begin();
+    for(; iy != delT->end(); iy++)
+        delete (iy->second);
     delete delT;
 
     return delTT;
@@ -595,25 +605,25 @@ int main(int argc, char **argv)
 
     double relation_start = MPI_Wtime();
 
-    std::unordered_map<u64, std::unordered_set<u64>> T;
-    std::unordered_map<u64, std::unordered_set<u64>> G;
+    Relation1Map T;
+    Relation1Map G;
 
     for (u32 i = 0; i < col_count * T_hash_entry_count; i = i + 2)
     {
         auto it = T.find(T_hashed_data[i]);
         if( it != T.end() ) {
-            auto it2 = (it->second).find(T_hashed_data[i + 1]);
-            if( it2 != (it->second).end() ) {
+            auto it2 = (it->second)->find(T_hashed_data[i + 1]);
+            if( it2 != (it->second)->end() ) {
                 ;
             }
             else{
-                (it->second).insert(T_hashed_data[i + 1]);
+                (it->second)->insert(std::make_pair(T_hashed_data[i + 1], 0));
                 T[T_hashed_data[i]] = it->second;
             }
         }
         else {
-            std::unordered_set<u64> k;
-            k.insert(T_hashed_data[i + 1]);
+            Relation0Map *k = new Relation0Map;
+            k->insert(std::make_pair(T_hashed_data[i + 1], 0));
             T.insert(std::make_pair(T_hashed_data[i],k));
         }
     }
@@ -622,43 +632,43 @@ int main(int argc, char **argv)
     {
         auto it = G.find(G_hashed_data[i]);
         if( it != G.end() ) {
-            auto it2 = (it->second).find(G_hashed_data[i + 1]);
-            if( it2 != (it->second).end() ) {
+            auto it2 = (it->second)->find(G_hashed_data[i + 1]);
+            if( it2 != (it->second)->end() ) {
                 ;
             }
             else{
-                (it->second).insert(G_hashed_data[i + 1]);
+                (it->second)->insert(std::make_pair(G_hashed_data[i + 1], 0));
                 G[G_hashed_data[i]] = it->second;
             }
         }
         else {
-            std::unordered_set<u64> k;
-            k.insert(G_hashed_data[i + 1]);
+            Relation0Map *k = new Relation0Map;
+            k->insert(std::make_pair(G_hashed_data[i + 1], 0));
             G.insert(std::make_pair(G_hashed_data[i],k));
         }
     }
 
-    std::unordered_map<u64, std::unordered_set<u64>> * dT = new std::unordered_map<u64, std::unordered_set<u64>>;
+    Relation1Map * dT = new Relation1Map;
     int running_t_count = 0;
 
     for (u32 i = 0; i < col_count * T_hash_entry_count; i = i + 2)
     {
-        auto it = (*dT).find(T_hashed_data[i]);
-        if( it != (*dT).end() ) {
-            auto it2 = (it->second).find(T_hashed_data[i + 1]);
-            if( it2 != (it->second).end() ) {
+        auto it = dT->find(T_hashed_data[i]);
+        if( it != dT->end() ) {
+            auto it2 = (it->second)->find(T_hashed_data[i + 1]);
+            if( it2 != (it->second)->end() ) {
                 ;
             }
             else{
-                (it->second).insert(T_hashed_data[i + 1]);
+                (it->second)->insert(std::make_pair(T_hashed_data[i + 1], 0));
                 (*dT)[T_hashed_data[i]] = it->second;
                 running_t_count++;
             }
         }
         else {
-            std::unordered_set<u64> k;
-            k.insert(T_hashed_data[i + 1]);
-            (*dT).insert(std::make_pair(T_hashed_data[i],k));
+            Relation0Map *k = new Relation0Map;
+            k->insert(std::make_pair(T_hashed_data[i + 1], 0));
+            dT->insert(std::make_pair(T_hashed_data[i],k));
             running_t_count++;
         }
     }
@@ -685,14 +695,18 @@ int main(int argc, char **argv)
       lc++;
     }
 
+    Relation1Map::iterator iy = dT->begin();
+    for(; iy != dT->end(); iy++)
+        delete (iy->second);
     delete dT;
+
 
     u64 total_sum = 0;
     u64 Tcounter = 0;
     for ( auto local_it = T.begin(); local_it!= T.end(); ++local_it )
     {
-        std::unordered_set<u64> k = local_it->second;
-        for (auto it2 = k.begin(); it2 != k.end(); it2++)
+        Relation0Map* k = local_it->second;
+        for (auto it2 = k->begin(); it2 != k->end(); it2++)
             Tcounter++;
     }
     MPI_Allreduce(&Tcounter, &total_sum, 1, MPI_UNSIGNED_LONG_LONG, MPI_SUM, comm);
@@ -712,7 +726,7 @@ int main(int argc, char **argv)
                   << " Total: " << (join_end - ior_start)
                   << " [" << (ior_end - ior_start) + (hash_end - hash_start) + (relation_end - relation_start) + (join_end - join_start) << "]" << std::endl;
     }
-
+#if 0
 #if 0
     double iow_start = MPI_Wtime();
 
@@ -731,10 +745,10 @@ int main(int argc, char **argv)
     u64 counter = 0;
     u64* buffer = new u64[Tcounter * 2];
 
-    for ( auto local_it = T.begin(); local_it!= T.end(); ++local_it )
+    for ( auto local_it = T->begin(); local_it!= T->end(); ++local_it )
     {
         std::unordered_set<u64> k = local_it->second;
-        for (auto it2 = k.begin(); it2 != k.end(); it2++)
+        for (auto it2 = k->begin(); it2 != k->end(); it2++)
         {
             memcpy(buffer + counter, &(local_it->first), sizeof(u64));
             counter++;
@@ -771,17 +785,18 @@ int main(int argc, char **argv)
                   << " [" << (ior_end - ior_start) + (hash_end - hash_start) + (relation_end - relation_start) + (join_end - join_start) + (iow_end - iow_start) << "]" << std::endl;
     }
 #endif
+#endif
+
+    Relation1Map::iterator iy1 = T.begin();
+    for(; iy1 != T.end(); iy1++)
+        delete (iy1->second);
+
+    Relation1Map::iterator iy2 = G.begin();
+    for(; iy2 != G.end(); iy2++)
+        delete (iy2->second);
 
     // Finalizing MPI
     MPI_Finalize();
 
     return 0;
 }
-
-
-
-
-
-
-
-
