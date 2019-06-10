@@ -1,5 +1,5 @@
-#ifndef __RELATION__
-#define __RELATION__
+#ifndef __BTREE_RELATION__
+#define __BTREE_RELATION__
 
 #include <iostream>
 #include "tuple.h"

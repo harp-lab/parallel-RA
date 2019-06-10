@@ -26,6 +26,8 @@ file (GLOB source_files_join "${source_dir}/join.cpp")
 file (GLOB source_files_ata "${source_dir}/all_to_all.cpp")
 file (GLOB source_files_mpitc_map "${source_dir}/mpi_tc_unordered_map.cpp")
 file (GLOB source_files_mpitc_google_map "${source_dir}/mpi_tc_google_map.cpp")
+file (GLOB source_files_mpi_double_hash_tc_google_map "${source_dir}/mpi_double_hash_tc_google_map.cpp")
+file (GLOB source_files_double_hash_tc_google_map "${source_dir}/double_hash_tc_google_map.cpp")
 file (GLOB source_files_otc "${source_dir}/optimized_transitive_closure.cpp")
 file (GLOB source_files_relation "${source_dir}/relation.cpp")
 file (GLOB source_files_dup_relation "${source_dir}/dup_relation.cpp")
@@ -66,6 +68,12 @@ TARGET_LINK_LIBRARIES(mpiTCmap ${MPI_LIBRARIES})
 add_executable(mpiTCGoogleMap ${source_files_mpitc_google_map})
 INCLUDE_DIRECTORIES(${MPI_INCLUDE_PATH})
 TARGET_LINK_LIBRARIES(mpiTCGoogleMap ${MPI_LIBRARIES})
+
+add_executable(mpiTC_double_hash_googleMap ${source_files_mpi_double_hash_tc_google_map})
+INCLUDE_DIRECTORIES(${MPI_INCLUDE_PATH})
+TARGET_LINK_LIBRARIES(mpiTC_double_hash_googleMap ${MPI_LIBRARIES})
+
+add_executable(TC_double_hash_googleMap ${source_files_double_hash_tc_google_map})
 
 #add_executable(oTC ${source_files_otc})
 

@@ -13,6 +13,7 @@
 #include <chrono>
 #include "btree.h"
 #include "btree_relation.h"
+#include "relation.h"
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>

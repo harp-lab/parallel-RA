@@ -14,16 +14,10 @@
 #include <mpi.h>
 #include "compat.h"
 #include "tuple.h"
-
 #include "btree/btree_map.h"
 
 typedef btree::btree_map<u64, u64> Relation0Map;
 typedef btree::btree_map<u64, btree::btree_map<u64, u64>* > Relation1Map;
-
-//#include <omp.h>
-
-//#include "btree.h"
-//#include "btree_relation.h"
 
 static int rank = 0;
 static u32 nprocs = 1;
@@ -100,7 +94,7 @@ void parallel_read_input_relation_from_file_to_local_buffer(const char *file_nam
     //std::cout << "Local row count " << *local_row_count << std::endl;
 
     *read_buffer = new u64[*local_row_count * global_col_count];
-    u32 rb_size = pread(fp, *read_buffer, *local_row_count * global_col_count * sizeof(u64), read_offset * global_col_count * sizeof(u64));
+    u64 rb_size = pread(fp, *read_buffer, *local_row_count * global_col_count * sizeof(u64), read_offset * global_col_count * sizeof(u64));
     if (rb_size != *local_row_count * global_col_count * sizeof(u64))
     {
         printf("Wrong input format (Meta Data)\n");
@@ -285,6 +279,9 @@ Relation1Map * parallel_map_join(Relation1Map* delT, Relation1Map& G, Relation1M
         Relation0Map* it2 = it->second;
         for (auto dit2 = it2->begin(); dit2 != it2->end(); dit2++)
         {
+            //if (rank == 0)
+            //    std::cout << "DATA " << it->first << " " << dit2->first << std::endl;
+
             auto itd = G.find(dit2->first);
             if( itd != G.end() ) {
                 Relation0Map* Git = itd->second;
@@ -335,6 +332,7 @@ Relation1Map * parallel_map_join(Relation1Map* delT, Relation1Map& G, Relation1M
     memset(prefix_sum_process_size, 0, nprocs * sizeof(int));
 
     process_size[0] = 2 * process_data_vector[0].size();
+    non_deduplicate_tuple_count = process_data_vector[0].size();
     for(u32 i = 1; i < nprocs; i++)
     {
         prefix_sum_process_size[i] = prefix_sum_process_size[i - 1] + (2 * process_data_vector[i - 1].size());
@@ -401,63 +399,7 @@ Relation1Map * parallel_map_join(Relation1Map* delT, Relation1Map& G, Relation1M
 
 
     c2 = MPI_Wtime();
-#if 1
     i1 = MPI_Wtime();
-
-#if 0
-
-    char TCname[1024];
-    sprintf(TCname, "%d_T", lc);
-    std::cout << "Filename " << TCname << std::endl;
-
-    std::ofstream myfile;
-    myfile.open (TCname);
-
-    u64 counter = 0;
-    for ( auto local_it = T.begin(); local_it!= T.end(); ++local_it )
-    {
-        std::unordered_set<u64> k = local_it->second;
-        for (auto it2 = k->begin(); it2 != k->end(); it2++)
-            counter++;
-    }
-
-
-    u64* buffer = new u64[counter * 2 + outer_hash_buffer_size];
-    std::cout << "Buffer size: " << counter * 2 + outer_hash_buffer_size << std::endl;
-    //std::cout << "Buffer size: " << counter * 2  << std::endl;
-
-    counter = 0;
-    for ( auto local_it = T.begin(); local_it!= T.end(); ++local_it )
-    {
-        std::unordered_set<u64> k = local_it->second;
-        for (auto it2 = k->begin(); it2 != k->end(); it2++)
-        {
-            memcpy(buffer + counter, &(local_it->first), sizeof(u64));
-            counter++;
-
-            memcpy(buffer + counter, &(*it2), sizeof(u64));
-            counter++;
-        }
-    }
-
-    for(u32 ko = 0; ko < outer_hash_buffer_size; ko = ko + 2)
-    {
-        memcpy(buffer + counter, &(hash_buffer[ko]), sizeof(u64));
-        counter++;
-
-        memcpy(buffer + counter, &(hash_buffer[ko + 1]), sizeof(u64));
-        counter++;
-    }
-
-
-    FILE * pFile;
-    pFile = fopen (TCname,"wb");
-    if (pFile!=NULL)
-        fwrite (buffer , sizeof(u64), counter, pFile);
-    fclose(pFile);
-
-    delete[] buffer;
-#endif
 
     int count = 0;
     u64 tduplicates = 0;
@@ -537,8 +479,6 @@ Relation1Map * parallel_map_join(Relation1Map* delT, Relation1Map& G, Relation1M
         else
             *lb = 0;
     }
-#endif
-
 
 #endif
     *running_t_count = *running_t_count + tcount;
@@ -592,21 +532,46 @@ int main(int argc, char **argv)
 
     u32 G_hash_entry_count;
     u64 *G_hashed_data = NULL;
-    buffer_data_to_hash_buffer(entry_count, col_count, input_buffer,  0 /*hash_column_index*/, &G_hashed_data, &G_hash_entry_count, MPI_COMM_WORLD);
+    buffer_data_to_hash_buffer(entry_count, col_count, input_buffer, 0, &G_hashed_data, &G_hash_entry_count, MPI_COMM_WORLD);
+
+    std::cout << "[G] Rank: " << rank << " Hashed count: " << G_hash_entry_count << " Ratio: " << (float)((float) G_hash_entry_count/global_row_count)*100 << std::endl;
+
 
     u32 T_hash_entry_count;
     u64 *T_hashed_data = NULL;
-    buffer_data_to_hash_buffer(entry_count, col_count, input_buffer,  1 /*hash_column_index*/, &T_hashed_data, &T_hash_entry_count, MPI_COMM_WORLD);
+    buffer_data_to_hash_buffer(entry_count, col_count, input_buffer,  1, &T_hashed_data, &T_hash_entry_count, MPI_COMM_WORLD);
+
+    std::cout << "[T] Rank: " << rank << " Hashed count: " << T_hash_entry_count << " Ratio: " << (float)((float) T_hash_entry_count/global_row_count)*100 << std::endl;
 
     delete[] input_buffer;
-
     double hash_end = MPI_Wtime();
 
 
     double relation_start = MPI_Wtime();
-
-    Relation1Map T;
     Relation1Map G;
+    for (u32 i = 0; i < col_count * G_hash_entry_count; i = i + 2)
+    {
+        auto it = G.find(G_hashed_data[i]);
+        if( it != G.end() ) {
+            auto it2 = (it->second)->find(G_hashed_data[i + 1]);
+            if( it2 != (it->second)->end() ) {
+                ;
+            }
+            else{
+                (it->second)->insert(std::make_pair(G_hashed_data[i + 1], 0));
+                G[G_hashed_data[i]] = it->second;
+            }
+        }
+        else {
+            Relation0Map *k = new Relation0Map;
+            k->insert(std::make_pair(G_hashed_data[i + 1], 0));
+            G.insert(std::make_pair(G_hashed_data[i],k));
+        }
+    }
+
+
+#if 1
+    Relation1Map T;
 
     for (u32 i = 0; i < col_count * T_hash_entry_count; i = i + 2)
     {
@@ -625,26 +590,6 @@ int main(int argc, char **argv)
             Relation0Map *k = new Relation0Map;
             k->insert(std::make_pair(T_hashed_data[i + 1], 0));
             T.insert(std::make_pair(T_hashed_data[i],k));
-        }
-    }
-
-    for (u32 i = 0; i < col_count * G_hash_entry_count; i = i + 2)
-    {
-        auto it = G.find(G_hashed_data[i]);
-        if( it != G.end() ) {
-            auto it2 = (it->second)->find(G_hashed_data[i + 1]);
-            if( it2 != (it->second)->end() ) {
-                ;
-            }
-            else{
-                (it->second)->insert(std::make_pair(G_hashed_data[i + 1], 0));
-                G[G_hashed_data[i]] = it->second;
-            }
-        }
-        else {
-            Relation0Map *k = new Relation0Map;
-            k->insert(std::make_pair(G_hashed_data[i + 1], 0));
-            G.insert(std::make_pair(G_hashed_data[i],k));
         }
     }
 
@@ -686,6 +631,7 @@ int main(int argc, char **argv)
     double time = 0;
     dT = parallel_map_join(dT, G, T, 0, &lb, &running_t_count, &time);
 
+    //
     int lc = 1;
     while(true)
     {
@@ -694,6 +640,7 @@ int main(int argc, char **argv)
       if (lb == 1)  break;
       lc++;
     }
+    //
 
     Relation1Map::iterator iy = dT->begin();
     for(; iy != dT->end(); iy++)
@@ -726,50 +673,6 @@ int main(int argc, char **argv)
                   << " Total: " << (join_end - ior_start)
                   << " [" << (ior_end - ior_start) + (hash_end - hash_start) + (relation_end - relation_start) + (join_end - join_start) << "]" << std::endl;
     }
-#if 0
-#if 0
-    double iow_start = MPI_Wtime();
-
-    char TDname[1024];
-    sprintf(TDname, "%s_%d_TC", argv[1], nprocs);
-    //std::cout << "Filename " << TCname << std::endl;
-    if (rank == 0)
-        mkdir(TDname, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-
-    MPI_Barrier(MPI_COMM_WORLD);
-
-    char TCname[1024];
-    sprintf(TCname, "%s/%s_%d", TDname, argv[1], rank);
-
-
-    u64 counter = 0;
-    u64* buffer = new u64[Tcounter * 2];
-
-    for ( auto local_it = T->begin(); local_it!= T->end(); ++local_it )
-    {
-        std::unordered_set<u64> k = local_it->second;
-        for (auto it2 = k->begin(); it2 != k->end(); it2++)
-        {
-            memcpy(buffer + counter, &(local_it->first), sizeof(u64));
-            counter++;
-
-            memcpy(buffer + counter, &(*it2), sizeof(u64));
-            counter++;
-        }
-    }
-
-    FILE * pFile;
-    pFile = fopen (TCname,"wb");
-    if (pFile!=NULL)
-        fwrite (buffer , sizeof(u64), Tcounter * 2, pFile);
-    fclose(pFile);
-
-
-    //myfile << buffer;
-    //myfile.close();
-    delete[] buffer;
-    double iow_end = MPI_Wtime();
-
 
     if (rank == 0)
     {
@@ -780,12 +683,9 @@ int main(int argc, char **argv)
                   << " Init hash: " << (hash_end - hash_start)
                   << " Relation init: " << (relation_end - relation_start)
                   << " Fixed point: " << (join_end - join_start)
-                  << " Write time: " << (iow_end - iow_start)
-                  << " Total: " << (iow_end - ior_start)
-                  << " [" << (ior_end - ior_start) + (hash_end - hash_start) + (relation_end - relation_start) + (join_end - join_start) + (iow_end - iow_start) << "]" << std::endl;
+                  << " Total: " << (join_end - ior_start)
+                  << " [" << (ior_end - ior_start) + (hash_end - hash_start) + (relation_end - relation_start) + (join_end - join_start) << "]" << std::endl;
     }
-#endif
-#endif
 
     Relation1Map::iterator iy1 = T.begin();
     for(; iy1 != T.end(); iy1++)
@@ -795,6 +695,7 @@ int main(int argc, char **argv)
     for(; iy2 != G.end(); iy2++)
         delete (iy2->second);
 
+#endif
     // Finalizing MPI
     MPI_Finalize();
 
