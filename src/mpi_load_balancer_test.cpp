@@ -264,6 +264,8 @@ void load_balance_G(u32 buckets, u32** gmap_sub_bucket, u32* subbuckets_G, Relat
 
     MPI_Allreduce(g_new_sub_bucket, global_g_new_sub_bucket, buckets, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
 
+    delete[] g_new_sub_bucket;
+
     //if (rank == 1)
     //    for (u32 b = 0; b < buckets; b++)
     //        std::cout << "b " << b << " " << subbuckets_G[b] << " " << global_g_new_sub_bucket[b] << std::endl;
@@ -374,6 +376,7 @@ void load_balance_G(u32 buckets, u32** gmap_sub_bucket, u32* subbuckets_G, Relat
             G[i][j].clear();
         }
 
+        delete[] G[i];
         G[i] = new Relation1Map[global_g_new_sub_bucket[i]];
 
         total_outer_hash_buffer_size = total_outer_hash_buffer_size + outer_hash_buffer_size/2;
@@ -427,6 +430,8 @@ void load_balance_G(u32 buckets, u32** gmap_sub_bucket, u32* subbuckets_G, Relat
     //
 
     memcpy(subbuckets_G, global_g_new_sub_bucket, sizeof(u32)*buckets);
+
+    delete[] global_g_new_sub_bucket;
 
     int send_buf = total_outer_hash_buffer_size;
     int recv_buf_max = 0;
@@ -516,6 +521,8 @@ void one_iteration(u32 local_row_count, u32 buckets, u32 *subbuckets_G, u64 *inp
         }
     }
 
+    delete[] G_hashed_data;
+
     load_balance_G(buckets, gmap_sub_bucket, subbuckets_G, G, myfile);
 
     for (u32 i = 0; i < buckets; i++)
@@ -527,6 +534,7 @@ void one_iteration(u32 local_row_count, u32 buckets, u32 *subbuckets_G, u64 *inp
                 delete (iy2->second);
         }
 
+        delete[] gmap_sub_bucket[i];
         delete[] G[i];
 
     }
