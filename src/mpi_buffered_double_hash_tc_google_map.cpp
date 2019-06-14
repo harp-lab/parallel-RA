@@ -309,6 +309,7 @@ Relation1Map *** parallel_map_join(Relation1Map*** delT, u32* dtmap, Relation1Ma
     int gnprocs = 0;
     u64 tduplicates = 0;
     u64 **recvbuf = new u64*[buckets];
+    memset(recvbuf, 0, sizeof(u64*) * buckets);
     u64 *total_buffer_size = new u64[buckets];
     memset(total_buffer_size, 0, sizeof(u64)*buckets);
 
@@ -348,7 +349,7 @@ Relation1Map *** parallel_map_join(Relation1Map*** delT, u32* dtmap, Relation1Ma
                 total_buffer_size[i] = total_buffer_size[i] + recv_process_size_buffer_local[n];
             }
 
-            //std::cout << "XXXXXXXXrank " << rank << " i " << i << " total_buffer_size " << total_buffer_size << std::endl;
+            //std::cout << "XXXXXXXXrank " << rank << " i " << i << " total_buffer_size " << total_buffer_size[i] << std::endl;
 
             recvbuf[i] = new u64[total_buffer_size[i]];
             MPI_Allgatherv(&delT_temp[i][0], delT_temp[i].size(), MPI_UNSIGNED_LONG_LONG, recvbuf[i], recv_process_size_buffer_local, recv_process_prefix, MPI_UNSIGNED_LONG_LONG, group_comm[i]);
@@ -356,7 +357,7 @@ Relation1Map *** parallel_map_join(Relation1Map*** delT, u32* dtmap, Relation1Ma
     }
     double t1_e = MPI_Wtime();
     outer_comm_time = (t1_e - t1_s);
-#if 1
+
     std::vector<tuple<2>> *process_data_vector;
     process_data_vector = new std::vector<tuple<2>>[nprocs];
     for (u32 i = 0; i < buckets; i++)
@@ -428,7 +429,7 @@ Relation1Map *** parallel_map_join(Relation1Map*** delT, u32* dtmap, Relation1Ma
                     }
                 }
             }
-            delete[]  recvbuf;
+
             Relation1Map::iterator ix = tempT.begin();
             for(; ix != tempT.end(); ix++)
                 delete (ix->second);
@@ -437,6 +438,8 @@ Relation1Map *** parallel_map_join(Relation1Map*** delT, u32* dtmap, Relation1Ma
             join_time = join_time + (t2_e-t2_s);
         }
         }
+    delete[]  recvbuf;
+#if 1
 
 #if 1
 
