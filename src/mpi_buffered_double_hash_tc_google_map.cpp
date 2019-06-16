@@ -888,8 +888,8 @@ int load_balance_G(u32 buckets, u32* gmap_bucket, u32** gmap_sub_bucket, u32* su
     //
     if (rank == 0)
     {
-        //for (u32 i = 0; i < buckets; i++)
-        //    std::cout << i << "[G] Bucket count changed from " << subbuckets_G[i] << " to " << global_g_new_sub_bucket[i] << std::endl;
+        for (u32 i = 0; i < buckets; i++)
+            std::cout << i << "[G] Bucket count changed from " << subbuckets_G[i] << " to " << global_g_new_sub_bucket[i] << std::endl;
 
         //for (u32 i = 0; i < buckets; i++)
         //    for (u32 j = 0; j < global_g_new_sub_bucket[i]; j++)
