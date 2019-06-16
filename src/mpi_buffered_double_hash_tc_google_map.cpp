@@ -222,14 +222,6 @@ Relation1Map *** parallel_map_join(Relation1Map*** delT, u32* dtmap, Relation1Ma
 {
     double comm_create_start = MPI_Wtime();
 
-    Relation1Map ***delTT = new Relation1Map**[buckets];
-    for (u32 i = 0; i < buckets; i++)
-    {
-        delTT[i] = new Relation1Map*[subbuckets_T[i]];
-        for (u32 j = 0; j < subbuckets_T[i]; j++)
-            delTT[i][j] = new Relation1Map;
-    }
-
     tuple<2> dt;
 
     // Send Join output
@@ -245,9 +237,15 @@ Relation1Map *** parallel_map_join(Relation1Map*** delT, u32* dtmap, Relation1Ma
     int color[buckets];
     memset(color, 0, buckets * sizeof(int));
 
+    Relation1Map ***delTT = new Relation1Map**[buckets];
+
     MPI_Comm group_comm[buckets];
     for (u32 i = 0; i < buckets; i++)
     {
+        delTT[i] = new Relation1Map*[subbuckets_T[i]];
+        for (u32 j = 0; j < subbuckets_T[i]; j++)
+            delTT[i][j] = new Relation1Map;
+
         if (dtmap[i] == 1 || gmap_bucket[i] == 1)
             color[i] = 1;
 
@@ -308,7 +306,6 @@ Relation1Map *** parallel_map_join(Relation1Map*** delT, u32* dtmap, Relation1Ma
 
             int recv_process_prefix[gnprocs];
             memset(recv_process_prefix, 0, gnprocs * sizeof(int));
-
 
             for (int n = 0; n < gnprocs; n++)
             {
@@ -576,7 +573,6 @@ Relation1Map *** parallel_map_join(Relation1Map*** delT, u32* dtmap, Relation1Ma
                   << " Dup Delta: " << tduplicates
                   << " T : " << *running_t_count
                   << std::endl;
-    //
 
     for (u32 i = 0; i < buckets; i++)
     {
@@ -587,10 +583,8 @@ Relation1Map *** parallel_map_join(Relation1Map*** delT, u32* dtmap, Relation1Ma
                 delete (iy->second);
             delete delT[i][j];
         }
-    }
-
-    for (u32 i = 0; i < buckets; i++)
         delete[] delT[i];
+    }
     delete[] delT;
 
 
@@ -656,17 +650,13 @@ void load_balance_G(u32 buckets, u32* gmap_bucket, u32** gmap_sub_bucket, u32* s
     //    for (u32 b = 0; b < buckets; b++)
     //        std::cout << "b " << b << " " << subbuckets_G[b] << " " << global_g_new_sub_bucket[b] << std::endl;
 
+
     for (u32 i = 0; i < buckets; i++)
+    {
         delete[] gmap_sub_bucket[i];
+        gmap_sub_bucket[i] = new u32[global_g_new_sub_bucket[i]];
+        memset(gmap_sub_bucket[i], 0, sizeof(u32) * global_g_new_sub_bucket[i]);
 
-    for (u32 ix = 0; ix < buckets; ix++)
-    {
-        gmap_sub_bucket[ix] = new u32[global_g_new_sub_bucket[ix]];
-        memset(gmap_sub_bucket[ix], 0, sizeof(u32) * global_g_new_sub_bucket[ix]);
-    }
-
-    for (u32 i = 0; i < buckets; i++)
-    {
         /* process_size[j] stores the number of samples to be sent to process with rank j */
         int process_size[nprocs];
         memset(process_size, 0, nprocs * sizeof(int));
@@ -760,7 +750,7 @@ void load_balance_G(u32 buckets, u32* gmap_bucket, u32** gmap_sub_bucket, u32* s
             G[i][j].clear();
         }
 
-        //delete[] G[i];
+        delete[] G[i];
         G[i] = new Relation1Map[global_g_new_sub_bucket[i]];
         total_outer_hash_buffer_size = total_outer_hash_buffer_size + outer_hash_buffer_size/2;
 
@@ -911,15 +901,13 @@ void load_balance_T(u32 buckets, u32* tmap_bucket, u32** tmap_sub_bucket, u32* s
     //        std::cout << "b " << b << " " << subbuckets_G[b] << " " << global_t_new_sub_bucket[b] << std::endl;
 
 
-    for (u32 ix = 0; ix < buckets; ix++)
-    {
-        delete[] tmap_sub_bucket[ix];
-        tmap_sub_bucket[ix] = new u32[global_t_new_sub_bucket[ix]];
-        memset(tmap_sub_bucket[ix], 0, sizeof(u32) * global_t_new_sub_bucket[ix]);
-    }
 
     for (u32 bk = 0; bk < buckets; bk++)
     {
+        delete[] tmap_sub_bucket[bk];
+        tmap_sub_bucket[bk] = new u32[global_t_new_sub_bucket[bk]];
+        memset(tmap_sub_bucket[bk], 0, sizeof(u32) * global_t_new_sub_bucket[bk]);
+
         /* process_size[j] stores the number of samples to be sent to process with rank j */
         int process_size[nprocs];
         memset(process_size, 0, nprocs * sizeof(int));
@@ -1044,17 +1032,14 @@ void load_balance_T(u32 buckets, u32* tmap_bucket, u32** tmap_sub_bucket, u32* s
     }
 #endif
 
-#if 1    
-
-    for (u32 ix = 0; ix < buckets; ix++)
-    {
-        delete[] dtmap_sub_bucket[ix];
-        dtmap_sub_bucket[ix] = new u32[global_t_new_sub_bucket[ix]];
-        memset(dtmap_sub_bucket[ix], 0, sizeof(u32) * global_t_new_sub_bucket[ix]);
-    }
+#if 1
 
     for (u32 bk = 0; bk < buckets; bk++)
     {
+        delete[] dtmap_sub_bucket[bk];
+        dtmap_sub_bucket[bk] = new u32[global_t_new_sub_bucket[bk]];
+        memset(dtmap_sub_bucket[bk], 0, sizeof(u32) * global_t_new_sub_bucket[bk]);
+
         /* process_size[j] stores the number of samples to be sent to process with rank j */
         int process_size[nprocs];
         memset(process_size, 0, nprocs * sizeof(int));
@@ -1138,6 +1123,7 @@ void load_balance_T(u32 buckets, u32* tmap_bucket, u32** tmap_sub_bucket, u32* s
                 delete (iy2->second);
 
             delta[bk][j]->clear();
+            delete delta[bk][j];
         }
         delete[] delta[bk];
 
