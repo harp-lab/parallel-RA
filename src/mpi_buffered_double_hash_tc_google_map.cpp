@@ -218,138 +218,158 @@ void buffer_data_to_hash_buffer(u32 local_number_of_rows, u64* input_data,  int 
 }
 
 
-Relation1Map *** parallel_map_join(Relation1Map*** delT, u32* dtmap, Relation1Map**& G, u32* gmap_bucket, Relation1Map**& T, int lc, int* lb, int* running_t_count, double* running_time, u32 buckets, u32* subbuckets_G, u32* subbuckets_T, int** gmap_sub_bucket_rank, int** tmap_sub_bucket_rank)
+Relation1Map *** parallel_map_join(Relation1Map*** delT, u32* dtmap, Relation1Map**& G, u32* gmap_bucket, Relation1Map**& T, int lc, int* lb, int* running_t_count, double* running_time, u32 buckets, u32* subbuckets_G, u32* subbuckets_T, int** gmap_sub_bucket_rank, int** tmap_sub_bucket_rank, int load_balance)
 {
-    double comm_create_start = MPI_Wtime();
-
+    double comm_create_start = 0;
+    double comm_create_end = 0;
+    double join_time = 0;
+    double outer_comm_time = 0;
     tuple<2> dt;
-
-    // Send Join output
-    // process_size[j] stores the number of samples to be sent to process with rank j
-    int process_size[nprocs];
-    memset(process_size, 0, nprocs * sizeof(int));
-
+    std::vector<tuple<2>> *process_data_vector;
+    process_data_vector = new std::vector<tuple<2>>[nprocs];
     u64 tuple_count = 0;
-    u64 non_deduplicate_tuple_count = 0;
-    int tcount = 0;
-
-    std::vector<tuple<2>> delT_temp[buckets];
-    int color[buckets];
-    memset(color, 0, buckets * sizeof(int));
 
     Relation1Map ***delTT = new Relation1Map**[buckets];
-
-    MPI_Comm group_comm[buckets];
     for (u32 i = 0; i < buckets; i++)
     {
         delTT[i] = new Relation1Map*[subbuckets_T[i]];
         for (u32 j = 0; j < subbuckets_T[i]; j++)
             delTT[i][j] = new Relation1Map;
+    }
 
-        if (dtmap[i] == 1 || gmap_bucket[i] == 1)
-            color[i] = 1;
 
-        for (u32 j = 0; j < subbuckets_T[i]; j++)
+    if (load_balance == 1)
+    {
+        comm_create_start = MPI_Wtime();
+
+        // Send Join output
+        // process_size[j] stores the number of samples to be sent to process with rank j
+        int process_size[nprocs];
+        memset(process_size, 0, nprocs * sizeof(int));
+
+        std::vector<tuple<2>> delT_temp[buckets];
+        int color[buckets];
+        memset(color, 0, buckets * sizeof(int));
+
+        MPI_Comm group_comm[buckets];
+        for (u32 i = 0; i < buckets; i++)
         {
-            for (auto it = delT[i][j]->begin(); it != delT[i][j]->end(); it++)
+            if (dtmap[i] == 1 || gmap_bucket[i] == 1)
+                color[i] = 1;
+
+            for (u32 j = 0; j < subbuckets_T[i]; j++)
             {
-                Relation0Map* it2 = it->second;
-                for (auto dit2 = it2->begin(); dit2 != it2->end(); dit2++)
+                for (auto it = delT[i][j]->begin(); it != delT[i][j]->end(); it++)
                 {
-                    dt[0] = it->first;
-                    dt[1] = dit2->first;
-                    delT_temp[i].push_back(dt);
+                    Relation0Map* it2 = it->second;
+                    for (auto dit2 = it2->begin(); dit2 != it2->end(); dit2++)
+                    {
+                        dt[0] = it->first;
+                        dt[1] = dit2->first;
+                        delT_temp[i].push_back(dt);
+                    }
                 }
             }
+            MPI_Comm_split(MPI_COMM_WORLD, color[i], rank, &(group_comm[i]));
         }
-        MPI_Comm_split(MPI_COMM_WORLD, color[i], rank, &(group_comm[i]));
-    }
-    double comm_create_end = MPI_Wtime();
+        comm_create_end = MPI_Wtime();
 
-    double join_time = 0;
-    double outer_comm_time = 0;
-    double global_comm_time = 0;
-    double insert_time = 0;
 
-    int count = 0;
-    int gnprocs = 0;
-    u64 tduplicates = 0;
-    u64 **recvbuf = new u64*[buckets];
-    memset(recvbuf, 0, sizeof(u64*) * buckets);
-    u64 *total_buffer_size = new u64[buckets];
-    memset(total_buffer_size, 0, sizeof(u64)*buckets);
 
-    double t1_s = MPI_Wtime();
-    for (u32 i = 0; i < buckets; i++)
-    {
-        MPI_Comm_size(group_comm[i], &gnprocs);
-        if (color[i] == 1)
+        int gnprocs = 0;
+
+        u64 **recvbuf = new u64*[buckets];
+        memset(recvbuf, 0, sizeof(u64*) * buckets);
+        u64 *total_buffer_size = new u64[buckets];
+        memset(total_buffer_size, 0, sizeof(u64)*buckets);
+
+        double t1_s = MPI_Wtime();
+        for (u32 i = 0; i < buckets; i++)
         {
-            int process_size[gnprocs];
-            memset(process_size, 0, gnprocs * sizeof(int));
-
-            int recvcounts[gnprocs];
-            int displs[gnprocs];
-            for (int n = 0; n < gnprocs; n++)
+            MPI_Comm_size(group_comm[i], &gnprocs);
+            if (color[i] == 1)
             {
-                recvcounts[n] = 1;
-                displs[n] = n;
-            }
 
-            /* This step prepares for actual data transfer */
-            /* Every process sends to every other process the amount of data it is going to send */
-            int recv_process_size_buffer_local[gnprocs];
-            memset(recv_process_size_buffer_local, 0, gnprocs * sizeof(int));
 
-            int buffer_size = delT_temp[i].size() * COL_COUNT;
-            MPI_Allgatherv(&buffer_size, 1, MPI_INT, recv_process_size_buffer_local, recvcounts, displs, MPI_INT, group_comm[i]);
-
-            int recv_process_prefix[gnprocs];
-            memset(recv_process_prefix, 0, gnprocs * sizeof(int));
-
-            for (int n = 0; n < gnprocs; n++)
-            {
-                recv_process_prefix[n] = total_buffer_size[i];
-                total_buffer_size[i] = total_buffer_size[i] + recv_process_size_buffer_local[n];
-            }
-
-            recvbuf[i] = new u64[total_buffer_size[i]];
-
-            MPI_Allgatherv(&delT_temp[i][0], buffer_size, MPI_UNSIGNED_LONG_LONG, recvbuf[i], recv_process_size_buffer_local, recv_process_prefix, MPI_UNSIGNED_LONG_LONG, group_comm[i]);
-        }
-    }
-
-    double t1_e = MPI_Wtime();
-    outer_comm_time = (t1_e - t1_s);
-
-    double t2_s = MPI_Wtime();
-    std::vector<tuple<2>> *process_data_vector;
-    process_data_vector = new std::vector<tuple<2>>[nprocs];
-    for (u32 i = 0; i < buckets; i++)
-    {
-        if (color[i] == 1)
-        {
-            Relation1Map tempT;
-            for (u32 k1 = 0; k1 < total_buffer_size[i]; k1=k1+2)
-            {
-                for (u32 j = 0; j < subbuckets_G[i]; j++)
+                int recvcounts[gnprocs];
+                int displs[gnprocs];
+                for (int n = 0; n < gnprocs; n++)
                 {
-                    auto itd = G[i][j].find(recvbuf[i][k1+1]);
-                    if( itd != G[i][j].end() ) {
-                        Relation0Map* Git = itd->second;
-                        for (auto it2 = Git->begin(); it2 != Git->end(); it2++)
-                        {
-                            tuple_count++;
+                    recvcounts[n] = 1;
+                    displs[n] = n;
+                }
 
-                            auto itx = tempT.find(recvbuf[i][k1]);
-                            if( itx != tempT.end() ) {
-                                auto it2x = (itx->second)->find(it2->first);
-                                if( it2x != (itx->second)->end() ) {
-                                    ;
+                /* This step prepares for actual data transfer */
+                /* Every process sends to every other process the amount of data it is going to send */
+                int recv_process_size_buffer_local[gnprocs];
+                memset(recv_process_size_buffer_local, 0, gnprocs * sizeof(int));
+
+                int buffer_size = delT_temp[i].size() * COL_COUNT;
+                MPI_Allgatherv(&buffer_size, 1, MPI_INT, recv_process_size_buffer_local, recvcounts, displs, MPI_INT, group_comm[i]);
+
+                int recv_process_prefix[gnprocs];
+                memset(recv_process_prefix, 0, gnprocs * sizeof(int));
+
+                for (int n = 0; n < gnprocs; n++)
+                {
+                    recv_process_prefix[n] = total_buffer_size[i];
+                    total_buffer_size[i] = total_buffer_size[i] + recv_process_size_buffer_local[n];
+                }
+
+                recvbuf[i] = new u64[total_buffer_size[i]];
+
+                MPI_Allgatherv(&delT_temp[i][0], buffer_size, MPI_UNSIGNED_LONG_LONG, recvbuf[i], recv_process_size_buffer_local, recv_process_prefix, MPI_UNSIGNED_LONG_LONG, group_comm[i]);
+            }
+        }
+
+        double t1_e = MPI_Wtime();
+        outer_comm_time = (t1_e - t1_s);
+
+        double t2_s = MPI_Wtime();
+
+        for (u32 i = 0; i < buckets; i++)
+        {
+            if (color[i] == 1)
+            {
+                Relation1Map tempT;
+                for (u32 k1 = 0; k1 < total_buffer_size[i]; k1=k1+2)
+                {
+                    for (u32 j = 0; j < subbuckets_G[i]; j++)
+                    {
+                        auto itd = G[i][j].find(recvbuf[i][k1+1]);
+                        if( itd != G[i][j].end() ) {
+                            Relation0Map* Git = itd->second;
+                            for (auto it2 = Git->begin(); it2 != Git->end(); it2++)
+                            {
+                                tuple_count++;
+
+                                auto itx = tempT.find(recvbuf[i][k1]);
+                                if( itx != tempT.end() ) {
+                                    auto it2x = (itx->second)->find(it2->first);
+                                    if( it2x != (itx->second)->end() ) {
+                                        ;
+                                    }
+                                    else{
+                                        (itx->second)->insert(std::make_pair(it2->first, 0));
+                                        tempT[recvbuf[i][k1]] = itx->second;
+
+                                        dt[0] = recvbuf[i][k1];
+                                        dt[1] = it2->first;
+
+                                        // because we are sending to T and dt and they are hashed on the second column
+                                        uint64_t bucket_id = outer_hash(dt[1]) % buckets;
+                                        uint64_t sub_bucket_id = outer_hash(dt[0]) % subbuckets_T[bucket_id];
+
+                                        int index = tmap_sub_bucket_rank[bucket_id][sub_bucket_id];
+                                        //uint64_t index = (outer_hash((bucket_id << 32)^sub_bucket_id))%nprocs;
+                                        process_data_vector[index].push_back(dt);
+                                    }
                                 }
-                                else{
-                                    (itx->second)->insert(std::make_pair(it2->first, 0));
-                                    tempT[recvbuf[i][k1]] = itx->second;
+                                else {
+                                    Relation0Map* k = new Relation0Map();
+                                    k->insert(std::make_pair(it2->first, 0));
+                                    //tempT.insert(std::make_pair(it->first,k));
+                                    tempT[recvbuf[i][k1]] = k;
 
                                     dt[0] = recvbuf[i][k1];
                                     dt[1] = it2->first;
@@ -358,44 +378,104 @@ Relation1Map *** parallel_map_join(Relation1Map*** delT, u32* dtmap, Relation1Ma
                                     uint64_t bucket_id = outer_hash(dt[1]) % buckets;
                                     uint64_t sub_bucket_id = outer_hash(dt[0]) % subbuckets_T[bucket_id];
 
-                                    int index = tmap_sub_bucket_rank[bucket_id][sub_bucket_id];
                                     //uint64_t index = (outer_hash((bucket_id << 32)^sub_bucket_id))%nprocs;
+                                    int index = tmap_sub_bucket_rank[bucket_id][sub_bucket_id];
                                     process_data_vector[index].push_back(dt);
                                 }
                             }
-                            else {
-                                Relation0Map* k = new Relation0Map();
-                                k->insert(std::make_pair(it2->first, 0));
-                                //tempT.insert(std::make_pair(it->first,k));
-                                tempT[recvbuf[i][k1]] = k;
+                        }
+                    }
+                }
 
-                                dt[0] = recvbuf[i][k1];
-                                dt[1] = it2->first;
+                Relation1Map::iterator ix = tempT.begin();
+                for(; ix != tempT.end(); ix++)
+                    delete (ix->second);
+            }
 
-                                // because we are sending to T and dt and they are hashed on the second column
-                                uint64_t bucket_id = outer_hash(dt[1]) % buckets;
-                                uint64_t sub_bucket_id = outer_hash(dt[0]) % subbuckets_T[bucket_id];
+            delete[]  recvbuf[i];
+        }
+        delete[]  recvbuf;
+        delete[]  total_buffer_size;
+        double t2_e = MPI_Wtime();
+        join_time = (t2_e - t2_s);
+    }
+    else
+    {
+        double t2_s = MPI_Wtime();
 
-                                //uint64_t index = (outer_hash((bucket_id << 32)^sub_bucket_id))%nprocs;
-                                int index = tmap_sub_bucket_rank[bucket_id][sub_bucket_id];
-                                process_data_vector[index].push_back(dt);
+        Relation1Map tempT;
+        for (u32 i = 0; i < buckets; i++)
+        {
+            for (u32 j1 = 0; j1 < subbuckets_T[i]; j1++)
+            {
+                for ( auto local_it = delT[i][j1]->begin(); local_it!= delT[i][j1]->end(); ++local_it )
+                {
+                    Relation0Map* k = local_it->second;
+                    for (auto it2T = k->begin(); it2T != k->end(); it2T++)
+                    {
+                        for (u32 j = 0; j < subbuckets_G[i]; j++)
+                        {
+                            auto itd = G[i][j].find(it2T->first);
+                            if( itd != G[i][j].end() ) {
+                                Relation0Map* Git = itd->second;
+                                for (auto it2 = Git->begin(); it2 != Git->end(); it2++)
+                                {
+                                    tuple_count++;
+
+                                    auto itx = tempT.find(local_it->first);
+                                    if( itx != tempT.end() ) {
+                                        auto it2x = (itx->second)->find(it2->first);
+                                        if( it2x != (itx->second)->end() ) {
+                                            ;
+                                        }
+                                        else{
+                                            (itx->second)->insert(std::make_pair(it2->first, 0));
+                                            tempT[local_it->first] = itx->second;
+
+                                            dt[0] = local_it->first;
+                                            dt[1] = it2->first;
+
+                                            // because we are sending to T and dt and they are hashed on the second column
+                                            uint64_t bucket_id = outer_hash(dt[1]) % buckets;
+                                            uint64_t sub_bucket_id = outer_hash(dt[0]) % subbuckets_T[bucket_id];
+
+                                            int index = tmap_sub_bucket_rank[bucket_id][sub_bucket_id];
+                                            //uint64_t index = (outer_hash((bucket_id << 32)^sub_bucket_id))%nprocs;
+                                            process_data_vector[index].push_back(dt);
+                                        }
+                                    }
+                                    else {
+                                        Relation0Map* k = new Relation0Map();
+                                        k->insert(std::make_pair(it2->first, 0));
+                                        //tempT.insert(std::make_pair(it->first,k));
+                                        tempT[local_it->first] = k;
+
+                                        dt[0] = local_it->first;
+                                        dt[1] = it2->first;
+
+                                        // because we are sending to T and dt and they are hashed on the second column
+                                        uint64_t bucket_id = outer_hash(dt[1]) % buckets;
+                                        uint64_t sub_bucket_id = outer_hash(dt[0]) % subbuckets_T[bucket_id];
+
+                                        //uint64_t index = (outer_hash((bucket_id << 32)^sub_bucket_id))%nprocs;
+                                        int index = tmap_sub_bucket_rank[bucket_id][sub_bucket_id];
+                                        process_data_vector[index].push_back(dt);
+                                    }
+                                }
                             }
                         }
                     }
                 }
             }
-
-            Relation1Map::iterator ix = tempT.begin();
-            for(; ix != tempT.end(); ix++)
-                delete (ix->second);
         }
 
-        delete[]  recvbuf[i];
+        Relation1Map::iterator ix = tempT.begin();
+        for(; ix != tempT.end(); ix++)
+            delete (ix->second);
+
+        double t2_e = MPI_Wtime();
+        join_time = (t2_e - t2_s);
     }
-    delete[]  recvbuf;
-    delete[]  total_buffer_size;
-    double t2_e = MPI_Wtime();
-    join_time = (t2_e - t2_s);
 #if 1
 
 #if 1
@@ -405,6 +485,10 @@ Relation1Map *** parallel_map_join(Relation1Map*** delT, u32* dtmap, Relation1Ma
     int prefix_sum_process_size[nprocs];
     memset(prefix_sum_process_size, 0, nprocs * sizeof(int));
 
+    int process_size[nprocs];
+    memset(process_size, 0, nprocs * sizeof(int));
+
+    u64 non_deduplicate_tuple_count = 0;
     process_size[0] = 2 * process_data_vector[0].size();
     non_deduplicate_tuple_count = non_deduplicate_tuple_count + process_data_vector[0].size();
     for (u32 i = 1; i < nprocs; i++)
@@ -454,9 +538,12 @@ Relation1Map *** parallel_map_join(Relation1Map*** delT, u32* dtmap, Relation1Ma
 #if 1
 
     double c2 = MPI_Wtime();
-    global_comm_time = (c2-c1);
+    double global_comm_time = (c2-c1);
 
     double i1 = MPI_Wtime();
+    u64 tduplicates = 0;
+    int tcount = 0;
+    u64 count = 0;
     memset(dtmap, 0, buckets * sizeof(u32));
     for (u32 i = 0; i < outer_hash_buffer_size; i = i + 2)
     {
@@ -530,7 +617,7 @@ Relation1Map *** parallel_map_join(Relation1Map*** delT, u32* dtmap, Relation1Ma
     delete[] hash_buffer;
     delete[] process_data;
     double i2 = MPI_Wtime();
-    insert_time = insert_time + (i2 - i1);
+    double insert_time = (i2 - i1);
 
 #if 1
 
@@ -560,6 +647,7 @@ Relation1Map *** parallel_map_join(Relation1Map*** delT, u32* dtmap, Relation1Ma
 
     if (rank == 0)
         std::cout << lc << " [" << v2-comm_create_start << "] [" << *running_time << "]"
+                  << " lb " << load_balance
                   << " T t: " << global_sum
                   << " N t " << tuple_count
                   << " non dup: " << non_deduplicate_tuple_count
@@ -593,7 +681,7 @@ Relation1Map *** parallel_map_join(Relation1Map*** delT, u32* dtmap, Relation1Ma
     return delTT;
 }
 
-void load_balance_G(u32 buckets, u32* gmap_bucket, u32** gmap_sub_bucket, u32* subbuckets_G, Relation1Map **G, int** gmap_sub_bucket_rank)
+int load_balance_G(u32 buckets, u32* gmap_bucket, u32** gmap_sub_bucket, u32* subbuckets_G, Relation1Map **G, int** gmap_sub_bucket_rank)
 {
     u32 max_sub_bucket_size = 0;
     u32 min_sub_bucket_size = INT_MAX;
@@ -630,6 +718,13 @@ void load_balance_G(u32 buckets, u32* gmap_bucket, u32** gmap_sub_bucket, u32* s
             g_new_sub_bucket[i] = g_new_sub_bucket[i] + (gmap_sub_bucket[i][j] / global_min);
 
     MPI_Allreduce(g_new_sub_bucket, global_g_new_sub_bucket, buckets, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+
+    u32 count_bk = 0;
+    for (u32 bk = 0; bk < buckets; bk++)
+        if (global_g_new_sub_bucket[bk] == subbuckets_G[bk])
+            count_bk++;
+    if (count_bk == buckets)
+        return 0;
 
     int rcount = 0;
     for (u64 b = 0; b < buckets; b++)
@@ -807,11 +902,13 @@ void load_balance_G(u32 buckets, u32* gmap_bucket, u32** gmap_sub_bucket, u32* s
 
 
     std::cout << "Balanced [G] Rank: " << rank << " Hashed count: " << total_outer_hash_buffer_size << " Ratio: " << (float)((float) total_outer_hash_buffer_size/global_row_count)*100 << std::endl;
+
+    return 1;
 }
 
 
 
-void load_balance_T(u32 buckets, u32* tmap_bucket, u32** tmap_sub_bucket, u32* subbuckets_T, Relation1Map **T, u32* dtmap_bucket, u32** dtmap_sub_bucket, Relation1Map ***delta, int** tmap_sub_bucket_rank)
+int load_balance_T(u32 buckets, u32* tmap_bucket, u32** tmap_sub_bucket, u32* subbuckets_T, Relation1Map **T, u32* dtmap_bucket, u32** dtmap_sub_bucket, Relation1Map ***delta, int** tmap_sub_bucket_rank)
 {
     u64 dT_tuple_count_before = 0;
     u64 T_tuple_count_before = 0;
@@ -881,6 +978,13 @@ void load_balance_T(u32 buckets, u32* tmap_bucket, u32** tmap_sub_bucket, u32* s
             t_new_sub_bucket[i] = t_new_sub_bucket[i] + (tmap_sub_bucket[i][j] / global_min);
 
     MPI_Allreduce(t_new_sub_bucket, global_t_new_sub_bucket, buckets, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+
+    u32 count_bk = 0;
+    for (u32 bk = 0; bk < buckets; bk++)
+        if (global_t_new_sub_bucket[bk] == subbuckets_T[bk])
+            count_bk++;
+    if (count_bk == buckets)
+        return 0;
 
     int rcount = 0;
     for (u64 b = 0; b < buckets; b++)
@@ -1210,6 +1314,8 @@ void load_balance_T(u32 buckets, u32* tmap_bucket, u32** tmap_sub_bucket, u32* s
     //std::cout << "Balanced [dT] Rank: " << rank << " Hashed count: " << total_outer_hash_buffer_size_dT << " Ratio: " << (float)((float) total_outer_hash_buffer_size_dT/global_row_count)*100 << std::endl;
 #endif
 
+    return 1;
+
 }
 
 
@@ -1515,11 +1621,11 @@ int main(int argc, char **argv)
 
 
     double load_balance_G_start = MPI_Wtime();
-    load_balance_G(buckets, gmap_bucket, gmap_sub_bucket, subbuckets_G, G, gmap_sub_bucket_rank);
+    int lb_g = load_balance_G(buckets, gmap_bucket, gmap_sub_bucket, subbuckets_G, G, gmap_sub_bucket_rank);
     double load_balance_G_end = MPI_Wtime();
 
     double load_balance_T_start = MPI_Wtime();
-    load_balance_T(buckets, tmap_bucket, tmap_sub_bucket, subbuckets_T, T, dtmap_bucket, dtmap_sub_bucket, dT, tmap_sub_bucket_rank);
+    int lb_t = load_balance_T(buckets, tmap_bucket, tmap_sub_bucket, subbuckets_T, T, dtmap_bucket, dtmap_sub_bucket, dT, tmap_sub_bucket_rank);
     double load_balance_T_end = MPI_Wtime();
 
 
@@ -1529,14 +1635,14 @@ int main(int argc, char **argv)
     int lb = 0;
     double time = 0;
 
-    dT = parallel_map_join(dT, dtmap_bucket, G, gmap_bucket, T, 0, &lb, &running_t_count, &time, buckets, subbuckets_G, subbuckets_T, gmap_sub_bucket_rank, tmap_sub_bucket_rank);
+    dT = parallel_map_join(dT, dtmap_bucket, G, gmap_bucket, T, 0, &lb, &running_t_count, &time, buckets, subbuckets_G, subbuckets_T, gmap_sub_bucket_rank, tmap_sub_bucket_rank, lb_g);
 
 
 #if 1
     int lc = 1;
     while(true)
     {
-        dT = parallel_map_join(dT, dtmap_bucket, G, gmap_bucket, T, lc, &lb, &running_t_count, &time, buckets, subbuckets_G, subbuckets_T, gmap_sub_bucket_rank, tmap_sub_bucket_rank);
+        dT = parallel_map_join(dT, dtmap_bucket, G, gmap_bucket, T, lc, &lb, &running_t_count, &time, buckets, subbuckets_G, subbuckets_T, gmap_sub_bucket_rank, tmap_sub_bucket_rank, lb_t);
 
         //load_balance_G(buckets, gmap_bucket, gmap_sub_bucket, subbuckets_G, G);
         //load_balance_T(buckets, tmap_bucket, tmap_sub_bucket, subbuckets_T, T, dtmap_bucket, dtmap_sub_bucket, dT);
