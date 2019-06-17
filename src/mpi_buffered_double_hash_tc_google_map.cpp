@@ -316,8 +316,9 @@ Relation1Map *** parallel_map_join(Relation1Map*** delT, u32* dtmap, Relation1Ma
 
                 MPI_Allgatherv(&delT_temp[i][0], buffer_size, MPI_UNSIGNED_LONG_LONG, recvbuf[i], recv_process_size_buffer_local, recv_process_prefix, MPI_UNSIGNED_LONG_LONG, group_comm[i]);
             }
-        }
+            MPI_Comm_free(&group_comm[i]);
 
+        }
         double t1_e = MPI_Wtime();
         outer_comm_time = (t1_e - t1_s);
 
