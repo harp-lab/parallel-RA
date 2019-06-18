@@ -218,12 +218,16 @@ void buffer_data_to_hash_buffer(u32 local_number_of_rows, u64* input_data,  int 
 }
 
 
-Relation1Map *** parallel_map_join(Relation1Map*** delT, u32* dtmap, Relation1Map**& G, u32* gmap_bucket, Relation1Map**& T, int lc, int* lb, int* running_t_count, double* running_time, u32 buckets, u32* subbuckets_G, u32* subbuckets_T, int** gmap_sub_bucket_rank, int** tmap_sub_bucket_rank, int load_balance, u32* g_dt_bucket_indices, u32 g_dt_actual_bucket_count)
+Relation1Map *** parallel_map_join(Relation1Map*** delT, u32* dtmap, Relation1Map**& G, u32* gmap_bucket, Relation1Map**& T, int lc, int* lb, int* running_t_count, double* running_time, u32 buckets, u32* subbuckets_G, u32* subbuckets_T, int** gmap_sub_bucket_rank, int** tmap_sub_bucket_rank, int load_balance, u32* g_dt_bucket_indices, u32 g_dt_actual_bucket_count, u32* g_bucket_indices, u32 g_actual_bucket_count, u32* g_recv_count, u32** g_recv_rank, int comm_type)
 {
     double comm_create_start = 0;
     double comm_create_end = 0;
     double join_time = 0;
     double outer_comm_time = 0;
+
+    outer_comm_time = join_time + comm_create_start + comm_create_end;
+    outer_comm_time = outer_comm_time /outer_comm_time ;
+
     tuple<2> dt;
     std::vector<tuple<2>> *process_data_vector;
     process_data_vector = new std::vector<tuple<2>>[nprocs];
@@ -240,95 +244,247 @@ Relation1Map *** parallel_map_join(Relation1Map*** delT, u32* dtmap, Relation1Ma
 
     if (load_balance == 1)
     {
-        comm_create_start = MPI_Wtime();
-
-        // Send Join output
-        // process_size[j] stores the number of samples to be sent to process with rank j
-        int process_size[nprocs];
-        memset(process_size, 0, nprocs * sizeof(int));
-
-        std::vector<tuple<2>> delT_temp[buckets];
-        int color[buckets];
-        memset(color, 0, buckets * sizeof(int));
-
-        MPI_Comm group_comm[buckets];
-        for (u32 i = 0; i < buckets; i++)
-        {
-            if (dtmap[i] == 1 || gmap_bucket[i] == 1)
-                color[i] = 1;
-
-            for (u32 j = 0; j < subbuckets_T[i]; j++)
-            {
-                for (auto it = delT[i][j]->begin(); it != delT[i][j]->end(); it++)
-                {
-                    Relation0Map* it2 = it->second;
-                    for (auto dit2 = it2->begin(); dit2 != it2->end(); dit2++)
-                    {
-                        dt[0] = it->first;
-                        dt[1] = dit2->first;
-                        delT_temp[i].push_back(dt);
-                    }
-                }
-            }
-            MPI_Comm_split(MPI_COMM_WORLD, color[i], rank, &(group_comm[i]));
-        }
-        comm_create_end = MPI_Wtime();
-
-
-        int gnprocs = 0;
         u64 **recvbuf = new u64*[buckets];
         memset(recvbuf, 0, sizeof(u64*) * buckets);
         u64 *total_buffer_size = new u64[buckets];
         memset(total_buffer_size, 0, sizeof(u64)*buckets);
 
-        double t1_s = MPI_Wtime();
-        for (u32 i = 0; i < buckets; i++)
+        if (comm_type == 1)
         {
-            MPI_Comm_size(group_comm[i], &gnprocs);
-            if (color[i] == 1)
+            comm_create_start = MPI_Wtime();
+
+            // Send Join output
+            // process_size[j] stores the number of samples to be sent to process with rank j
+            int process_size[nprocs];
+            memset(process_size, 0, nprocs * sizeof(int));
+
+            std::vector<tuple<2>> delT_temp[buckets];
+            int color[buckets];
+            memset(color, 0, buckets * sizeof(int));
+
+            MPI_Comm group_comm[buckets];
+
+            for (u32 i = 0; i < buckets; i++)
             {
-                int recvcounts[gnprocs];
-                int displs[gnprocs];
-                for (int n = 0; n < gnprocs; n++)
+                if (dtmap[i] == 1 || gmap_bucket[i] == 1)
+                    color[i] = 1;
+
+                for (u32 j = 0; j < subbuckets_T[i]; j++)
                 {
-                    recvcounts[n] = 1;
-                    displs[n] = n;
+                    for (auto it = delT[i][j]->begin(); it != delT[i][j]->end(); it++)
+                    {
+                        Relation0Map* it2 = it->second;
+                        for (auto dit2 = it2->begin(); dit2 != it2->end(); dit2++)
+                        {
+                            dt[0] = it->first;
+                            dt[1] = dit2->first;
+                            delT_temp[i].push_back(dt);
+                        }
+                    }
                 }
-
-                /* This step prepares for actual data transfer */
-                /* Every process sends to every other process the amount of data it is going to send */
-                int recv_process_size_buffer_local[gnprocs];
-                memset(recv_process_size_buffer_local, 0, gnprocs * sizeof(int));
-
-                int buffer_size = delT_temp[i].size() * COL_COUNT;
-                MPI_Allgatherv(&buffer_size, 1, MPI_INT, recv_process_size_buffer_local, recvcounts, displs, MPI_INT, group_comm[i]);
-
-                int recv_process_prefix[gnprocs];
-                memset(recv_process_prefix, 0, gnprocs * sizeof(int));
-
-                for (int n = 0; n < gnprocs; n++)
-                {
-                    recv_process_prefix[n] = total_buffer_size[i];
-                    total_buffer_size[i] = total_buffer_size[i] + recv_process_size_buffer_local[n];
-                }
-
-                recvbuf[i] = new u64[total_buffer_size[i]];
-
-                MPI_Allgatherv(&delT_temp[i][0], buffer_size, MPI_UNSIGNED_LONG_LONG, recvbuf[i], recv_process_size_buffer_local, recv_process_prefix, MPI_UNSIGNED_LONG_LONG, group_comm[i]);
+                MPI_Comm_split(MPI_COMM_WORLD, color[i], rank, &(group_comm[i]));
             }
-            MPI_Comm_free(&group_comm[i]);
+            comm_create_end = MPI_Wtime();
 
+
+            int gnprocs = 0;
+            double t1_s = MPI_Wtime();
+            for (u32 i = 0; i < buckets; i++)
+            {
+                MPI_Comm_size(group_comm[i], &gnprocs);
+                if (color[i] == 1)
+                {
+                    int recvcounts[gnprocs];
+                    int displs[gnprocs];
+                    for (int n = 0; n < gnprocs; n++)
+                    {
+                        recvcounts[n] = 1;
+                        displs[n] = n;
+                    }
+
+                    /* This step prepares for actual data transfer */
+                    /* Every process sends to every other process the amount of data it is going to send */
+                    int recv_process_size_buffer_local[gnprocs];
+                    memset(recv_process_size_buffer_local, 0, gnprocs * sizeof(int));
+
+                    int buffer_size = delT_temp[i].size() * COL_COUNT;
+                    MPI_Allgatherv(&buffer_size, 1, MPI_INT, recv_process_size_buffer_local, recvcounts, displs, MPI_INT, group_comm[i]);
+
+                    int recv_process_prefix[gnprocs];
+                    memset(recv_process_prefix, 0, gnprocs * sizeof(int));
+
+                    for (int n = 0; n < gnprocs; n++)
+                    {
+                        recv_process_prefix[n] = total_buffer_size[i];
+                        total_buffer_size[i] = total_buffer_size[i] + recv_process_size_buffer_local[n];
+                    }
+
+                    recvbuf[i] = new u64[total_buffer_size[i]];
+
+                    MPI_Allgatherv(&delT_temp[i][0], buffer_size, MPI_UNSIGNED_LONG_LONG, recvbuf[i], recv_process_size_buffer_local, recv_process_prefix, MPI_UNSIGNED_LONG_LONG, group_comm[i]);
+                }
+                MPI_Comm_free(&group_comm[i]);
+            }
+
+            double t1_e = MPI_Wtime();
+            outer_comm_time = (t1_e - t1_s);
         }
-        double t1_e = MPI_Wtime();
-        outer_comm_time = (t1_e - t1_s);
+        else
+        {
+
+            u32 *global_dtmap = new u32[buckets * nprocs];
+            memset(global_dtmap, 0, sizeof(u32) * buckets * nprocs);
+            MPI_Allgather(dtmap, buckets, MPI_INT, global_dtmap, buckets, MPI_INT, MPI_COMM_WORLD);
+#if 1
+
+            u32* dt_send_count = new u32[buckets];
+            memset(dt_send_count, 0, buckets * sizeof(u32));
+
+            for (u32 b = 0; b < buckets; b++)
+            {
+                for (u32 h = b; h < buckets * nprocs; h=h+buckets)
+                {
+                    if (global_dtmap[h] == 1)
+                        dt_send_count[b]++;
+                }
+                //std::cout << "dt_send_count[b]" << dt_send_count[b] << std::endl;
+            }
+
+            u32** dt_send_rank = new u32*[buckets];
+            for (u32 b = 0; b < buckets; b++)
+            {
+                dt_send_rank[b] = new u32[dt_send_count[b]];
+                memset(dt_send_rank[b], 0, dt_send_count[b] * sizeof(u32));
+            }
+            for (u32 b = 0; b < buckets; b++)
+            {
+                int rcount = 0;
+                for (u32 h = b; h < buckets * nprocs; h=h+buckets)
+                {
+                    if (global_dtmap[h] == 1)
+                    {
+                        dt_send_rank[b][rcount] = h / buckets;
+                        rcount++;
+                    }
+                }
+            }
+#if 0
+            for (u32 b = 0; b < buckets; b++)
+                for (u32 k = 0; k < dt_send_count[b]; k++)
+                    std::cout << b << "  " << k << " " << dt_send_rank[b][k] << std::endl;
+#endif
+
+            delete[] global_dtmap;
+
+
+            std::vector<tuple<2>> delT_temp[buckets];
+            for (u32 i = 0; i < buckets; i++)
+            {
+                if (dtmap[i] == 1 || gmap_bucket[i] == 1)
+                {
+                    for (u32 j = 0; j < subbuckets_T[i]; j++)
+                    {
+                        for (auto it = delT[i][j]->begin(); it != delT[i][j]->end(); it++)
+                        {
+                            Relation0Map* it2 = it->second;
+                            for (auto dit2 = it2->begin(); dit2 != it2->end(); dit2++)
+                            {
+                                dt[0] = it->first;
+                                dt[1] = dit2->first;
+                                delT_temp[i].push_back(dt);
+                            }
+                        }
+                    }
+
+                    int buffer_size = delT_temp[i].size() * COL_COUNT;
+                    u32* size_buf = new u32[dt_send_count[i]];
+                    memset(size_buf, 0, sizeof(u32) * dt_send_count[i]);
+                    u32 req_counter1 = 0;
+                    MPI_Request *req1 = new MPI_Request[g_recv_count[i] + dt_send_count[i]];
+                    MPI_Status *stat1 = new MPI_Status[g_recv_count[i] + dt_send_count[i]];
+
+                    // meta-data
+                    if (dtmap[i] == 1)
+                    {
+                        for (u32 r = 0; r < g_recv_count[i]; r++)
+                        {
+                            MPI_Isend(&buffer_size, 1, MPI_INT, g_recv_rank[i][r], 123, MPI_COMM_WORLD, &req1[req_counter1]);
+                            req_counter1++;
+
+                        }
+                    }
+                    if (gmap_bucket[i] == 1)
+                    {
+                        for (u32 r = 0; r < dt_send_count[i]; r++)
+                        {
+                            MPI_Irecv(size_buf + r, 1, MPI_INT, dt_send_rank[i][r], 123, MPI_COMM_WORLD, &req1[req_counter1]);
+                            req_counter1++;
+                        }
+                    }
+                    MPI_Waitall(req_counter1, req1, stat1);
+
+                    for (u32 r = 0; r < dt_send_count[i]; r++)
+                        total_buffer_size[i] = total_buffer_size[i] + size_buf[r];
+
+
+#if 1
+                    u32 req_counter2 = 0;
+                    MPI_Request *req2 = new MPI_Request[g_recv_count[i] + dt_send_count[i]];
+                    MPI_Status *stat2 = new MPI_Status[g_recv_count[i] + dt_send_count[i]];
+
+
+                    // data
+                    if (dtmap[i] == 1)
+                    {
+                        for (u32 r = 0; r < g_recv_count[i]; r++)
+                        {
+                            if (delT_temp[i].size() != 0)
+                            {
+                                MPI_Isend(&delT_temp[i][0], delT_temp[i].size() * COL_COUNT, MPI_UNSIGNED_LONG_LONG, g_recv_rank[i][r], 123, MPI_COMM_WORLD, &req2[req_counter2]);
+                                req_counter2++;
+                            }
+                        }
+                    }
+                    if (gmap_bucket[i] == 1)
+                    {
+                        u32 offset = 0;
+
+                        recvbuf[i] = new u64[total_buffer_size[i]];
+                        for (u32 r = 0; r < dt_send_count[i]; r++)
+                        {
+                            if (size_buf[r] != 0)
+                            {
+                                MPI_Irecv(recvbuf[i] + offset, size_buf[r], MPI_UNSIGNED_LONG_LONG, dt_send_rank[i][r], 123, MPI_COMM_WORLD, &req2[req_counter2]);
+                                offset = offset + size_buf[r];
+                                req_counter2++;
+                            }
+                        }
+                    }
+                    MPI_Waitall(req_counter2, req2, stat2);
+                    delete[] req1;
+                    delete[] req2;
+
+                    delete[] stat1;
+                    delete[] stat2;
+                    delete[] size_buf;
+#endif
+                }
+            }
+#endif
+
+            delete[] dt_send_count;
+            for (u32 b = 0; b < buckets; b++)
+                delete[] dt_send_rank[b];
+            delete[] dt_send_rank;
+        }
 
         double t2_s = MPI_Wtime();
-
-        for (u32 i3 = 0; i3 < g_dt_actual_bucket_count; i3++)
+#if 1
+        for (u32 i3 = 0; i3 < g_actual_bucket_count; i3++)
             //for (u32 i = 0; i < buckets; i++)
         {
-            u32 i = g_dt_bucket_indices[i3];
-            if (color[i] == 1)
+            u32 i = g_bucket_indices[i3];
+            //if (color[i] == 1)
             {
                 Relation1Map tempT;
                 for (u32 k1 = 0; k1 < total_buffer_size[i]; k1=k1+2)
@@ -393,6 +549,7 @@ Relation1Map *** parallel_map_join(Relation1Map*** delT, u32* dtmap, Relation1Ma
 
             delete[]  recvbuf[i];
         }
+#endif
         delete[]  recvbuf;
         delete[]  total_buffer_size;
         double t2_e = MPI_Wtime();
@@ -402,10 +559,10 @@ Relation1Map *** parallel_map_join(Relation1Map*** delT, u32* dtmap, Relation1Ma
     {
         double t2_s = MPI_Wtime();
         Relation1Map tempT;
-        for (u32 i2 = 0; i2 < g_dt_actual_bucket_count; i2++)
+        for (u32 i2 = 0; i2 < g_actual_bucket_count; i2++)
             //for (u32 i = 0; i < buckets; i++)
         {
-            u32 i = g_dt_bucket_indices[i2];
+            u32 i = g_bucket_indices[i2];
             for (u32 j1 = 0; j1 < subbuckets_T[i]; j1++)
             {
                 for ( auto local_it = delT[i][j1]->begin(); local_it!= delT[i][j1]->end(); ++local_it )
@@ -1363,6 +1520,14 @@ int main(int argc, char **argv)
     MPI_Comm_size(MPI_COMM_WORLD, &size);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
+    if (argc != 5)
+    {
+        if (rank == 0)
+        {
+            std::cout << "Usage:" << "TC <bucket count factor> <initial sub bucket count> <comm type>"   << std::endl;
+            MPI_Abort(MPI_COMM_WORLD, -1);
+        }
+    }
 
 #if 1
     comm = MPI_COMM_WORLD;
@@ -1375,7 +1540,7 @@ int main(int argc, char **argv)
     u32 *subbuckets_T;
 
     // this is the initialization step, we can change this as well
-    buckets = nprocs * 1;
+    buckets = nprocs * atoi(argv[2]);
 
     // the relations can have different number of sub buckets
     subbuckets_G = new u32[buckets];
@@ -1386,8 +1551,8 @@ int main(int argc, char **argv)
 
     for (u64 b = 0; b < buckets; b++)
     {
-        subbuckets_G[b] = 10;
-        subbuckets_T[b] = 10;
+        subbuckets_G[b] = atoi(argv[3]);
+        subbuckets_T[b] = atoi(argv[3]);
     }
 
     int** gmap_sub_bucket_rank = new int*[buckets];
@@ -1638,11 +1803,28 @@ int main(int argc, char **argv)
     if (lb_g == 0 && lb_t == 0)
         lb_f = 0;
 
+    u32 g_bucket_count = 0;
+    for (u32 bk = 0; bk < buckets; bk++)
+    {
+        if (gmap_bucket[bk] == 1)
+            g_bucket_count++;
+    }
+    u32* g_bucket_indices = new u32[g_bucket_count];
+
+    u32 g_count = 0;
+    for (u32 bk = 0; bk < buckets; bk++)
+    {
+        if (gmap_bucket[bk] == 1)
+        {
+            g_bucket_indices[g_count] = bk;
+            g_count++;
+        }
+    }
 
     u32 g_dt_bucket_count = 0;
     for (u32 bk = 0; bk < buckets; bk++)
     {
-        if (gmap_bucket[bk] == 1)// || dtmap_bucket[bk] == 1)
+        if (gmap_bucket[bk] == 1 || dtmap_bucket[bk] == 1)
             g_dt_bucket_count++;
     }
     u32* g_dt_bucket_indices = new u32[g_dt_bucket_count];
@@ -1650,27 +1832,67 @@ int main(int argc, char **argv)
     u32 g_dt_count = 0;
     for (u32 bk = 0; bk < buckets; bk++)
     {
-        if (gmap_bucket[bk] == 1)// || dtmap_bucket[bk] == 1)
+        if (gmap_bucket[bk] == 1 || dtmap_bucket[bk] == 1)
         {
             g_dt_bucket_indices[g_dt_count] = bk;
             g_dt_count++;
         }
     }
 
+    u32 *global_gmap = new u32[buckets * nprocs];
+    memset(global_gmap, 0, sizeof(u32) * buckets * nprocs);
+    MPI_Allgather(gmap_bucket, buckets, MPI_INT, global_gmap, buckets, MPI_INT, MPI_COMM_WORLD);
 
+    u32* g_recv_count = new u32[buckets];
+    memset(g_recv_count, 0, buckets * sizeof(u32));
+
+    for (u32 b = 0; b < buckets; b++)
+    {
+        for (u32 h = b; h < buckets * nprocs; h=h+buckets)
+        {
+            if (global_gmap[h] == 1)
+                g_recv_count[b]++;
+        }
+    }
+
+    rcount = 0;
+    u32** g_recv_rank = new u32*[buckets];
+    memset(g_recv_rank, 0, buckets * sizeof(u32*));
+    for (u32 b = 0; b < buckets; b++)
+    {
+        g_recv_rank[b] = new u32[g_recv_count[b]];
+        memset(g_recv_rank[b], 0, g_recv_count[b] * sizeof(u32));
+    }
+
+    for (u32 b = 0; b < buckets; b++)
+    {
+        rcount = 0;
+        for (u32 h = b; h < buckets * nprocs; h=h+buckets)
+        {
+            if (global_gmap[h] == 1)
+            {
+                g_recv_rank[b][rcount] = h / buckets;
+                rcount++;
+            }
+        }
+    }
+#if 0
+    for (u32 b = 0; b < buckets; b++)
+        for (u32 k = 0; k < g_recv_count[b]; k++)
+            std::cout << b << "  " << k << " " << g_recv_rank[b][k] << std::endl;
+#endif
     double join_start = MPI_Wtime();
 
     int lb = 0;
     double time = 0;
-
-    dT = parallel_map_join(dT, dtmap_bucket, G, gmap_bucket, T, 0, &lb, &running_t_count, &time, buckets, subbuckets_G, subbuckets_T, gmap_sub_bucket_rank, tmap_sub_bucket_rank, lb_f, g_dt_bucket_indices, g_dt_bucket_count);
+    dT = parallel_map_join(dT, dtmap_bucket, G, gmap_bucket, T, 0, &lb, &running_t_count, &time, buckets, subbuckets_G, subbuckets_T, gmap_sub_bucket_rank, tmap_sub_bucket_rank, lb_f, g_dt_bucket_indices, g_dt_bucket_count, g_bucket_indices, g_bucket_count, g_recv_count, g_recv_rank, atoi(argv[4]));
 
 
 #if 1
     int lc = 1;
     while(true)
     {
-        dT = parallel_map_join(dT, dtmap_bucket, G, gmap_bucket, T, lc, &lb, &running_t_count, &time, buckets, subbuckets_G, subbuckets_T, gmap_sub_bucket_rank, tmap_sub_bucket_rank, lb_f, g_dt_bucket_indices, g_dt_bucket_count);
+        dT = parallel_map_join(dT, dtmap_bucket, G, gmap_bucket, T, lc, &lb, &running_t_count, &time, buckets, subbuckets_G, subbuckets_T, gmap_sub_bucket_rank, tmap_sub_bucket_rank, lb_f, g_dt_bucket_indices, g_dt_bucket_count, g_bucket_indices, g_bucket_count, g_recv_count, g_recv_rank, atoi(argv[4]));
 
         //load_balance_G(buckets, gmap_bucket, gmap_sub_bucket, subbuckets_G, G);
         //load_balance_T(buckets, tmap_bucket, tmap_sub_bucket, subbuckets_T, T, dtmap_bucket, dtmap_sub_bucket, dT);
@@ -1707,12 +1929,13 @@ int main(int argc, char **argv)
                   << nprocs
                   << " G: "
                   << global_row_count
+                  << " A2a " << atoi(argv[4])
                   << " T: " << total_sum
                   << " Read time: " << (ior_end - ior_start)
                   << " Init hash: " << (hash_end - hash_start)
                   << " Relation init: " << (relation_end - relation_start)
-                  << " Load balance G: " << (load_balance_G_end - load_balance_G_start)
-                  << " Load balance T: " << (load_balance_T_end - load_balance_T_start)
+                  << " Load balG: " << (load_balance_G_end - load_balance_G_start)
+                  << " Load bal T: " << (load_balance_T_end - load_balance_T_start)
                   << " Fixed point: " << (join_end - join_start)
                   << " Total: " << (join_end - ior_start)
                   << " [" << (ior_end - ior_start) + (hash_end - hash_start) + (relation_end - relation_start) + (load_balance_G_end - load_balance_G_start) + (load_balance_T_end - load_balance_T_start) + (join_end - join_start) << "]" << std::endl;
@@ -1770,6 +1993,15 @@ int main(int argc, char **argv)
 
     }
 
+    delete[] g_recv_count;
+    for (u32 b = 0; b < buckets; b++)
+        delete[] g_recv_rank[b];
+    delete[] g_recv_rank;
+
+    delete[] global_gmap;
+
+
+    delete[] g_bucket_indices;
     delete[] g_dt_bucket_indices;
 
     delete[] tmap_sub_bucket_rank;
