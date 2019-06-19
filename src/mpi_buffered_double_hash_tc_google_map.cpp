@@ -244,6 +244,7 @@ Relation1Map *** parallel_map_join(Relation1Map*** delT, u32* dtmap, Relation1Ma
     }
 
 
+    load_balance = 1;
     if (load_balance == 1)
     {
         u64 **recvbuf = new u64*[buckets];
