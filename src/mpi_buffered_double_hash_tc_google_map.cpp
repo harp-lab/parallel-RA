@@ -144,8 +144,8 @@ void buffer_data_to_hash_buffer(u32 local_number_of_rows, u64* input_data,  int 
             uint64_t bucket_id = outer_hash(input_data[i]) % buckets;
             uint64_t sub_bucket_id = outer_hash(input_data[i+1]) % subbuckets_G[bucket_id];
 
-            //uint64_t index = (outer_hash((bucket_id << 32)^sub_bucket_id))%nprocs;
-            int index = gmap_sub_bucket_rank[bucket_id][sub_bucket_id];
+            uint64_t index = (outer_hash((bucket_id << 32)^sub_bucket_id))%nprocs;
+            //int index = gmap_sub_bucket_rank[bucket_id][sub_bucket_id];
             process_size[index] = process_size[index] + COL_COUNT;
 
             process_data_vector[index].push_back(input_data[i]);
@@ -159,8 +159,8 @@ void buffer_data_to_hash_buffer(u32 local_number_of_rows, u64* input_data,  int 
             uint64_t bucket_id = outer_hash(input_data[i+1]) % buckets;
             uint64_t sub_bucket_id = outer_hash(input_data[i]) % subbuckets_T[bucket_id];
 
-            //uint64_t index = (outer_hash((bucket_id << 32)^sub_bucket_id))%nprocs;
-            int index = gmap_sub_bucket_rank[bucket_id][sub_bucket_id];
+            uint64_t index = (outer_hash((bucket_id << 32)^sub_bucket_id))%nprocs;
+            //int index = gmap_sub_bucket_rank[bucket_id][sub_bucket_id];
             process_size[index] = process_size[index] + COL_COUNT;
 
             process_data_vector[index].push_back(input_data[i]);
@@ -220,7 +220,7 @@ void buffer_data_to_hash_buffer(u32 local_number_of_rows, u64* input_data,  int 
 }
 
 
-Relation1Map *** parallel_map_join(Relation1Map*** delT, u32* dtmap, Relation1Map**& G, u32* gmap_bucket, Relation1Map**& T, u32* tmap, int lc, int* lb, int* running_t_count, double* running_time, u32 buckets, u32* subbuckets_G, u32* subbuckets_T, int** gmap_sub_bucket_rank, int** tmap_sub_bucket_rank, int load_balance, u32* g_t_bucket_indices, u32 g_t_actual_bucket_count, u32* g_bucket_indices, u32 g_actual_bucket_count, u32* g_recv_count, u32** g_recv_rank, int comm_type, int* gmap_distinct_sub_bucket_rank_count,  int** gmap_distinct_sub_bucket_rank, int* tmap_distinct_sub_bucket_rank_count, int** tmap_distinct_sub_bucket_rank)
+Relation1Map *** parallel_map_join(Relation1Map*** delT, u32* dtmap, Relation1Map**& G, u32* gmap_bucket, Relation1Map**& T, u32* tmap, int lc, int* lb, int* running_t_count, double* running_time, u32 buckets, u32* subbuckets_G, u32* subbuckets_T, int** gmap_sub_bucket_rank, int** tmap_sub_bucket_rank, u32* g_t_bucket_indices, u32 g_t_actual_bucket_count, u32* g_bucket_indices, u32 g_actual_bucket_count, u32* g_recv_count, u32** g_recv_rank, int comm_type, int* gmap_distinct_sub_bucket_rank_count,  int** gmap_distinct_sub_bucket_rank, int* tmap_distinct_sub_bucket_rank_count, int** tmap_distinct_sub_bucket_rank)
 {
     double comm_create_start = MPI_Wtime();
     double comm_create_end = MPI_Wtime();
@@ -244,34 +244,146 @@ Relation1Map *** parallel_map_join(Relation1Map*** delT, u32* dtmap, Relation1Ma
     }
 
 
-    load_balance = 1;
-    if (load_balance == 1)
+
+    u64 **recvbuf = new u64*[buckets];
+    memset(recvbuf, 0, sizeof(u64*) * buckets);
+    u64 *total_buffer_size = new u64[buckets];
+    memset(total_buffer_size, 0, sizeof(u64)*buckets);
+
+    if (comm_type == 1)
     {
-        u64 **recvbuf = new u64*[buckets];
-        memset(recvbuf, 0, sizeof(u64*) * buckets);
-        u64 *total_buffer_size = new u64[buckets];
-        memset(total_buffer_size, 0, sizeof(u64)*buckets);
+        comm_create_start = MPI_Wtime();
 
-        if (comm_type == 1)
+        // Send Join output
+        // process_size[j] stores the number of samples to be sent to process with rank j
+        int process_size[nprocs];
+        memset(process_size, 0, nprocs * sizeof(int));
+
+        std::vector<tuple<2>> delT_temp[buckets];
+        int color[buckets];
+        memset(color, 0, buckets * sizeof(int));
+
+        MPI_Comm group_comm[buckets];
+
+        for (u32 i = 0; i < buckets; i++)
         {
-            comm_create_start = MPI_Wtime();
+            if (dtmap[i] == 1 || gmap_bucket[i] == 1)
+                color[i] = 1;
 
-            // Send Join output
-            // process_size[j] stores the number of samples to be sent to process with rank j
-            int process_size[nprocs];
-            memset(process_size, 0, nprocs * sizeof(int));
-
-            std::vector<tuple<2>> delT_temp[buckets];
-            int color[buckets];
-            memset(color, 0, buckets * sizeof(int));
-
-            MPI_Comm group_comm[buckets];
-
-            for (u32 i = 0; i < buckets; i++)
+            for (u32 j = 0; j < subbuckets_T[i]; j++)
             {
-                if (dtmap[i] == 1 || gmap_bucket[i] == 1)
-                    color[i] = 1;
+                for (auto it = delT[i][j]->begin(); it != delT[i][j]->end(); it++)
+                {
+                    Relation0Map* it2 = it->second;
+                    for (auto dit2 = it2->begin(); dit2 != it2->end(); dit2++)
+                    {
+                        dt[0] = it->first;
+                        dt[1] = dit2->first;
+                        delT_temp[i].push_back(dt);
+                    }
+                }
+            }
+            MPI_Comm_split(MPI_COMM_WORLD, color[i], rank, &(group_comm[i]));
+        }
+        comm_create_end = MPI_Wtime();
 
+
+        int gnprocs = 0;
+        double t1_s = MPI_Wtime();
+        for (u32 i = 0; i < buckets; i++)
+        {
+            MPI_Comm_size(group_comm[i], &gnprocs);
+            if (color[i] == 1)
+            {
+                int recvcounts[gnprocs];
+                int displs[gnprocs];
+                for (int n = 0; n < gnprocs; n++)
+                {
+                    recvcounts[n] = 1;
+                    displs[n] = n;
+                }
+
+                /* This step prepares for actual data transfer */
+                /* Every process sends to every other process the amount of data it is going to send */
+                int recv_process_size_buffer_local[gnprocs];
+                memset(recv_process_size_buffer_local, 0, gnprocs * sizeof(int));
+
+                int buffer_size = delT_temp[i].size() * COL_COUNT;
+                MPI_Allgatherv(&buffer_size, 1, MPI_INT, recv_process_size_buffer_local, recvcounts, displs, MPI_INT, group_comm[i]);
+
+                int recv_process_prefix[gnprocs];
+                memset(recv_process_prefix, 0, gnprocs * sizeof(int));
+
+                for (int n = 0; n < gnprocs; n++)
+                {
+                    recv_process_prefix[n] = total_buffer_size[i];
+                    total_buffer_size[i] = total_buffer_size[i] + recv_process_size_buffer_local[n];
+                }
+
+                recvbuf[i] = new u64[total_buffer_size[i]];
+
+                MPI_Allgatherv(&delT_temp[i][0], buffer_size, MPI_UNSIGNED_LONG_LONG, recvbuf[i], recv_process_size_buffer_local, recv_process_prefix, MPI_UNSIGNED_LONG_LONG, group_comm[i]);
+            }
+            MPI_Comm_free(&group_comm[i]);
+        }
+
+        double t1_e = MPI_Wtime();
+        outer_comm_time = (t1_e - t1_s);
+    }
+    else if (comm_type == 2)
+    {
+        double t1_s = MPI_Wtime();
+
+        u32 *global_dtmap = new u32[buckets * nprocs];
+        memset(global_dtmap, 0, sizeof(u32) * buckets * nprocs);
+        MPI_Allgather(dtmap, buckets, MPI_INT, global_dtmap, buckets, MPI_INT, MPI_COMM_WORLD);
+#if 1
+
+        u32* dt_send_count = new u32[buckets];
+        memset(dt_send_count, 0, buckets * sizeof(u32));
+
+        for (u32 b = 0; b < buckets; b++)
+        {
+            for (u32 h = b; h < buckets * nprocs; h=h+buckets)
+            {
+                if (global_dtmap[h] == 1)
+                    dt_send_count[b]++;
+            }
+            //std::cout << "dt_send_count[b]" << dt_send_count[b] << std::endl;
+        }
+
+        u32** dt_send_rank = new u32*[buckets];
+        for (u32 b = 0; b < buckets; b++)
+        {
+            dt_send_rank[b] = new u32[dt_send_count[b]];
+            memset(dt_send_rank[b], 0, dt_send_count[b] * sizeof(u32));
+        }
+        for (u32 b = 0; b < buckets; b++)
+        {
+            int rcount = 0;
+            for (u32 h = b; h < buckets * nprocs; h=h+buckets)
+            {
+                if (global_dtmap[h] == 1)
+                {
+                    dt_send_rank[b][rcount] = h / buckets;
+                    rcount++;
+                }
+            }
+        }
+#if 0
+        for (u32 b = 0; b < buckets; b++)
+            for (u32 k = 0; k < dt_send_count[b]; k++)
+                std::cout << b << "  " << k << " " << dt_send_rank[b][k] << std::endl;
+#endif
+
+        delete[] global_dtmap;
+
+
+        std::vector<tuple<2>> delT_temp[buckets];
+        for (u32 i = 0; i < buckets; i++)
+        {
+            if (dtmap[i] == 1 || gmap_bucket[i] == 1)
+            {
                 for (u32 j = 0; j < subbuckets_T[i]; j++)
                 {
                     for (auto it = delT[i][j]->begin(); it != delT[i][j]->end(); it++)
@@ -285,321 +397,207 @@ Relation1Map *** parallel_map_join(Relation1Map*** delT, u32* dtmap, Relation1Ma
                         }
                     }
                 }
-                MPI_Comm_split(MPI_COMM_WORLD, color[i], rank, &(group_comm[i]));
-            }
-            comm_create_end = MPI_Wtime();
 
+                int buffer_size = delT_temp[i].size() * COL_COUNT;
+                u32* size_buf = new u32[dt_send_count[i]];
+                memset(size_buf, 0, sizeof(u32) * dt_send_count[i]);
+                u32 req_counter1 = 0;
+                MPI_Request *req1 = new MPI_Request[g_recv_count[i] + dt_send_count[i]];
+                MPI_Status *stat1 = new MPI_Status[g_recv_count[i] + dt_send_count[i]];
 
-            int gnprocs = 0;
-            double t1_s = MPI_Wtime();
-            for (u32 i = 0; i < buckets; i++)
-            {
-                MPI_Comm_size(group_comm[i], &gnprocs);
-                if (color[i] == 1)
+                // meta-data
+                if (dtmap[i] == 1)
                 {
-                    int recvcounts[gnprocs];
-                    int displs[gnprocs];
-                    for (int n = 0; n < gnprocs; n++)
+                    for (u32 r = 0; r < g_recv_count[i]; r++)
                     {
-                        recvcounts[n] = 1;
-                        displs[n] = n;
-                    }
+                        MPI_Isend(&buffer_size, 1, MPI_INT, g_recv_rank[i][r], 123, MPI_COMM_WORLD, &req1[req_counter1]);
+                        req_counter1++;
 
-                    /* This step prepares for actual data transfer */
-                    /* Every process sends to every other process the amount of data it is going to send */
-                    int recv_process_size_buffer_local[gnprocs];
-                    memset(recv_process_size_buffer_local, 0, gnprocs * sizeof(int));
-
-                    int buffer_size = delT_temp[i].size() * COL_COUNT;
-                    MPI_Allgatherv(&buffer_size, 1, MPI_INT, recv_process_size_buffer_local, recvcounts, displs, MPI_INT, group_comm[i]);
-
-                    int recv_process_prefix[gnprocs];
-                    memset(recv_process_prefix, 0, gnprocs * sizeof(int));
-
-                    for (int n = 0; n < gnprocs; n++)
-                    {
-                        recv_process_prefix[n] = total_buffer_size[i];
-                        total_buffer_size[i] = total_buffer_size[i] + recv_process_size_buffer_local[n];
-                    }
-
-                    recvbuf[i] = new u64[total_buffer_size[i]];
-
-                    MPI_Allgatherv(&delT_temp[i][0], buffer_size, MPI_UNSIGNED_LONG_LONG, recvbuf[i], recv_process_size_buffer_local, recv_process_prefix, MPI_UNSIGNED_LONG_LONG, group_comm[i]);
-                }
-                MPI_Comm_free(&group_comm[i]);
-            }
-
-            double t1_e = MPI_Wtime();
-            outer_comm_time = (t1_e - t1_s);
-        }
-        else if (comm_type == 2)
-        {
-            double t1_s = MPI_Wtime();
-
-            u32 *global_dtmap = new u32[buckets * nprocs];
-            memset(global_dtmap, 0, sizeof(u32) * buckets * nprocs);
-            MPI_Allgather(dtmap, buckets, MPI_INT, global_dtmap, buckets, MPI_INT, MPI_COMM_WORLD);
-#if 1
-
-            u32* dt_send_count = new u32[buckets];
-            memset(dt_send_count, 0, buckets * sizeof(u32));
-
-            for (u32 b = 0; b < buckets; b++)
-            {
-                for (u32 h = b; h < buckets * nprocs; h=h+buckets)
-                {
-                    if (global_dtmap[h] == 1)
-                        dt_send_count[b]++;
-                }
-                //std::cout << "dt_send_count[b]" << dt_send_count[b] << std::endl;
-            }
-
-            u32** dt_send_rank = new u32*[buckets];
-            for (u32 b = 0; b < buckets; b++)
-            {
-                dt_send_rank[b] = new u32[dt_send_count[b]];
-                memset(dt_send_rank[b], 0, dt_send_count[b] * sizeof(u32));
-            }
-            for (u32 b = 0; b < buckets; b++)
-            {
-                int rcount = 0;
-                for (u32 h = b; h < buckets * nprocs; h=h+buckets)
-                {
-                    if (global_dtmap[h] == 1)
-                    {
-                        dt_send_rank[b][rcount] = h / buckets;
-                        rcount++;
                     }
                 }
-            }
-#if 0
-            for (u32 b = 0; b < buckets; b++)
-                for (u32 k = 0; k < dt_send_count[b]; k++)
-                    std::cout << b << "  " << k << " " << dt_send_rank[b][k] << std::endl;
-#endif
-
-            delete[] global_dtmap;
-
-
-            std::vector<tuple<2>> delT_temp[buckets];
-            for (u32 i = 0; i < buckets; i++)
-            {
-                if (dtmap[i] == 1 || gmap_bucket[i] == 1)
+                if (gmap_bucket[i] == 1)
                 {
-                    for (u32 j = 0; j < subbuckets_T[i]; j++)
-                    {
-                        for (auto it = delT[i][j]->begin(); it != delT[i][j]->end(); it++)
-                        {
-                            Relation0Map* it2 = it->second;
-                            for (auto dit2 = it2->begin(); dit2 != it2->end(); dit2++)
-                            {
-                                dt[0] = it->first;
-                                dt[1] = dit2->first;
-                                delT_temp[i].push_back(dt);
-                            }
-                        }
-                    }
-
-                    int buffer_size = delT_temp[i].size() * COL_COUNT;
-                    u32* size_buf = new u32[dt_send_count[i]];
-                    memset(size_buf, 0, sizeof(u32) * dt_send_count[i]);
-                    u32 req_counter1 = 0;
-                    MPI_Request *req1 = new MPI_Request[g_recv_count[i] + dt_send_count[i]];
-                    MPI_Status *stat1 = new MPI_Status[g_recv_count[i] + dt_send_count[i]];
-
-                    // meta-data
-                    if (dtmap[i] == 1)
-                    {
-                        for (u32 r = 0; r < g_recv_count[i]; r++)
-                        {
-                            MPI_Isend(&buffer_size, 1, MPI_INT, g_recv_rank[i][r], 123, MPI_COMM_WORLD, &req1[req_counter1]);
-                            req_counter1++;
-
-                        }
-                    }
-                    if (gmap_bucket[i] == 1)
-                    {
-                        for (u32 r = 0; r < dt_send_count[i]; r++)
-                        {
-                            MPI_Irecv(size_buf + r, 1, MPI_INT, dt_send_rank[i][r], 123, MPI_COMM_WORLD, &req1[req_counter1]);
-                            req_counter1++;
-                        }
-                    }
-                    MPI_Waitall(req_counter1, req1, stat1);
-
                     for (u32 r = 0; r < dt_send_count[i]; r++)
-                        total_buffer_size[i] = total_buffer_size[i] + size_buf[r];
-
-
-#if 1
-                    u32 req_counter2 = 0;
-                    MPI_Request *req2 = new MPI_Request[g_recv_count[i] + dt_send_count[i]];
-                    MPI_Status *stat2 = new MPI_Status[g_recv_count[i] + dt_send_count[i]];
-
-
-                    // data
-                    if (dtmap[i] == 1)
                     {
-                        for (u32 r = 0; r < g_recv_count[i]; r++)
-                        {
-                            if (delT_temp[i].size() != 0)
-                            {
-                                MPI_Isend(&delT_temp[i][0], delT_temp[i].size() * COL_COUNT, MPI_UNSIGNED_LONG_LONG, g_recv_rank[i][r], 123, MPI_COMM_WORLD, &req2[req_counter2]);
-                                req_counter2++;
-                            }
-                        }
+                        MPI_Irecv(size_buf + r, 1, MPI_INT, dt_send_rank[i][r], 123, MPI_COMM_WORLD, &req1[req_counter1]);
+                        req_counter1++;
                     }
-                    if (gmap_bucket[i] == 1)
-                    {
-                        u32 offset = 0;
-
-                        recvbuf[i] = new u64[total_buffer_size[i]];
-                        for (u32 r = 0; r < dt_send_count[i]; r++)
-                        {
-                            if (size_buf[r] != 0)
-                            {
-                                MPI_Irecv(recvbuf[i] + offset, size_buf[r], MPI_UNSIGNED_LONG_LONG, dt_send_rank[i][r], 123, MPI_COMM_WORLD, &req2[req_counter2]);
-                                offset = offset + size_buf[r];
-                                req_counter2++;
-                            }
-                        }
-                    }
-                    MPI_Waitall(req_counter2, req2, stat2);
-                    delete[] req1;
-                    delete[] req2;
-
-                    delete[] stat1;
-                    delete[] stat2;
-                    delete[] size_buf;
-#endif
                 }
-            }
-#endif
+                MPI_Waitall(req_counter1, req1, stat1);
 
-            delete[] dt_send_count;
-            for (u32 b = 0; b < buckets; b++)
-                delete[] dt_send_rank[b];
-            delete[] dt_send_rank;
+                for (u32 r = 0; r < dt_send_count[i]; r++)
+                    total_buffer_size[i] = total_buffer_size[i] + size_buf[r];
 
-            double t1_e = MPI_Wtime();
-            outer_comm_time = (t1_e - t1_s);
-        }
-        else
-        {
-            double t1_s = MPI_Wtime();
 
-            std::vector<tuple<2>> delT_temp[buckets];
-            //for (u32 i = 0; i < buckets; i++)
 #if 1
-            for (u32 i3 = 0; i3 < g_t_actual_bucket_count; i3++)
-            {
-                u32 i = g_t_bucket_indices[i3];
+                u32 req_counter2 = 0;
+                MPI_Request *req2 = new MPI_Request[g_recv_count[i] + dt_send_count[i]];
+                MPI_Status *stat2 = new MPI_Status[g_recv_count[i] + dt_send_count[i]];
 
-                if (tmap[i] == 1 || gmap_bucket[i] == 1)
+
+                // data
+                if (dtmap[i] == 1)
                 {
-                    for (u32 j = 0; j < subbuckets_T[i]; j++)
+                    for (u32 r = 0; r < g_recv_count[i]; r++)
                     {
-                        for (auto it = delT[i][j]->begin(); it != delT[i][j]->end(); it++)
+                        if (delT_temp[i].size() != 0)
                         {
-                            Relation0Map* it2 = it->second;
-                            for (auto dit2 = it2->begin(); dit2 != it2->end(); dit2++)
-                            {
-                                dt[0] = it->first;
-                                dt[1] = dit2->first;
-                                delT_temp[i].push_back(dt);
-                            }
+                            MPI_Isend(&delT_temp[i][0], delT_temp[i].size() * COL_COUNT, MPI_UNSIGNED_LONG_LONG, g_recv_rank[i][r], 123, MPI_COMM_WORLD, &req2[req_counter2]);
+                            req_counter2++;
                         }
                     }
+                }
+                if (gmap_bucket[i] == 1)
+                {
+                    u32 offset = 0;
 
-                    //
-                    int buffer_size = delT_temp[i].size() * COL_COUNT;
-                    //std::cout << "buffer size " << buffer_size << std::endl;
-                    u32* size_buf = new u32[tmap_distinct_sub_bucket_rank_count[i]];
-                    memset(size_buf, 0, sizeof(u32) * tmap_distinct_sub_bucket_rank_count[i]);
-
-                    u32 req_counter1 = 0;
-                    MPI_Request *req1 = new MPI_Request[gmap_distinct_sub_bucket_rank_count[i] + tmap_distinct_sub_bucket_rank_count[i]];
-                    MPI_Status *stat1 = new MPI_Status[gmap_distinct_sub_bucket_rank_count[i] + tmap_distinct_sub_bucket_rank_count[i]];
-
-                    // meta-data
-                    if (tmap[i] == 1)
+                    recvbuf[i] = new u64[total_buffer_size[i]];
+                    for (u32 r = 0; r < dt_send_count[i]; r++)
                     {
-                        for (int r = 0; r < gmap_distinct_sub_bucket_rank_count[i]; r++)
+                        if (size_buf[r] != 0)
                         {
-                            //std::cout << "Sending " << buffer_size << " to " << gmap_distinct_sub_bucket_rank[i][r] << std::endl;
-                            MPI_Isend(&buffer_size, 1, MPI_INT, gmap_distinct_sub_bucket_rank[i][r], 123, MPI_COMM_WORLD, &req1[req_counter1]);
-                            req_counter1++;
+                            MPI_Irecv(recvbuf[i] + offset, size_buf[r], MPI_UNSIGNED_LONG_LONG, dt_send_rank[i][r], 123, MPI_COMM_WORLD, &req2[req_counter2]);
+                            offset = offset + size_buf[r];
+                            req_counter2++;
                         }
                     }
+                }
+                MPI_Waitall(req_counter2, req2, stat2);
+                delete[] req1;
+                delete[] req2;
 
-                    if (gmap_bucket[i] == 1)
+                delete[] stat1;
+                delete[] stat2;
+                delete[] size_buf;
+#endif
+            }
+        }
+#endif
+
+        delete[] dt_send_count;
+        for (u32 b = 0; b < buckets; b++)
+            delete[] dt_send_rank[b];
+        delete[] dt_send_rank;
+
+        double t1_e = MPI_Wtime();
+        outer_comm_time = (t1_e - t1_s);
+    }
+    else
+    {
+        double t1_s = MPI_Wtime();
+
+        std::vector<tuple<2>> delT_temp[buckets];
+        //for (u32 i = 0; i < buckets; i++)
+#if 1
+        for (u32 i3 = 0; i3 < g_t_actual_bucket_count; i3++)
+        {
+            u32 i = g_t_bucket_indices[i3];
+
+            if (tmap[i] == 1 || gmap_bucket[i] == 1)
+            {
+                for (u32 j = 0; j < subbuckets_T[i]; j++)
+                {
+                    for (auto it = delT[i][j]->begin(); it != delT[i][j]->end(); it++)
                     {
-                        for (int r = 0; r < tmap_distinct_sub_bucket_rank_count[i]; r++)
+                        Relation0Map* it2 = it->second;
+                        for (auto dit2 = it2->begin(); dit2 != it2->end(); dit2++)
                         {
-                            //std::cout << "Recieving " << "from " << tmap_distinct_sub_bucket_rank[i][r] << std::endl;
-                            MPI_Irecv(size_buf + r, 1, MPI_INT, tmap_distinct_sub_bucket_rank[i][r], 123, MPI_COMM_WORLD, &req1[req_counter1]);
-                            req_counter1++;
+                            dt[0] = it->first;
+                            dt[1] = dit2->first;
+                            delT_temp[i].push_back(dt);
                         }
                     }
+                }
 
-                    MPI_Waitall(req_counter1, req1, stat1);
-                    //std::cout << "Pass XXXXXXXXX " << i << std::endl;
+                //
+                int buffer_size = delT_temp[i].size() * COL_COUNT;
+                //std::cout << "buffer size " << buffer_size << std::endl;
+                u32* size_buf = new u32[tmap_distinct_sub_bucket_rank_count[i]];
+                memset(size_buf, 0, sizeof(u32) * tmap_distinct_sub_bucket_rank_count[i]);
 
+                u32 req_counter1 = 0;
+                MPI_Request *req1 = new MPI_Request[gmap_distinct_sub_bucket_rank_count[i] + tmap_distinct_sub_bucket_rank_count[i]];
+                MPI_Status *stat1 = new MPI_Status[gmap_distinct_sub_bucket_rank_count[i] + tmap_distinct_sub_bucket_rank_count[i]];
+
+                // meta-data
+                if (tmap[i] == 1)
+                {
+                    for (int r = 0; r < gmap_distinct_sub_bucket_rank_count[i]; r++)
+                    {
+                        //std::cout << "Sending " << buffer_size << " to " << gmap_distinct_sub_bucket_rank[i][r] << std::endl;
+                        MPI_Isend(&buffer_size, 1, MPI_INT, gmap_distinct_sub_bucket_rank[i][r], 123, MPI_COMM_WORLD, &req1[req_counter1]);
+                        req_counter1++;
+                    }
+                }
+
+                if (gmap_bucket[i] == 1)
+                {
                     for (int r = 0; r < tmap_distinct_sub_bucket_rank_count[i]; r++)
-                        total_buffer_size[i] = total_buffer_size[i] + size_buf[r];
-                    //
+                    {
+                        //std::cout << "Recieving " << "from " << tmap_distinct_sub_bucket_rank[i][r] << std::endl;
+                        MPI_Irecv(size_buf + r, 1, MPI_INT, tmap_distinct_sub_bucket_rank[i][r], 123, MPI_COMM_WORLD, &req1[req_counter1]);
+                        req_counter1++;
+                    }
+                }
+
+                MPI_Waitall(req_counter1, req1, stat1);
+                //std::cout << "Pass XXXXXXXXX " << i << std::endl;
+
+                for (int r = 0; r < tmap_distinct_sub_bucket_rank_count[i]; r++)
+                    total_buffer_size[i] = total_buffer_size[i] + size_buf[r];
+                //
 
 #if 1
-                    u32 req_counter2 = 0;
-                    MPI_Request *req2 = new MPI_Request[gmap_distinct_sub_bucket_rank_count[i] + tmap_distinct_sub_bucket_rank_count[i]];
-                    MPI_Status *stat2 = new MPI_Status[gmap_distinct_sub_bucket_rank_count[i] + tmap_distinct_sub_bucket_rank_count[i]];
+                u32 req_counter2 = 0;
+                MPI_Request *req2 = new MPI_Request[gmap_distinct_sub_bucket_rank_count[i] + tmap_distinct_sub_bucket_rank_count[i]];
+                MPI_Status *stat2 = new MPI_Status[gmap_distinct_sub_bucket_rank_count[i] + tmap_distinct_sub_bucket_rank_count[i]];
 
 
-                    // data
-                    if (tmap[i] == 1)
+                // data
+                if (tmap[i] == 1)
+                {
+                    for (int r = 0; r < gmap_distinct_sub_bucket_rank_count[i]; r++)
                     {
-                        for (int r = 0; r < gmap_distinct_sub_bucket_rank_count[i]; r++)
+                        //if (delT_temp[i].size() != 0)
                         {
-                            //if (delT_temp[i].size() != 0)
-                            {
-                                MPI_Isend(&delT_temp[i][0], delT_temp[i].size() * COL_COUNT, MPI_UNSIGNED_LONG_LONG, gmap_distinct_sub_bucket_rank[i][r], 123, MPI_COMM_WORLD, &req2[req_counter2]);
-                                req_counter2++;
-                            }
+                            MPI_Isend(&delT_temp[i][0], delT_temp[i].size() * COL_COUNT, MPI_UNSIGNED_LONG_LONG, gmap_distinct_sub_bucket_rank[i][r], 123, MPI_COMM_WORLD, &req2[req_counter2]);
+                            req_counter2++;
                         }
                     }
-
-                    u32 offset = 0;
-                    recvbuf[i] = new u64[total_buffer_size[i]];
-                    if (gmap_bucket[i] == 1)
-                    {
-                        for (int r = 0; r < tmap_distinct_sub_bucket_rank_count[i]; r++)
-                        {
-                            //if (size_buf[r] != 0)
-                            {
-                                MPI_Irecv(recvbuf[i] + offset, size_buf[r], MPI_UNSIGNED_LONG_LONG, tmap_distinct_sub_bucket_rank[i][r], 123, MPI_COMM_WORLD, &req2[req_counter2]);
-                                offset = offset + size_buf[r];
-                                req_counter2++;
-                            }
-                        }
-                    }
-
-                    MPI_Waitall(req_counter2, req2, stat2);
-
-                    //std::cout << "Pass 000000000000 " << i << std::endl;
-
-                    delete[] req1;
-                    delete[] req2;
-
-                    delete[] stat1;
-                    delete[] stat2;
-                    delete[] size_buf;
-#endif
                 }
-            }
+
+                u32 offset = 0;
+                recvbuf[i] = new u64[total_buffer_size[i]];
+                if (gmap_bucket[i] == 1)
+                {
+                    for (int r = 0; r < tmap_distinct_sub_bucket_rank_count[i]; r++)
+                    {
+                        //if (size_buf[r] != 0)
+                        {
+                            MPI_Irecv(recvbuf[i] + offset, size_buf[r], MPI_UNSIGNED_LONG_LONG, tmap_distinct_sub_bucket_rank[i][r], 123, MPI_COMM_WORLD, &req2[req_counter2]);
+                            offset = offset + size_buf[r];
+                            req_counter2++;
+                        }
+                    }
+                }
+
+                MPI_Waitall(req_counter2, req2, stat2);
+
+                //std::cout << "Pass 000000000000 " << i << std::endl;
+
+                delete[] req1;
+                delete[] req2;
+
+                delete[] stat1;
+                delete[] stat2;
+                delete[] size_buf;
 #endif
-            double t1_e = MPI_Wtime();
-            outer_comm_time = (t1_e - t1_s);
+            }
         }
+#endif
+        double t1_e = MPI_Wtime();
+        outer_comm_time = (t1_e - t1_s);
+
 
         double t2_s = MPI_Wtime();
 #if 1
@@ -638,8 +636,8 @@ Relation1Map *** parallel_map_join(Relation1Map*** delT, u32* dtmap, Relation1Ma
                                         uint64_t bucket_id = outer_hash(dt[1]) % buckets;
                                         uint64_t sub_bucket_id = outer_hash(dt[0]) % subbuckets_T[bucket_id];
 
-                                        int index = tmap_sub_bucket_rank[bucket_id][sub_bucket_id];
-                                        //uint64_t index = (outer_hash((bucket_id << 32)^sub_bucket_id))%nprocs;
+                                        //int index = tmap_sub_bucket_rank[bucket_id][sub_bucket_id];
+                                        uint64_t index = (outer_hash((bucket_id << 32)^sub_bucket_id))%nprocs;
                                         process_data_vector[index].push_back(dt);
                                     }
                                 }
@@ -656,8 +654,8 @@ Relation1Map *** parallel_map_join(Relation1Map*** delT, u32* dtmap, Relation1Ma
                                     uint64_t bucket_id = outer_hash(dt[1]) % buckets;
                                     uint64_t sub_bucket_id = outer_hash(dt[0]) % subbuckets_T[bucket_id];
 
-                                    //uint64_t index = (outer_hash((bucket_id << 32)^sub_bucket_id))%nprocs;
-                                    int index = tmap_sub_bucket_rank[bucket_id][sub_bucket_id];
+                                    uint64_t index = (outer_hash((bucket_id << 32)^sub_bucket_id))%nprocs;
+                                    //int index = tmap_sub_bucket_rank[bucket_id][sub_bucket_id];
                                     process_data_vector[index].push_back(dt);
                                 }
                             }
@@ -678,84 +676,7 @@ Relation1Map *** parallel_map_join(Relation1Map*** delT, u32* dtmap, Relation1Ma
         double t2_e = MPI_Wtime();
         join_time = (t2_e - t2_s);
     }
-    else
-    {
-        double t2_s = MPI_Wtime();
-        Relation1Map tempT;
-        for (u32 i2 = 0; i2 < g_actual_bucket_count; i2++)
-            //for (u32 i = 0; i < buckets; i++)
-        {
-            u32 i = g_bucket_indices[i2];
-            for (u32 j1 = 0; j1 < subbuckets_T[i]; j1++)
-            {
-                for ( auto local_it = delT[i][j1]->begin(); local_it!= delT[i][j1]->end(); ++local_it )
-                {
-                    Relation0Map* k = local_it->second;
-                    for (auto it2T = k->begin(); it2T != k->end(); it2T++)
-                    {
-                        for (u32 j = 0; j < subbuckets_G[i]; j++)
-                        {
-                            auto itd = G[i][j].find(it2T->first);
-                            if( itd != G[i][j].end() ) {
-                                Relation0Map* Git = itd->second;
-                                for (auto it2 = Git->begin(); it2 != Git->end(); it2++)
-                                {
-                                    tuple_count++;
 
-                                    auto itx = tempT.find(local_it->first);
-                                    if( itx != tempT.end() ) {
-                                        auto it2x = (itx->second)->find(it2->first);
-                                        if( it2x != (itx->second)->end() ) {
-                                            ;
-                                        }
-                                        else{
-                                            (itx->second)->insert(std::make_pair(it2->first, 0));
-                                            tempT[local_it->first] = itx->second;
-
-                                            dt[0] = local_it->first;
-                                            dt[1] = it2->first;
-
-                                            // because we are sending to T and dt and they are hashed on the second column
-                                            uint64_t bucket_id = outer_hash(dt[1]) % buckets;
-                                            uint64_t sub_bucket_id = outer_hash(dt[0]) % subbuckets_T[bucket_id];
-
-                                            int index = tmap_sub_bucket_rank[bucket_id][sub_bucket_id];
-                                            //uint64_t index = (outer_hash((bucket_id << 32)^sub_bucket_id))%nprocs;
-                                            process_data_vector[index].push_back(dt);
-                                        }
-                                    }
-                                    else {
-                                        Relation0Map* k = new Relation0Map();
-                                        k->insert(std::make_pair(it2->first, 0));
-                                        //tempT.insert(std::make_pair(it->first,k));
-                                        tempT[local_it->first] = k;
-
-                                        dt[0] = local_it->first;
-                                        dt[1] = it2->first;
-
-                                        // because we are sending to T and dt and they are hashed on the second column
-                                        uint64_t bucket_id = outer_hash(dt[1]) % buckets;
-                                        uint64_t sub_bucket_id = outer_hash(dt[0]) % subbuckets_T[bucket_id];
-
-                                        //uint64_t index = (outer_hash((bucket_id << 32)^sub_bucket_id))%nprocs;
-                                        int index = tmap_sub_bucket_rank[bucket_id][sub_bucket_id];
-                                        process_data_vector[index].push_back(dt);
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        Relation1Map::iterator ix = tempT.begin();
-        for(; ix != tempT.end(); ix++)
-            delete (ix->second);
-
-        double t2_e = MPI_Wtime();
-        join_time = (t2_e - t2_s);
-    }
 #if 1
 
 #if 1
@@ -927,7 +848,6 @@ Relation1Map *** parallel_map_join(Relation1Map*** delT, u32* dtmap, Relation1Ma
 
     if (rank == 0)
         std::cout << lc << " [" << v2-comm_create_start << "] [" << *running_time << "]"
-                  << " lb " << load_balance
                   << " T t: " << global_sum
                   << " N t " << tuple_count
                   << " non dup: " << non_deduplicate_tuple_count
@@ -961,9 +881,9 @@ Relation1Map *** parallel_map_join(Relation1Map*** delT, u32* dtmap, Relation1Ma
     return delTT;
 }
 
-int load_balance_G(u32 buckets, u32* gmap_bucket, u32** gmap_sub_bucket, u32* subbuckets_G, Relation1Map **G, int** gmap_sub_bucket_rank, int* gmap_distinct_sub_bucket_rank_count, int** gmap_distinct_sub_bucket_rank)
-{
 
+void load_balance_G(u32 buckets, u32* gmap_bucket, u32** gmap_sub_bucket, u32* subbuckets_G, Relation1Map **G, int** gmap_sub_bucket_rank, int* gmap_distinct_sub_bucket_rank_count, int** gmap_distinct_sub_bucket_rank)
+{
     u64 G_tuple_count_before = 0;
     u64 G_tuple_count_before_global = 0;
     for (u32 bk = 0; bk < buckets; bk++)
@@ -981,12 +901,12 @@ int load_balance_G(u32 buckets, u32* gmap_bucket, u32** gmap_sub_bucket, u32* su
         }
     }
     MPI_Allreduce(&G_tuple_count_before, &G_tuple_count_before_global, 1, MPI_UNSIGNED_LONG_LONG, MPI_SUM, MPI_COMM_WORLD);
+    if (rank == 0)
+        std::cout << "Tuples before load balancing: " << G_tuple_count_before_global;
 
 
     u32 max_sub_bucket_size = 0;
     u32 min_sub_bucket_size = INT_MAX;
-
-
     for (u32 i = 0; i < buckets; i++)
     {
         for (u32 j = 0; j < subbuckets_G[i]; j++)
@@ -1004,7 +924,7 @@ int load_balance_G(u32 buckets, u32* gmap_bucket, u32** gmap_sub_bucket, u32* su
 
     int global_max;
     int global_min;
-    u64 total_outer_hash_buffer_size = 0;
+    //u64 total_outer_hash_buffer_size = 0;
     MPI_Allreduce(&max_sub_bucket_size, &global_max, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
     MPI_Allreduce(&min_sub_bucket_size, &global_min, 1, MPI_INT, MPI_MIN, MPI_COMM_WORLD);
 
@@ -1019,193 +939,163 @@ int load_balance_G(u32 buckets, u32* gmap_bucket, u32** gmap_sub_bucket, u32* su
 
     MPI_Allreduce(g_new_sub_bucket, global_g_new_sub_bucket, buckets, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
 
-    u32 count_bk = 0;
-    for (u32 bk = 0; bk < buckets; bk++)
-        if (global_g_new_sub_bucket[bk] == subbuckets_G[bk])
-            count_bk++;
-    if (count_bk == buckets)
-        return 0;
-
-
-    memset(gmap_distinct_sub_bucket_rank_count, 0, sizeof(int)*buckets);
-    memset(gmap_bucket, 0, buckets * sizeof(u32));
 
     int rcount = 0;
     for (u64 b = 0; b < buckets; b++)
     {
-        std::unordered_set<int> distinct_g_ranks;
-        delete[] gmap_sub_bucket_rank[b];
-        gmap_sub_bucket_rank[b] = new int[global_g_new_sub_bucket[b]];
-
-        for (u64 x = 0; x < global_g_new_sub_bucket[b]; x++)
+        if (global_g_new_sub_bucket[b] != subbuckets_G[b])
         {
-            gmap_sub_bucket_rank[b][x] = rcount % nprocs;
+            gmap_bucket[b] = 0;
+            std::unordered_set<int> distinct_g_ranks;
+            delete[] gmap_sub_bucket_rank[b];
+            gmap_sub_bucket_rank[b] = new int[global_g_new_sub_bucket[b]];
 
-            if (gmap_sub_bucket_rank[b][x] == rank)
-                gmap_bucket[b] = 1;
+            for (u64 x = 0; x < global_g_new_sub_bucket[b]; x++)
+            {
+                gmap_sub_bucket_rank[b][x] = (outer_hash((b << 32)^x))%nprocs;//rcount % nprocs;
 
-            distinct_g_ranks.insert(gmap_sub_bucket_rank[b][x]);
-            rcount++;
+                if (gmap_sub_bucket_rank[b][x] == rank)
+                    gmap_bucket[b] = 1;
+
+                distinct_g_ranks.insert(gmap_sub_bucket_rank[b][x]);
+                rcount++;
+            }
+
+            delete[] gmap_distinct_sub_bucket_rank[b];
+            gmap_distinct_sub_bucket_rank[b] = new int[distinct_g_ranks.size()];
+            u32 x = 0;
+            for ( auto it = distinct_g_ranks.begin(); it != distinct_g_ranks.end(); ++it )
+            {
+                gmap_distinct_sub_bucket_rank[b][x] = *it;
+                x++;
+            }
+            gmap_distinct_sub_bucket_rank_count[b] = x;
         }
-
-        delete[] gmap_distinct_sub_bucket_rank[b];
-        gmap_distinct_sub_bucket_rank[b] = new int[distinct_g_ranks.size()];
-        u32 x = 0;
-        for ( auto it = distinct_g_ranks.begin(); it != distinct_g_ranks.end(); ++it )
-        {
-            gmap_distinct_sub_bucket_rank[b][x] = *it;
-            x++;
-        }
-        gmap_distinct_sub_bucket_rank_count[b] = x;
     }
 
+    /* process_size[j] stores the number of samples to be sent to process with rank j */
+    int process_size[nprocs];
+    memset(process_size, 0, nprocs * sizeof(int));
 
+    /* vector[i] contains the data that needs to be sent to process i */
+    std::vector<u64> process_data_vector[nprocs];
 
+    int prefix_sum_process_size[nprocs];
+    memset(prefix_sum_process_size, 0, nprocs * sizeof(int));
 
-    //if (rank == 1)
-    //    for (u32 b = 0; b < buckets; b++)
-    //        std::cout << "b " << b << " " << subbuckets_G[b] << " " << global_g_new_sub_bucket[b] << std::endl;
+    int recv_process_size_buffer[nprocs];
+    memset(recv_process_size_buffer, 0, nprocs * sizeof(int));
 
-
+    u64* process_data;
+    int process_data_buffer_size = 0;
 
     for (u32 i = 0; i < buckets; i++)
     {
-        delete[] gmap_sub_bucket[i];
-        gmap_sub_bucket[i] = new u32[global_g_new_sub_bucket[i]];
-        memset(gmap_sub_bucket[i], 0, sizeof(u32) * global_g_new_sub_bucket[i]);
-
-        /* process_size[j] stores the number of samples to be sent to process with rank j */
-        int process_size[nprocs];
-        memset(process_size, 0, nprocs * sizeof(int));
-
-        /* vector[i] contains the data that needs to be sent to process i */
-        std::vector<u64> process_data_vector[nprocs];
-
-        int prefix_sum_process_size[nprocs];
-        memset(prefix_sum_process_size, 0, nprocs * sizeof(int));
-
-        int recv_process_size_buffer[nprocs];
-        memset(recv_process_size_buffer, 0, nprocs * sizeof(int));
-
-        u64* process_data;
-
-        //if (global_g_new_sub_bucket[i] != subbuckets_G[i])
-        //{
-        for (u32 j = 0; j < subbuckets_G[i]; j++)
+        if (global_g_new_sub_bucket[i] != subbuckets_G[i])
         {
-            for (auto it = G[i][j].begin(); it != G[i][j].end(); it++)
+            delete[] gmap_sub_bucket[i];
+            gmap_sub_bucket[i] = new u32[global_g_new_sub_bucket[i]];
+            memset(gmap_sub_bucket[i], 0, sizeof(u32) * global_g_new_sub_bucket[i]);
+
+            for (u32 j = 0; j < subbuckets_G[i]; j++)
             {
-                Relation0Map* it2 = it->second;
-                for (auto dit2 = it2->begin(); dit2 != it2->end(); dit2++)
+                for (auto it = G[i][j].begin(); it != G[i][j].end(); it++)
                 {
-                    uint64_t bucket_id = outer_hash(it->first) % buckets;
-                    uint64_t sub_bucket_id = outer_hash(dit2->first) % global_g_new_sub_bucket[bucket_id];
+                    Relation0Map* it2 = it->second;
+                    for (auto dit2 = it2->begin(); dit2 != it2->end(); dit2++)
+                    {
+                        uint64_t bucket_id = outer_hash(it->first) % buckets;
+                        uint64_t sub_bucket_id = outer_hash(dit2->first) % global_g_new_sub_bucket[bucket_id];
 
-                    //uint64_t index = (outer_hash((bucket_id << 32)^sub_bucket_id))%nprocs;
-                    int index = gmap_sub_bucket_rank[bucket_id][sub_bucket_id];
-                    process_size[index] = process_size[index] + COL_COUNT;
+                        //uint64_t index = (outer_hash((bucket_id << 32)^sub_bucket_id))%nprocs;
+                        int index = gmap_sub_bucket_rank[bucket_id][sub_bucket_id];
+                        process_size[index] = process_size[index] + COL_COUNT;
 
-                    process_data_vector[index].push_back(it->first);
-                    process_data_vector[index].push_back(dit2->first);
+                        process_data_vector[index].push_back(it->first);
+                        process_data_vector[index].push_back(dit2->first);
+                    }
                 }
+
+                Relation1Map::iterator iy2 = G[i][j].begin();
+                for(; iy2 != G[i][j].end(); iy2++)
+                    delete (iy2->second);
+
+                G[i][j].clear();
+
             }
+
+            delete[] G[i];
+            G[i] = new Relation1Map[global_g_new_sub_bucket[i]];
         }
+    }
 
 
-        //if (rank == 1)
-        //    std::cout << "process_size[0] " << process_size[0] << " process_size[1] " << process_size[1] << std::endl;
+    //if (rank == 1)
+    //    std::cout << "process_size[0] " << process_size[0] << " process_size[1] " << process_size[1] << std::endl;
 
-        for (u32 ix = 1; ix < nprocs; ix++)
-            prefix_sum_process_size[ix] = prefix_sum_process_size[ix - 1] + process_size[ix - 1];
+    for (u32 ix = 1; ix < nprocs; ix++)
+        prefix_sum_process_size[ix] = prefix_sum_process_size[ix - 1] + process_size[ix - 1];
 
-        int process_data_buffer_size = prefix_sum_process_size[nprocs - 1] + process_size[nprocs - 1];
+    process_data_buffer_size = prefix_sum_process_size[nprocs - 1] + process_size[nprocs - 1];
 
-        //u64 process_data[process_data_buffer_size];
-        process_data = new u64[process_data_buffer_size];
+    process_data = new u64[process_data_buffer_size];
 
-        for (u32 ix = 0; ix < nprocs; ix++)
-            memcpy(process_data + prefix_sum_process_size[ix], &process_data_vector[ix][0], process_data_vector[ix].size() * sizeof(u64));
-
-
-        /* This step prepares for actual data transfer */
-        /* Every process sends to every other process the amount of data it is going to send */
+    for (u32 ix = 0; ix < nprocs; ix++)
+        memcpy(process_data + prefix_sum_process_size[ix], &process_data_vector[ix][0], process_data_vector[ix].size() * sizeof(u64));
 
 
-        //if (rank == 1)
-        //    for (u32 x = 0; x < nprocs; x++)
-        //        std::cout << "B " << i << " process_size" << process_size[x] << std::endl;
-        //}
-
-        MPI_Alltoall(process_size, 1, MPI_INT, recv_process_size_buffer, 1, MPI_INT, MPI_COMM_WORLD);
+    MPI_Alltoall(process_size, 1, MPI_INT, recv_process_size_buffer, 1, MPI_INT, MPI_COMM_WORLD);
 
 #if 1
-        int prefix_sum_recv_process_size_buffer[nprocs];
-        memset(prefix_sum_recv_process_size_buffer, 0, nprocs * sizeof(int));
-        for (u32 ix = 1; ix < nprocs; ix++)
-            prefix_sum_recv_process_size_buffer[ix] = prefix_sum_recv_process_size_buffer[ix - 1] + recv_process_size_buffer[ix - 1];
+    int prefix_sum_recv_process_size_buffer[nprocs];
+    memset(prefix_sum_recv_process_size_buffer, 0, nprocs * sizeof(int));
+    for (u32 ix = 1; ix < nprocs; ix++)
+        prefix_sum_recv_process_size_buffer[ix] = prefix_sum_recv_process_size_buffer[ix - 1] + recv_process_size_buffer[ix - 1];
 
 
-        /* Sending data to all processes */
-        /* What is the buffer size to allocate */
-        int outer_hash_buffer_size = 0;
-        for(u32 ix = 0; ix < nprocs; ix++)
-            outer_hash_buffer_size = outer_hash_buffer_size + recv_process_size_buffer[ix];
+    int outer_hash_buffer_size = 0;
+    for(u32 ix = 0; ix < nprocs; ix++)
+        outer_hash_buffer_size = outer_hash_buffer_size + recv_process_size_buffer[ix];
 
 
-        u64* outer_hash_data = new u64[outer_hash_buffer_size];
-        MPI_Alltoallv(process_data, process_size, prefix_sum_process_size, MPI_UNSIGNED_LONG_LONG, outer_hash_data, recv_process_size_buffer, prefix_sum_recv_process_size_buffer, MPI_UNSIGNED_LONG_LONG, comm);
+    u64* outer_hash_data = new u64[outer_hash_buffer_size];
+    MPI_Alltoallv(process_data, process_size, prefix_sum_process_size, MPI_UNSIGNED_LONG_LONG, outer_hash_data, recv_process_size_buffer, prefix_sum_recv_process_size_buffer, MPI_UNSIGNED_LONG_LONG, comm);
 
+    if (process_data_buffer_size != 0)
         delete[] process_data;
 
 
-        for (u32 j = 0; j < subbuckets_G[i]; j++)
-        {
-            Relation1Map::iterator iy2 = G[i][j].begin();
-            for(; iy2 != G[i][j].end(); iy2++)
-                delete (iy2->second);
-
-            G[i][j].clear();
-        }
-
-        delete[] G[i];
-        G[i] = new Relation1Map[global_g_new_sub_bucket[i]];
-        total_outer_hash_buffer_size = total_outer_hash_buffer_size + outer_hash_buffer_size/2;
+    //subbuckets_G[i] = global_g_new_sub_bucket[i];
+    for (int in = 0; in < outer_hash_buffer_size; in = in + 2)
+    {
+        uint64_t bucket_id = outer_hash((outer_hash_data)[in]) % buckets;
+        uint64_t sub_bucket_id = outer_hash((outer_hash_data)[in+1]) % global_g_new_sub_bucket[bucket_id];
+        gmap_bucket[bucket_id] = 1;
+        gmap_sub_bucket[bucket_id][sub_bucket_id]++;
 
         //if (rank == 1)
-        //std::cout << "outer_hash_buffer_size " << outer_hash_buffer_size << std::endl;
-        //subbuckets_G[i] = global_g_new_sub_bucket[i];
-        for (int in = 0; in < outer_hash_buffer_size; in = in + 2)
-        {
-            uint64_t bucket_id = outer_hash((outer_hash_data)[in]) % buckets;
-            uint64_t sub_bucket_id = outer_hash((outer_hash_data)[in+1]) % global_g_new_sub_bucket[bucket_id];
-            gmap_bucket[bucket_id] = 1;
-            gmap_sub_bucket[bucket_id][sub_bucket_id]++;
+        //std::cout << "Val " << outer_hash_data[in] << " b " << bucket_id << " sbi " << sub_bucket_id << std::endl;
 
-            //if (rank == 1)
-            //std::cout << "Val " << outer_hash_data[in] << " b " << bucket_id << " sbi " << sub_bucket_id << std::endl;
-
-            auto it = G[bucket_id][sub_bucket_id].find((outer_hash_data)[in]);
-            if( it != G[bucket_id][sub_bucket_id].end() ) {
-                auto it2 = (it->second)->find((outer_hash_data)[in+1]);
-                if( it2 != (it->second)->end() ) {
-                    ;
-                }
-                else{
-                    (it->second)->insert(std::make_pair((outer_hash_data)[in + 1], 0));
-                    G[bucket_id][sub_bucket_id][(outer_hash_data)[in]] = it->second;
-                }
+        auto it = G[bucket_id][sub_bucket_id].find((outer_hash_data)[in]);
+        if( it != G[bucket_id][sub_bucket_id].end() ) {
+            auto it2 = (it->second)->find((outer_hash_data)[in+1]);
+            if( it2 != (it->second)->end() ) {
+                ;
             }
-            else {
-                Relation0Map *k = new Relation0Map;
-                k->insert(std::make_pair((outer_hash_data)[in + 1], 0));
-                G[bucket_id][sub_bucket_id].insert(std::make_pair((outer_hash_data)[in],k));
+            else{
+                (it->second)->insert(std::make_pair((outer_hash_data)[in + 1], 0));
+                G[bucket_id][sub_bucket_id][(outer_hash_data)[in]] = it->second;
             }
         }
-
-        delete[] outer_hash_data;
-#endif
-
+        else {
+            Relation0Map *k = new Relation0Map;
+            k->insert(std::make_pair((outer_hash_data)[in + 1], 0));
+            G[bucket_id][sub_bucket_id].insert(std::make_pair((outer_hash_data)[in],k));
+        }
     }
+
+    delete[] outer_hash_data;
+#endif
 
     //
     if (rank == 0)
@@ -1220,8 +1110,6 @@ int load_balance_G(u32 buckets, u32* gmap_bucket, u32** gmap_sub_bucket, u32* su
     //
 
     memcpy(subbuckets_G, global_g_new_sub_bucket, sizeof(u32)*buckets);
-
-
 
     u64 G_tuple_count_after = 0;
     u64 G_tuple_count_after_global = 0;
@@ -1241,21 +1129,16 @@ int load_balance_G(u32 buckets, u32* gmap_bucket, u32** gmap_sub_bucket, u32* su
 
 
     if (rank == 0)
-        std::cout << "XXXXXXX Before and After " << G_tuple_count_before_global << " " << G_tuple_count_after_global << std::endl;
+        std::cout << "[G] Before and After " << G_tuple_count_before_global << " " << G_tuple_count_after_global << std::endl;
 
     assert(G_tuple_count_before_global == G_tuple_count_after_global);
 
-
-
-
-    std::cout << "Balanced [G] Rank: " << rank << " Hashed count: " << total_outer_hash_buffer_size << " Ratio: " << (float)((float) total_outer_hash_buffer_size/global_row_count)*100 << std::endl;
-
-    return 1;
+    std::cout << "Balanced [G] Rank: " << rank << " Hashed count: " << outer_hash_buffer_size/2 << " Ratio: " << (float)((float) (outer_hash_buffer_size/2)/global_row_count)*100 << std::endl;
 }
 
 
 
-int load_balance_T(u32 buckets, u32* tmap_bucket, u32** tmap_sub_bucket, u32* subbuckets_T, Relation1Map **T, u32* dtmap_bucket, u32** dtmap_sub_bucket, Relation1Map ***delta, int** tmap_sub_bucket_rank, int* tmap_distinct_sub_bucket_rank_count, int** tmap_distinct_sub_bucket_rank)
+void load_balance_T(u32 buckets, u32* tmap_bucket, u32** tmap_sub_bucket, u32* subbuckets_T, Relation1Map **T, u32* dtmap_bucket, u32** dtmap_sub_bucket, Relation1Map ***delta, int** tmap_sub_bucket_rank, int* tmap_distinct_sub_bucket_rank_count, int** tmap_distinct_sub_bucket_rank)
 {
     u64 dT_tuple_count_before = 0;
     u64 T_tuple_count_before = 0;
@@ -1287,6 +1170,12 @@ int load_balance_T(u32 buckets, u32* tmap_bucket, u32** tmap_sub_bucket, u32* su
     MPI_Allreduce(&T_tuple_count_before, &T_tuple_count_before_global, 1, MPI_UNSIGNED_LONG_LONG, MPI_SUM, MPI_COMM_WORLD);
     MPI_Allreduce(&dT_tuple_count_before, &dT_tuple_count_before_global, 1, MPI_UNSIGNED_LONG_LONG, MPI_SUM, MPI_COMM_WORLD);
 
+    if (rank == 0)
+    {
+    std::cout << "[Before] T size " << T_tuple_count_before_global << std::endl;
+    std::cout << "[Before] dT size " << dT_tuple_count_before_global << std::endl;
+    }
+
     int col_count = 2;
     u32 max_sub_bucket_size = 0;
     u32 min_sub_bucket_size = INT_MAX;
@@ -1309,8 +1198,6 @@ int load_balance_T(u32 buckets, u32* tmap_bucket, u32** tmap_sub_bucket, u32* su
 
     int global_max;
     int global_min;
-    u64 total_outer_hash_buffer_size_T = 0;
-    u64 total_outer_hash_buffer_size_dT = 0;
     MPI_Allreduce(&max_sub_bucket_size, &global_max, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
     MPI_Allreduce(&min_sub_bucket_size, &global_min, 1, MPI_INT, MPI_MIN, MPI_COMM_WORLD);
 
@@ -1325,317 +1212,297 @@ int load_balance_T(u32 buckets, u32* tmap_bucket, u32** tmap_sub_bucket, u32* su
 
     MPI_Allreduce(t_new_sub_bucket, global_t_new_sub_bucket, buckets, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
 
-    u32 count_bk = 0;
-    for (u32 bk = 0; bk < buckets; bk++)
-        if (global_t_new_sub_bucket[bk] == subbuckets_T[bk])
-            count_bk++;
-    if (count_bk == buckets)
-        return 0;
-
-
-    memset(tmap_distinct_sub_bucket_rank_count, 0, sizeof(int)*buckets);
-    memset(tmap_bucket, 0, buckets * sizeof(u32));
 
     int rcount = 0;
     for (u64 b = 0; b < buckets; b++)
     {
-        std::unordered_set<int> distinct_t_ranks;
-        delete[] tmap_sub_bucket_rank[b];
-        tmap_sub_bucket_rank[b] = new int[global_t_new_sub_bucket[b]];
-
-        for (u64 x = 0; x < global_t_new_sub_bucket[b]; x++)
+        if (subbuckets_T[b] != global_t_new_sub_bucket[b])
         {
-            tmap_sub_bucket_rank[b][x] = rcount % nprocs;
+            tmap_bucket[b] = 0;
+            dtmap_bucket[b] = 0;
 
-            if (tmap_sub_bucket_rank[b][x] == rank)
-                tmap_bucket[b] = 1;
+            std::unordered_set<int> distinct_t_ranks;
+            delete[] tmap_sub_bucket_rank[b];
+            tmap_sub_bucket_rank[b] = new int[global_t_new_sub_bucket[b]];
 
-            distinct_t_ranks.insert(tmap_sub_bucket_rank[b][x]);
-            rcount++;
-        }
-
-        delete[] tmap_distinct_sub_bucket_rank[b];
-        tmap_distinct_sub_bucket_rank[b] = new int[distinct_t_ranks.size()];
-        u32 x = 0;
-        for ( auto it = distinct_t_ranks.begin(); it != distinct_t_ranks.end(); ++it )
-        {
-            tmap_distinct_sub_bucket_rank[b][x] = *it;
-            x++;
-        }
-        tmap_distinct_sub_bucket_rank_count[b] = x;
-    }
-
-
-
-#if 1
-    //if (rank == 0)
-    //    for (u32 b = 0; b < buckets; b++)
-    //        std::cout << "b " << b << " " << subbuckets_G[b] << " " << global_t_new_sub_bucket[b] << std::endl;
-
-
-
-
-    memset(dtmap_bucket, 0, buckets * sizeof(u32));
-    for (u32 bk = 0; bk < buckets; bk++)
-    {
-        delete[] tmap_sub_bucket[bk];
-        tmap_sub_bucket[bk] = new u32[global_t_new_sub_bucket[bk]];
-        memset(tmap_sub_bucket[bk], 0, sizeof(u32) * global_t_new_sub_bucket[bk]);
-
-        /* process_size[j] stores the number of samples to be sent to process with rank j */
-        int process_size[nprocs];
-        memset(process_size, 0, nprocs * sizeof(int));
-
-        /* vector[i] contains the data that needs to be sent to process i */
-        std::vector<u64> process_data_vector[nprocs];
-
-        int prefix_sum_process_size[nprocs];
-        memset(prefix_sum_process_size, 0, nprocs * sizeof(int));
-
-        int recv_process_size_buffer[nprocs];
-        memset(recv_process_size_buffer, 0, nprocs * sizeof(int));
-
-        u64* process_data;
-
-        for (u32 j = 0; j < subbuckets_T[bk]; j++)
-        {
-            for (auto it = T[bk][j].begin(); it != T[bk][j].end(); it++)
+            for (u64 x = 0; x < global_t_new_sub_bucket[b]; x++)
             {
-                Relation0Map* it2 = it->second;
-                for (auto dit2 = it2->begin(); dit2 != it2->end(); dit2++)
-                {
-                    //test
-                    uint64_t bucket_id = outer_hash(dit2->first) % buckets;
-                    uint64_t sub_bucket_id = outer_hash(it->first) % global_t_new_sub_bucket[bucket_id];
+                tmap_sub_bucket_rank[b][x] = (outer_hash((b << 32)^x))%nprocs;//rcount % nprocs;
 
-                    //uint64_t index = (outer_hash((bucket_id << 32)^sub_bucket_id))%nprocs;
-                    int index = tmap_sub_bucket_rank[bucket_id][sub_bucket_id];
-                    process_size[index] = process_size[index] + col_count;
+                if (tmap_sub_bucket_rank[b][x] == rank)
+                    tmap_bucket[b] = 1;
 
-                    process_data_vector[index].push_back(it->first);
-                    process_data_vector[index].push_back(dit2->first);
-                }
+                distinct_t_ranks.insert(tmap_sub_bucket_rank[b][x]);
+                rcount++;
             }
-        }
 
-        for (u32 ix = 1; ix < nprocs; ix++)
-            prefix_sum_process_size[ix] = prefix_sum_process_size[ix - 1] + process_size[ix - 1];
-
-        int process_data_buffer_size = prefix_sum_process_size[nprocs - 1] + process_size[nprocs - 1];
-
-        //u64 process_data[process_data_buffer_size];
-        process_data = new u64[process_data_buffer_size];
-
-        for (u32 ix = 0; ix < nprocs; ix++)
-            memcpy(process_data + prefix_sum_process_size[ix], &process_data_vector[ix][0], process_data_vector[ix].size() * sizeof(u64));
-
-
-        /* This step prepares for actual data transfer */
-        /* Every process sends to every other process the amount of data it is going to send */
-
-
-        MPI_Alltoall(process_size, 1, MPI_INT, recv_process_size_buffer, 1, MPI_INT, MPI_COMM_WORLD);
-
-
-        int prefix_sum_recv_process_size_buffer[nprocs];
-        memset(prefix_sum_recv_process_size_buffer, 0, nprocs * sizeof(int));
-        for (u32 ix = 1; ix < nprocs; ix++)
-            prefix_sum_recv_process_size_buffer[ix] = prefix_sum_recv_process_size_buffer[ix - 1] + recv_process_size_buffer[ix - 1];
-
-
-        /* Sending data to all processes */
-        /* What is the buffer size to allocate */
-        int outer_hash_buffer_size = 0;
-        for(u32 ix = 0; ix < nprocs; ix++)
-            outer_hash_buffer_size = outer_hash_buffer_size + recv_process_size_buffer[ix];
-
-
-        u64* outer_hash_data = new u64[outer_hash_buffer_size];
-        MPI_Alltoallv(process_data, process_size, prefix_sum_process_size, MPI_UNSIGNED_LONG_LONG, outer_hash_data, recv_process_size_buffer, prefix_sum_recv_process_size_buffer, MPI_UNSIGNED_LONG_LONG, comm);
-
-        delete[] process_data;
-
-
-        for (u32 j = 0; j < subbuckets_T[bk]; j++)
-        {
-            Relation1Map::iterator iy2 = T[bk][j].begin();
-            for(; iy2 != T[bk][j].end(); iy2++)
-                delete (iy2->second);
-
-            T[bk][j].clear();
-        }
-
-
-        delete[] T[bk];
-        T[bk] = new Relation1Map[global_t_new_sub_bucket[bk]];
-
-        total_outer_hash_buffer_size_T = total_outer_hash_buffer_size_T + outer_hash_buffer_size/2;
-
-        //std::cout << "outer_hash_buffer_size " << outer_hash_buffer_size << std::endl;
-#if 1
-        //std::cout << "outer_hash_buffer_size " << outer_hash_buffer_size << std::endl;
-        //subbuckets_G[i] = global_t_new_sub_bucket[i];
-        for (int in = 0; in < outer_hash_buffer_size; in = in + 2)
-        {
-            uint64_t bucket_id = outer_hash((outer_hash_data)[in + 1]) % buckets;
-            uint64_t sub_bucket_id = outer_hash((outer_hash_data)[in]) % global_t_new_sub_bucket[bucket_id];
-            tmap_bucket[bucket_id] = 1;
-            tmap_sub_bucket[bucket_id][sub_bucket_id]++;
-
-            auto it = T[bucket_id][sub_bucket_id].find((outer_hash_data)[in]);
-            if( it != T[bucket_id][sub_bucket_id].end() ) {
-                auto it2 = (it->second)->find((outer_hash_data)[in+1]);
-                if( it2 != (it->second)->end() ) {
-                    ;
-                }
-                else{
-                    (it->second)->insert(std::make_pair((outer_hash_data)[in + 1], 0));
-                    T[bucket_id][sub_bucket_id][(outer_hash_data)[in]] = it->second;
-                }
+            delete[] tmap_distinct_sub_bucket_rank[b];
+            tmap_distinct_sub_bucket_rank[b] = new int[distinct_t_ranks.size()];
+            u32 x = 0;
+            for ( auto it = distinct_t_ranks.begin(); it != distinct_t_ranks.end(); ++it )
+            {
+                tmap_distinct_sub_bucket_rank[b][x] = *it;
+                x++;
             }
-            else {
-                Relation0Map *k = new Relation0Map;
-                k->insert(std::make_pair((outer_hash_data)[in + 1], 0));
-                T[bucket_id][sub_bucket_id].insert(std::make_pair((outer_hash_data)[in],k));
-            }
+            tmap_distinct_sub_bucket_rank_count[b] = x;
         }
-
-        delete[] outer_hash_data;
-#endif
-
     }
-#endif
+
 
 #if 1
+
+    /* process_size[j] stores the number of samples to be sent to process with rank j */
+    int process_size[nprocs];
+    memset(process_size, 0, nprocs * sizeof(int));
+
+    /* vector[i] contains the data that needs to be sent to process i */
+    std::vector<u64> process_data_vector[nprocs];
+
+    int prefix_sum_process_size[nprocs];
+    memset(prefix_sum_process_size, 0, nprocs * sizeof(int));
+
+    int recv_process_size_buffer[nprocs];
+    memset(recv_process_size_buffer, 0, nprocs * sizeof(int));
+
+    u64* process_data;
 
     for (u32 bk = 0; bk < buckets; bk++)
     {
-        delete[] dtmap_sub_bucket[bk];
-        dtmap_sub_bucket[bk] = new u32[global_t_new_sub_bucket[bk]];
-        memset(dtmap_sub_bucket[bk], 0, sizeof(u32) * global_t_new_sub_bucket[bk]);
-
-        /* process_size[j] stores the number of samples to be sent to process with rank j */
-        int process_size[nprocs];
-        memset(process_size, 0, nprocs * sizeof(int));
-
-        /* vector[i] contains the data that needs to be sent to process i */
-        std::vector<u64> process_data_vector[nprocs];
-
-        int prefix_sum_process_size[nprocs];
-        memset(prefix_sum_process_size, 0, nprocs * sizeof(int));
-
-        int recv_process_size_buffer[nprocs];
-        memset(recv_process_size_buffer, 0, nprocs * sizeof(int));
-
-        u64* process_data;
-
-        for (u32 j = 0; j < subbuckets_T[bk]; j++)
+        if (subbuckets_T[bk] != global_t_new_sub_bucket[bk])
         {
-            for (auto it = delta[bk][j]->begin(); it != delta[bk][j]->end(); it++)
+            delete[] tmap_sub_bucket[bk];
+            tmap_sub_bucket[bk] = new u32[global_t_new_sub_bucket[bk]];
+            memset(tmap_sub_bucket[bk], 0, sizeof(u32) * global_t_new_sub_bucket[bk]);
+
+            for (u32 j = 0; j < subbuckets_T[bk]; j++)
             {
-                Relation0Map* it2 = it->second;
-                for (auto dit2 = it2->begin(); dit2 != it2->end(); dit2++)
+                for (auto it = T[bk][j].begin(); it != T[bk][j].end(); it++)
                 {
-                    uint64_t bucket_id = outer_hash(dit2->first) % buckets;
-                    uint64_t sub_bucket_id = outer_hash(it->first) % global_t_new_sub_bucket[bucket_id];
+                    Relation0Map* it2 = it->second;
+                    for (auto dit2 = it2->begin(); dit2 != it2->end(); dit2++)
+                    {
+                        //test
+                        uint64_t bucket_id = outer_hash(dit2->first) % buckets;
+                        uint64_t sub_bucket_id = outer_hash(it->first) % global_t_new_sub_bucket[bucket_id];
 
-                    int index = tmap_sub_bucket_rank[bucket_id][sub_bucket_id];
-                    //uint64_t index = (outer_hash((bucket_id << 32)^sub_bucket_id))%nprocs;
-                    process_size[index] = process_size[index] + col_count;
+                        uint64_t index = (outer_hash((bucket_id << 32)^sub_bucket_id))%nprocs;
+                        //int index = tmap_sub_bucket_rank[bucket_id][sub_bucket_id];
+                        process_size[index] = process_size[index] + col_count;
 
-                    //if (it->first == 98 && dit2->first == 94)
-                    //    std::cout << "shout !!!!!" << std::endl;
-
-                    process_data_vector[index].push_back(it->first);
-                    process_data_vector[index].push_back(dit2->first);
+                        process_data_vector[index].push_back(it->first);
+                        process_data_vector[index].push_back(dit2->first);
+                    }
                 }
+                Relation1Map::iterator iy2 = T[bk][j].begin();
+                for(; iy2 != T[bk][j].end(); iy2++)
+                    delete (iy2->second);
+
+                T[bk][j].clear();
             }
+            delete[] T[bk];
+            T[bk] = new Relation1Map[global_t_new_sub_bucket[bk]];
         }
+    }
 
-        for (u32 ix = 1; ix < nprocs; ix++)
-            prefix_sum_process_size[ix] = prefix_sum_process_size[ix - 1] + process_size[ix - 1];
+    for (u32 ix = 1; ix < nprocs; ix++)
+        prefix_sum_process_size[ix] = prefix_sum_process_size[ix - 1] + process_size[ix - 1];
 
-        int process_data_buffer_size = prefix_sum_process_size[nprocs - 1] + process_size[nprocs - 1];
+    int process_data_buffer_size = prefix_sum_process_size[nprocs - 1] + process_size[nprocs - 1];
 
-        //u64 process_data[process_data_buffer_size];
-        process_data = new u64[process_data_buffer_size];
+    //u64 process_data[process_data_buffer_size];
+    process_data = new u64[process_data_buffer_size];
 
-        for (u32 ix = 0; ix < nprocs; ix++)
-            memcpy(process_data + prefix_sum_process_size[ix], &process_data_vector[ix][0], process_data_vector[ix].size() * sizeof(u64));
-
-
-        /* This step prepares for actual data transfer */
-        /* Every process sends to every other process the amount of data it is going to send */
+    for (u32 ix = 0; ix < nprocs; ix++)
+        memcpy(process_data + prefix_sum_process_size[ix], &process_data_vector[ix][0], process_data_vector[ix].size() * sizeof(u64));
 
 
-        MPI_Alltoall(process_size, 1, MPI_INT, recv_process_size_buffer, 1, MPI_INT, MPI_COMM_WORLD);
-
-#if 1
-        int prefix_sum_recv_process_size_buffer[nprocs];
-        memset(prefix_sum_recv_process_size_buffer, 0, nprocs * sizeof(int));
-        for (u32 ix = 1; ix < nprocs; ix++)
-            prefix_sum_recv_process_size_buffer[ix] = prefix_sum_recv_process_size_buffer[ix - 1] + recv_process_size_buffer[ix - 1];
+    /* This step prepares for actual data transfer */
+    /* Every process sends to every other process the amount of data it is going to send */
 
 
-        /* Sending data to all processes */
-        /* What is the buffer size to allocate */
-        int outer_hash_buffer_size = 0;
-        for(u32 ix = 0; ix < nprocs; ix++)
-            outer_hash_buffer_size = outer_hash_buffer_size + recv_process_size_buffer[ix];
+    MPI_Alltoall(process_size, 1, MPI_INT, recv_process_size_buffer, 1, MPI_INT, MPI_COMM_WORLD);
 
 
-        u64* outer_hash_data = new u64[outer_hash_buffer_size];
-        MPI_Alltoallv(process_data, process_size, prefix_sum_process_size, MPI_UNSIGNED_LONG_LONG, outer_hash_data, recv_process_size_buffer, prefix_sum_recv_process_size_buffer, MPI_UNSIGNED_LONG_LONG, comm);
+    int prefix_sum_recv_process_size_buffer[nprocs];
+    memset(prefix_sum_recv_process_size_buffer, 0, nprocs * sizeof(int));
+    for (u32 ix = 1; ix < nprocs; ix++)
+        prefix_sum_recv_process_size_buffer[ix] = prefix_sum_recv_process_size_buffer[ix - 1] + recv_process_size_buffer[ix - 1];
 
+
+    /* Sending data to all processes */
+    /* What is the buffer size to allocate */
+    int outer_hash_buffer_size = 0;
+    for(u32 ix = 0; ix < nprocs; ix++)
+        outer_hash_buffer_size = outer_hash_buffer_size + recv_process_size_buffer[ix];
+
+
+    u64* outer_hash_data = new u64[outer_hash_buffer_size];
+    MPI_Alltoallv(process_data, process_size, prefix_sum_process_size, MPI_UNSIGNED_LONG_LONG, outer_hash_data, recv_process_size_buffer, prefix_sum_recv_process_size_buffer, MPI_UNSIGNED_LONG_LONG, comm);
+
+    if (process_data_buffer_size != 0)
         delete[] process_data;
 
+#if 1
+    //std::cout << "outer_hash_buffer_size " << outer_hash_buffer_size << std::endl;
+    //subbuckets_G[i] = global_t_new_sub_bucket[i];
+    for (int in = 0; in < outer_hash_buffer_size; in = in + 2)
+    {
+        uint64_t bucket_id = outer_hash((outer_hash_data)[in + 1]) % buckets;
+        uint64_t sub_bucket_id = outer_hash((outer_hash_data)[in]) % global_t_new_sub_bucket[bucket_id];
+        tmap_bucket[bucket_id] = 1;
+        tmap_sub_bucket[bucket_id][sub_bucket_id]++;
 
-        for (u32 j = 0; j < subbuckets_T[bk]; j++)
-        {
-            Relation1Map::iterator iy2 = delta[bk][j]->begin();
-            for(; iy2 != delta[bk][j]->end(); iy2++)
-                delete (iy2->second);
-
-            delta[bk][j]->clear();
-            delete delta[bk][j];
-        }
-        delete[] delta[bk];
-
-        delta[bk] = new Relation1Map*[global_t_new_sub_bucket[bk]];
-        for (u32 j = 0; j < global_t_new_sub_bucket[bk]; j++)
-            delta[bk][j] = new Relation1Map;
-
-        total_outer_hash_buffer_size_dT = total_outer_hash_buffer_size_dT + outer_hash_buffer_size/2;
-
-        //std::cout << "outer_hash_buffer_size " << outer_hash_buffer_size << std::endl;
-        //subbuckets_G[i] = global_t_new_sub_bucket[i];
-        for (int in = 0; in < outer_hash_buffer_size; in = in + 2)
-        {
-            uint64_t bucket_id = outer_hash((outer_hash_data)[in+1]) % buckets;
-            uint64_t sub_bucket_id = outer_hash((outer_hash_data)[in]) % global_t_new_sub_bucket[bucket_id];
-            dtmap_bucket[bucket_id] = 1;
-            dtmap_sub_bucket[bucket_id][sub_bucket_id]++;
-
-            auto it = delta[bucket_id][sub_bucket_id]->find((outer_hash_data)[in]);
-            if( it != delta[bucket_id][sub_bucket_id]->end() ) {
-                auto it2 = (it->second)->find((outer_hash_data)[in+1]);
-                if( it2 != (it->second)->end() ) {
-                    ;
-                }
-                else{
-                    (it->second)->insert(std::make_pair((outer_hash_data)[in + 1], 0));
-                    delta[bucket_id][sub_bucket_id]->insert(std::make_pair((outer_hash_data)[in], it->second));
-                }
+        auto it = T[bucket_id][sub_bucket_id].find((outer_hash_data)[in]);
+        if( it != T[bucket_id][sub_bucket_id].end() ) {
+            auto it2 = (it->second)->find((outer_hash_data)[in+1]);
+            if( it2 != (it->second)->end() ) {
+                ;
             }
-            else {
-                Relation0Map *k = new Relation0Map;
-                k->insert(std::make_pair((outer_hash_data)[in + 1], 0));
-                delta[bucket_id][sub_bucket_id]->insert(std::make_pair((outer_hash_data)[in],k));
+            else{
+                (it->second)->insert(std::make_pair((outer_hash_data)[in + 1], 0));
+                T[bucket_id][sub_bucket_id][(outer_hash_data)[in]] = it->second;
             }
         }
-#endif
-        delete[] outer_hash_data;
+        else {
+            Relation0Map *k = new Relation0Map;
+            k->insert(std::make_pair((outer_hash_data)[in + 1], 0));
+            T[bucket_id][sub_bucket_id].insert(std::make_pair((outer_hash_data)[in],k));
+        }
     }
+
+    delete[] outer_hash_data;
+#endif
+
+
+#endif
+
+#if 1
+
+    /* process_size[j] stores the number of samples to be sent to process with rank j */
+    int process_size_dt[nprocs];
+    memset(process_size_dt, 0, nprocs * sizeof(int));
+
+    /* vector[i] contains the data that needs to be sent to process i */
+    std::vector<u64> process_data_vector_dt[nprocs];
+
+    int prefix_sum_process_size_dt[nprocs];
+    memset(prefix_sum_process_size_dt, 0, nprocs * sizeof(int));
+
+    int recv_process_size_buffer_dt[nprocs];
+    memset(recv_process_size_buffer_dt, 0, nprocs * sizeof(int));
+
+    u64* process_data_dt;
+
+    for (u32 bk = 0; bk < buckets; bk++)
+    {
+        if (subbuckets_T[bk] != global_t_new_sub_bucket[bk])
+        {
+            delete[] dtmap_sub_bucket[bk];
+            dtmap_sub_bucket[bk] = new u32[global_t_new_sub_bucket[bk]];
+            memset(dtmap_sub_bucket[bk], 0, sizeof(u32) * global_t_new_sub_bucket[bk]);
+
+            for (u32 j = 0; j < subbuckets_T[bk]; j++)
+            {
+                for (auto it = delta[bk][j]->begin(); it != delta[bk][j]->end(); it++)
+                {
+                    Relation0Map* it2 = it->second;
+                    for (auto dit2 = it2->begin(); dit2 != it2->end(); dit2++)
+                    {
+                        uint64_t bucket_id = outer_hash(dit2->first) % buckets;
+                        uint64_t sub_bucket_id = outer_hash(it->first) % global_t_new_sub_bucket[bucket_id];
+
+                        //int index = tmap_sub_bucket_rank[bucket_id][sub_bucket_id];
+                        uint64_t index = (outer_hash((bucket_id << 32)^sub_bucket_id))%nprocs;
+                        process_size_dt[index] = process_size_dt[index] + col_count;
+
+                        process_data_vector_dt[index].push_back(it->first);
+                        process_data_vector_dt[index].push_back(dit2->first);
+                    }
+                }
+
+                Relation1Map::iterator iy2 = delta[bk][j]->begin();
+                for(; iy2 != delta[bk][j]->end(); iy2++)
+                    delete (iy2->second);
+
+                delta[bk][j]->clear();
+                delete delta[bk][j];
+            }
+            delete[] delta[bk];
+            delta[bk] = new Relation1Map*[global_t_new_sub_bucket[bk]];
+            for (u32 j = 0; j < global_t_new_sub_bucket[bk]; j++)
+                delta[bk][j] = new Relation1Map;
+
+        }
+    }
+
+    for (u32 ix = 1; ix < nprocs; ix++)
+        prefix_sum_process_size_dt[ix] = prefix_sum_process_size_dt[ix - 1] + process_size_dt[ix - 1];
+
+    int process_data_buffer_size_dt = prefix_sum_process_size_dt[nprocs - 1] + process_size_dt[nprocs - 1];
+
+    //u64 process_data[process_data_buffer_size];
+    process_data_dt = new u64[process_data_buffer_size_dt];
+
+    for (u32 ix = 0; ix < nprocs; ix++)
+        memcpy(process_data_dt + prefix_sum_process_size_dt[ix], &process_data_vector_dt[ix][0], process_data_vector_dt[ix].size() * sizeof(u64));
+
+
+    /* This step prepares for actual data transfer */
+    /* Every process sends to every other process the amount of data it is going to send */
+
+
+    MPI_Alltoall(process_size_dt, 1, MPI_INT, recv_process_size_buffer_dt, 1, MPI_INT, MPI_COMM_WORLD);
+
+#if 1
+    int prefix_sum_recv_process_size_buffer_dt[nprocs];
+    memset(prefix_sum_recv_process_size_buffer_dt, 0, nprocs * sizeof(int));
+    for (u32 ix = 1; ix < nprocs; ix++)
+        prefix_sum_recv_process_size_buffer_dt[ix] = prefix_sum_recv_process_size_buffer_dt[ix - 1] + recv_process_size_buffer_dt[ix - 1];
+
+
+    /* Sending data to all processes */
+    /* What is the buffer size to allocate */
+    int outer_hash_buffer_size_dt = 0;
+    for (u32 ix = 0; ix < nprocs; ix++)
+        outer_hash_buffer_size_dt = outer_hash_buffer_size_dt + recv_process_size_buffer_dt[ix];
+
+
+    u64* outer_hash_data_dt = new u64[outer_hash_buffer_size_dt];
+    MPI_Alltoallv(process_data_dt, process_size_dt, prefix_sum_process_size_dt, MPI_UNSIGNED_LONG_LONG, outer_hash_data_dt, recv_process_size_buffer_dt, prefix_sum_recv_process_size_buffer_dt, MPI_UNSIGNED_LONG_LONG, comm);
+
+    if (process_data_buffer_size_dt != 0)
+        delete[] process_data_dt;
+
+
+    //std::cout << "outer_hash_buffer_size " << outer_hash_buffer_size << std::endl;
+    //subbuckets_G[i] = global_t_new_sub_bucket[i];
+    for (int in = 0; in < outer_hash_buffer_size_dt; in = in + 2)
+    {
+        uint64_t bucket_id = outer_hash((outer_hash_data_dt)[in+1]) % buckets;
+        uint64_t sub_bucket_id = outer_hash((outer_hash_data_dt)[in]) % global_t_new_sub_bucket[bucket_id];
+        dtmap_bucket[bucket_id] = 1;
+        dtmap_sub_bucket[bucket_id][sub_bucket_id]++;
+
+        auto it = delta[bucket_id][sub_bucket_id]->find((outer_hash_data_dt)[in]);
+        if( it != delta[bucket_id][sub_bucket_id]->end() ) {
+            auto it2 = (it->second)->find((outer_hash_data_dt)[in+1]);
+            if( it2 != (it->second)->end() ) {
+                ;
+            }
+            else{
+                (it->second)->insert(std::make_pair((outer_hash_data_dt)[in + 1], 0));
+                delta[bucket_id][sub_bucket_id]->insert(std::make_pair((outer_hash_data_dt)[in], it->second));
+            }
+        }
+        else {
+            Relation0Map *k = new Relation0Map;
+            k->insert(std::make_pair((outer_hash_data_dt)[in + 1], 0));
+            delta[bucket_id][sub_bucket_id]->insert(std::make_pair((outer_hash_data_dt)[in],k));
+        }
+    }
+#endif
+    delete[] outer_hash_data_dt;
+
 
     if (rank == 0)
         for (u32 i = 0; i < buckets; i++)
@@ -1643,7 +1510,7 @@ int load_balance_T(u32 buckets, u32* tmap_bucket, u32** tmap_sub_bucket, u32* su
 
     memcpy(subbuckets_T, global_t_new_sub_bucket, sizeof(u32)*buckets);
 
-    std::cout << "Balanced [T] Rank: " << rank << " Hashed count: " << total_outer_hash_buffer_size_T << " Ratio: " << (float)((float) total_outer_hash_buffer_size_T/global_row_count)*100 << std::endl;
+    std::cout << "Balanced [T] Rank: " << rank << " Hashed count: " << outer_hash_buffer_size << " Ratio: " << (float)((float) outer_hash_buffer_size/global_row_count)*100 << std::endl;
 
     u64 dT_tuple_count_after = 0;
     u64 T_tuple_count_after = 0;
@@ -1676,15 +1543,16 @@ int load_balance_T(u32 buckets, u32* tmap_bucket, u32** tmap_sub_bucket, u32* su
     MPI_Allreduce(&dT_tuple_count_after, &dT_tuple_count_after_global, 1, MPI_UNSIGNED_LONG_LONG, MPI_SUM, MPI_COMM_WORLD);
 
     if (rank == 0)
-        std::cout << "Before and After " << T_tuple_count_before_global << " " << T_tuple_count_after_global << std::endl;
+    {
+        std::cout << "[T] Before and After " << T_tuple_count_before_global << " " << T_tuple_count_after_global << std::endl;
+        std::cout << "[dT] Before and After " << dT_tuple_count_before_global << " " << dT_tuple_count_after_global << std::endl;
+    }
 
     assert(T_tuple_count_before_global == T_tuple_count_after_global);
     assert(dT_tuple_count_before_global == dT_tuple_count_after_global);
 
     //std::cout << "Balanced [dT] Rank: " << rank << " Hashed count: " << total_outer_hash_buffer_size_dT << " Ratio: " << (float)((float) total_outer_hash_buffer_size_dT/global_row_count)*100 << std::endl;
 #endif
-
-    return 1;
 
 }
 
@@ -1787,7 +1655,7 @@ int main(int argc, char **argv)
         std::unordered_set<int> distinct_g_ranks;
         for (u64 x = 0; x < subbuckets_G[b]; x++)
         {
-            gmap_sub_bucket_rank[b][x] = rcount % nprocs;
+            gmap_sub_bucket_rank[b][x] = (outer_hash((b << 32)^x))%nprocs;//rcount % nprocs;
 
             if (gmap_sub_bucket_rank[b][x] == rank)
                 gmap_bucket[b] = 1;
@@ -1818,7 +1686,7 @@ int main(int argc, char **argv)
         std::unordered_set<int> distinct_t_ranks;
         for (u64 x = 0; x < subbuckets_T[b]; x++)
         {
-            tmap_sub_bucket_rank[b][x] = rcount % nprocs;
+            tmap_sub_bucket_rank[b][x] = (outer_hash((b << 32)^x))%nprocs;//rcount % nprocs;
 
             if (tmap_sub_bucket_rank[b][x] == rank)
                 tmap_bucket[b] = 1;
@@ -2037,21 +1905,15 @@ int main(int argc, char **argv)
 
 
 
-    int lb_g = 0;
-    int lb_t = 0;
     double load_balance_G_start = MPI_Wtime();
-    lb_g = load_balance_G(buckets, gmap_bucket, gmap_sub_bucket, subbuckets_G, G, gmap_sub_bucket_rank, gmap_distinct_sub_bucket_rank_count, gmap_distinct_sub_bucket_rank);
+    load_balance_G(buckets, gmap_bucket, gmap_sub_bucket, subbuckets_G, G, gmap_sub_bucket_rank, gmap_distinct_sub_bucket_rank_count, gmap_distinct_sub_bucket_rank);
     double load_balance_G_end = MPI_Wtime();
 
     double load_balance_T_start = MPI_Wtime();
-    lb_t = load_balance_T(buckets, tmap_bucket, tmap_sub_bucket, subbuckets_T, T, dtmap_bucket, dtmap_sub_bucket, dT, tmap_sub_bucket_rank, tmap_distinct_sub_bucket_rank_count, tmap_distinct_sub_bucket_rank);
+    load_balance_T(buckets, tmap_bucket, tmap_sub_bucket, subbuckets_T, T, dtmap_bucket, dtmap_sub_bucket, dT, tmap_sub_bucket_rank, tmap_distinct_sub_bucket_rank_count, tmap_distinct_sub_bucket_rank);
     double load_balance_T_end = MPI_Wtime();
 
-    int lb_f = 1;
-    if (lb_g == 0 && lb_t == 0)
-        lb_f = 0;
 
-    lb_f = lb_f * lb_f;
     u32 g_bucket_count = 0;
     for (u32 bk = 0; bk < buckets; bk++)
     {
@@ -2138,11 +2000,11 @@ int main(int argc, char **argv)
     std::vector<tuple<2>> delT_temp[buckets];
 
     if (rank == 6)
-    for (u32 i = 0; i < buckets; i++)
-    {
-        //std::cout << "SSSS [" << i << "] " << subbuckets_G[i] << " " << subbuckets_T[i] << std::endl;
-        //std::cout << "TTTT [" << i << "] " << gmap_distinct_sub_bucket_rank_count[i] << " " << tmap_distinct_sub_bucket_rank_count[i] << std::endl;
-    }
+        for (u32 i = 0; i < buckets; i++)
+        {
+            //std::cout << "SSSS [" << i << "] " << subbuckets_G[i] << " " << subbuckets_T[i] << std::endl;
+            //std::cout << "TTTT [" << i << "] " << gmap_distinct_sub_bucket_rank_count[i] << " " << tmap_distinct_sub_bucket_rank_count[i] << std::endl;
+        }
 
     int count_r = 0;
     int count_s = 0;
@@ -2213,7 +2075,7 @@ int main(int argc, char **argv)
     int lb = 0;
     double time = 0;
 
-    dT = parallel_map_join(dT, dtmap_bucket, G, gmap_bucket, T, tmap_bucket, 0, &lb, &running_t_count, &time, buckets, subbuckets_G, subbuckets_T, gmap_sub_bucket_rank, tmap_sub_bucket_rank, lb_f, g_t_bucket_indices, g_t_bucket_count, g_bucket_indices, g_bucket_count, g_recv_count, g_recv_rank, atoi(argv[4]), gmap_distinct_sub_bucket_rank_count, gmap_distinct_sub_bucket_rank, tmap_distinct_sub_bucket_rank_count, tmap_distinct_sub_bucket_rank);
+    dT = parallel_map_join(dT, dtmap_bucket, G, gmap_bucket, T, tmap_bucket, 0, &lb, &running_t_count, &time, buckets, subbuckets_G, subbuckets_T, gmap_sub_bucket_rank, tmap_sub_bucket_rank, g_t_bucket_indices, g_t_bucket_count, g_bucket_indices, g_bucket_count, g_recv_count, g_recv_rank, atoi(argv[4]), gmap_distinct_sub_bucket_rank_count, gmap_distinct_sub_bucket_rank, tmap_distinct_sub_bucket_rank_count, tmap_distinct_sub_bucket_rank);
 
 
 
@@ -2221,7 +2083,7 @@ int main(int argc, char **argv)
     int lc = 1;
     while(true)
     {
-        dT = parallel_map_join(dT, dtmap_bucket, G, gmap_bucket, T, tmap_bucket, lc, &lb, &running_t_count, &time, buckets, subbuckets_G, subbuckets_T, gmap_sub_bucket_rank, tmap_sub_bucket_rank, lb_f, g_t_bucket_indices, g_t_bucket_count, g_bucket_indices, g_bucket_count, g_recv_count, g_recv_rank, atoi(argv[4]), gmap_distinct_sub_bucket_rank_count, gmap_distinct_sub_bucket_rank, tmap_distinct_sub_bucket_rank_count, tmap_distinct_sub_bucket_rank);
+        dT = parallel_map_join(dT, dtmap_bucket, G, gmap_bucket, T, tmap_bucket, lc, &lb, &running_t_count, &time, buckets, subbuckets_G, subbuckets_T, gmap_sub_bucket_rank, tmap_sub_bucket_rank, g_t_bucket_indices, g_t_bucket_count, g_bucket_indices, g_bucket_count, g_recv_count, g_recv_rank, atoi(argv[4]), gmap_distinct_sub_bucket_rank_count, gmap_distinct_sub_bucket_rank, tmap_distinct_sub_bucket_rank_count, tmap_distinct_sub_bucket_rank);
 
         //load_balance_G(buckets, gmap_bucket, gmap_sub_bucket, subbuckets_G, G);
         //load_balance_T(buckets, tmap_bucket, tmap_sub_bucket, subbuckets_T, T, dtmap_bucket, dtmap_sub_bucket, dT);
