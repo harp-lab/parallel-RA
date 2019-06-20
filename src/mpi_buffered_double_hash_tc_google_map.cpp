@@ -583,30 +583,14 @@ Relation1Map *** parallel_map_join(Relation1Map*** delT, u32* dtmap, Relation1Ma
 
                 MPI_Waitall(req_counter2, req2, stat2);
 
-                //std::cout << "Pass 000000000000 " << i << std::endl;
-
                 delete[] req1;
                 delete[] req2;
 
                 delete[] stat1;
                 delete[] stat2;
                 delete[] size_buf;
-#endif
-            }
-        }
-#endif
-        double t1_e = MPI_Wtime();
-        outer_comm_time = (t1_e - t1_s);
 
 
-        double t2_s = MPI_Wtime();
-#if 1
-        for (u32 i3 = 0; i3 < g_actual_bucket_count; i3++)
-            //for (u32 i = 0; i < buckets; i++)
-        {
-            u32 i = g_bucket_indices[i3];
-            //if (color[i] == 1)
-            {
                 Relation1Map tempT;
                 for (u32 k1 = 0; k1 < total_buffer_size[i]; k1=k1+2)
                 {
@@ -666,11 +650,17 @@ Relation1Map *** parallel_map_join(Relation1Map*** delT, u32* dtmap, Relation1Ma
                 Relation1Map::iterator ix = tempT.begin();
                 for(; ix != tempT.end(); ix++)
                     delete (ix->second);
+                delete[]  recvbuf[i];
+#endif
             }
-
-            delete[]  recvbuf[i];
         }
 #endif
+        double t1_e = MPI_Wtime();
+        outer_comm_time = (t1_e - t1_s);
+
+
+        double t2_s = MPI_Wtime();
+
         delete[]  recvbuf;
         delete[]  total_buffer_size;
         double t2_e = MPI_Wtime();
@@ -1172,8 +1162,8 @@ void load_balance_T(u32 buckets, u32* tmap_bucket, u32** tmap_sub_bucket, u32* s
 
     if (rank == 0)
     {
-    std::cout << "[Before] T size " << T_tuple_count_before_global << std::endl;
-    std::cout << "[Before] dT size " << dT_tuple_count_before_global << std::endl;
+        std::cout << "[Before] T size " << T_tuple_count_before_global << std::endl;
+        std::cout << "[Before] dT size " << dT_tuple_count_before_global << std::endl;
     }
 
     int col_count = 2;
