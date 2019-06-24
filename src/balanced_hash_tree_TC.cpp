@@ -51,7 +51,7 @@ inline u64 tunedhash(const u8* bp, const u32 len)
 
 
 
-u64 outer_hash(const u64 val)
+u64 hash_function(const u64 val)
 {
     return tunedhash((u8*)(&val),sizeof(u64));
 }
@@ -141,11 +141,11 @@ void buffer_data_to_hash_buffer(u32 local_number_of_rows, u64* input_data,  int 
     {
         for (u32 i = 0; i < local_number_of_rows * COL_COUNT; i=i+2)
         {
-            uint64_t bucket_id = outer_hash(input_data[i]) % buckets;
-            uint64_t sub_bucket_id = outer_hash(input_data[i+1]) % subbuckets_G[bucket_id];
+            uint64_t bucket_id = hash_function(input_data[i]) % buckets;
+            uint64_t sub_bucket_id = hash_function(input_data[i+1]) % subbuckets_G[bucket_id];
 
-            uint64_t index = (outer_hash((bucket_id << 32)^sub_bucket_id))%nprocs;
-            //int index = gmap_sub_bucket_rank[bucket_id][sub_bucket_id];
+            //uint64_t index = (hash_function((bucket_id << 32)^sub_bucket_id))%nprocs;
+            int index = gmap_sub_bucket_rank[bucket_id][sub_bucket_id];
             process_size[index] = process_size[index] + COL_COUNT;
 
             process_data_vector[index].push_back(input_data[i]);
@@ -156,11 +156,11 @@ void buffer_data_to_hash_buffer(u32 local_number_of_rows, u64* input_data,  int 
     {
         for (u32 i = 0; i < local_number_of_rows * COL_COUNT; i=i+2)
         {
-            uint64_t bucket_id = outer_hash(input_data[i+1]) % buckets;
-            uint64_t sub_bucket_id = outer_hash(input_data[i]) % subbuckets_T[bucket_id];
+            uint64_t bucket_id = hash_function(input_data[i+1]) % buckets;
+            uint64_t sub_bucket_id = hash_function(input_data[i]) % subbuckets_T[bucket_id];
 
-            uint64_t index = (outer_hash((bucket_id << 32)^sub_bucket_id))%nprocs;
-            //int index = gmap_sub_bucket_rank[bucket_id][sub_bucket_id];
+            //uint64_t index = (hash_function((bucket_id << 32)^sub_bucket_id))%nprocs;
+            int index = gmap_sub_bucket_rank[bucket_id][sub_bucket_id];
             process_size[index] = process_size[index] + COL_COUNT;
 
             process_data_vector[index].push_back(input_data[i]);
@@ -220,7 +220,7 @@ void buffer_data_to_hash_buffer(u32 local_number_of_rows, u64* input_data,  int 
 }
 
 
-void parallel_map_join(Relation1Map*& delT, u32* dtmap, Relation1Map*& G, u32* gmap_bucket, Relation1Map*& T, u32* tmap, int lc, int* lb, int* running_t_count, double* running_time, u32 buckets, u32* subbuckets_T, u32* g_t_bucket_indices, u32 g_t_actual_bucket_count, int* gmap_distinct_sub_bucket_rank_count,  int** gmap_distinct_sub_bucket_rank, int* tmap_distinct_sub_bucket_rank_count, int** tmap_distinct_sub_bucket_rank)
+void parallel_map_join(Relation1Map*& delT, u32* dtmap, Relation1Map*& G, u32* gmap_bucket, Relation1Map*& T, u32* tmap, int lc, int* lb, int* running_t_count, double* running_time, u32 buckets, u32* subbuckets_T, u32* g_t_bucket_indices, u32 g_t_actual_bucket_count, int* gmap_distinct_sub_bucket_rank_count,  int** gmap_distinct_sub_bucket_rank, int* tmap_distinct_sub_bucket_rank_count, int** tmap_distinct_sub_bucket_rank, int** tmap_sub_bucket_rank)
 {
 
     double c = 0;
@@ -360,11 +360,11 @@ void parallel_map_join(Relation1Map*& delT, u32* dtmap, Relation1Map*& G, u32* g
                             dt[1] = it2->first;
 
                             // because we are sending to T and dt and they are hashed on the second column
-                            uint64_t bucket_id = outer_hash(dt[1]) % buckets;
-                            uint64_t sub_bucket_id = outer_hash(dt[0]) % subbuckets_T[bucket_id];
+                            uint64_t bucket_id = hash_function(dt[1]) % buckets;
+                            uint64_t sub_bucket_id = hash_function(dt[0]) % subbuckets_T[bucket_id];
 
-                            //int index = tmap_sub_bucket_rank[bucket_id][sub_bucket_id];
-                            uint64_t index = (outer_hash((bucket_id << 32)^sub_bucket_id))%nprocs;
+                            int index = tmap_sub_bucket_rank[bucket_id][sub_bucket_id];
+                            //uint64_t index = (hash_function((bucket_id << 32)^sub_bucket_id))%nprocs;
                             process_data_vector[index].push_back(dt);
                         }
                     }
@@ -378,16 +378,15 @@ void parallel_map_join(Relation1Map*& delT, u32* dtmap, Relation1Map*& G, u32* g
                         dt[1] = it2->first;
 
                         // because we are sending to T and dt and they are hashed on the second column
-                        uint64_t bucket_id = outer_hash(dt[1]) % buckets;
-                        uint64_t sub_bucket_id = outer_hash(dt[0]) % subbuckets_T[bucket_id];
+                        uint64_t bucket_id = hash_function(dt[1]) % buckets;
+                        uint64_t sub_bucket_id = hash_function(dt[0]) % subbuckets_T[bucket_id];
 
-                        uint64_t index = (outer_hash((bucket_id << 32)^sub_bucket_id))%nprocs;
-                        //int index = tmap_sub_bucket_rank[bucket_id][sub_bucket_id];
+                        //uint64_t index = (hash_function((bucket_id << 32)^sub_bucket_id))%nprocs;
+                        int index = tmap_sub_bucket_rank[bucket_id][sub_bucket_id];
                         process_data_vector[index].push_back(dt);
                     }
                 }
             }
-
         }
 
         Relation1Map::iterator ix = tempT.begin();
@@ -484,7 +483,7 @@ void parallel_map_join(Relation1Map*& delT, u32* dtmap, Relation1Map*& G, u32* g
     memset(dtmap, 0, buckets * sizeof(u32));
     for (u32 i = 0; i < outer_hash_buffer_size; i = i + 2)
     {
-        uint64_t bucket_id = outer_hash(hash_buffer[i + 1]) % buckets;
+        uint64_t bucket_id = hash_function(hash_buffer[i + 1]) % buckets;
 
         auto it = T[bucket_id].find(hash_buffer[i]);
         if ( it != T[bucket_id].end() ) {
@@ -596,7 +595,7 @@ void parallel_map_join(Relation1Map*& delT, u32* dtmap, Relation1Map*& G, u32* g
 }
 
 
-void load_balance_G(u32 buckets, u32*& gmap_bucket, u32**& gmap_sub_bucket, u32*& subbuckets_G, Relation1Map*& G, int**& gmap_sub_bucket_rank, int*& gmap_distinct_sub_bucket_rank_count, int**& gmap_distinct_sub_bucket_rank)
+void load_balance_G(u32 buckets, u32*& gmap_bucket, u32**& gmap_sub_bucket, u32*& subbuckets_G, Relation1Map*& G, int**& gmap_sub_bucket_rank, int*& gmap_distinct_sub_bucket_rank_count, int**& gmap_distinct_sub_bucket_rank, int round_robin)
 {
     u64 G_tuple_count_before = 0;
     u64 G_tuple_count_before_global = 0;
@@ -648,39 +647,89 @@ void load_balance_G(u32 buckets, u32*& gmap_bucket, u32**& gmap_sub_bucket, u32*
         for (u32 j = 0; j < subbuckets_G[i]; j++)
             g_new_sub_bucket[i] = g_new_sub_bucket[i] + (gmap_sub_bucket[i][j] / global_min);
 
+
     MPI_Allreduce(g_new_sub_bucket, global_g_new_sub_bucket, buckets, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
 
+    for (u32 i = 0; i < buckets; i++)
+        if (global_g_new_sub_bucket[i] == 0)
+            global_g_new_sub_bucket[i] = 1;
 
-    int rcount = 0;
-    for (u64 b = 0; b < buckets; b++)
+    int rcount = gmap_sub_bucket_rank[buckets-1][subbuckets_G[buckets-1] - 1] + 1;
+    if (round_robin == 1)
     {
-        if (global_g_new_sub_bucket[b] != subbuckets_G[b])
+        for (u64 b = 0; b < buckets; b++)
         {
-            gmap_bucket[b] = 0;
-            std::unordered_set<int> distinct_g_ranks;
-            delete[] gmap_sub_bucket_rank[b];
-            gmap_sub_bucket_rank[b] = new int[global_g_new_sub_bucket[b]];
-
-            for (u64 x = 0; x < global_g_new_sub_bucket[b]; x++)
+            if (global_g_new_sub_bucket[b] != subbuckets_G[b])
             {
-                gmap_sub_bucket_rank[b][x] = (outer_hash((b << 32)^x))%nprocs;//rcount % nprocs;
+                //gmap_bucket[b] = 0;
+                std::unordered_set<int> distinct_g_ranks;
 
-                if (gmap_sub_bucket_rank[b][x] == rank)
-                    gmap_bucket[b] = 1;
+                int* temp = new int[subbuckets_G[b]];
+                memcpy(temp, gmap_sub_bucket_rank[b], sizeof(int) * subbuckets_G[b]);
 
-                distinct_g_ranks.insert(gmap_sub_bucket_rank[b][x]);
-                rcount++;
+                delete[] gmap_sub_bucket_rank[b];
+                gmap_sub_bucket_rank[b] = new int[global_g_new_sub_bucket[b]];
+
+                memcpy(gmap_sub_bucket_rank[b], temp, sizeof(int) * subbuckets_G[b]);
+                delete[] temp;
+
+                for (u64 x = 0; x < global_g_new_sub_bucket[b]; x++)
+                {
+                    if (x >= subbuckets_G[b])
+                        gmap_sub_bucket_rank[b][x] = rcount % nprocs;
+
+                    if (gmap_sub_bucket_rank[b][x] == rank)
+                        gmap_bucket[b] = 1;
+
+                    distinct_g_ranks.insert(gmap_sub_bucket_rank[b][x]);
+                    rcount++;
+                }
+
+                delete[] gmap_distinct_sub_bucket_rank[b];
+                gmap_distinct_sub_bucket_rank[b] = new int[distinct_g_ranks.size()];
+                u32 x = 0;
+                for ( auto it = distinct_g_ranks.begin(); it != distinct_g_ranks.end(); ++it )
+                {
+                    gmap_distinct_sub_bucket_rank[b][x] = *it;
+                    x++;
+                }
+                gmap_distinct_sub_bucket_rank_count[b] = x;
             }
+        }
 
-            delete[] gmap_distinct_sub_bucket_rank[b];
-            gmap_distinct_sub_bucket_rank[b] = new int[distinct_g_ranks.size()];
-            u32 x = 0;
-            for ( auto it = distinct_g_ranks.begin(); it != distinct_g_ranks.end(); ++it )
+    }
+    else
+    {
+        for (u64 b = 0; b < buckets; b++)
+        {
+            if (global_g_new_sub_bucket[b] != subbuckets_G[b])
             {
-                gmap_distinct_sub_bucket_rank[b][x] = *it;
-                x++;
+                //gmap_bucket[b] = 0;
+                std::unordered_set<int> distinct_g_ranks;
+
+                delete[] gmap_sub_bucket_rank[b];
+                gmap_sub_bucket_rank[b] = new int[global_g_new_sub_bucket[b]];
+
+                for (u64 x = 0; x < global_g_new_sub_bucket[b]; x++)
+                {
+                    gmap_sub_bucket_rank[b][x] = (hash_function((b << 32)^x))%nprocs;//rcount % nprocs;
+
+                    if (gmap_sub_bucket_rank[b][x] == rank)
+                        gmap_bucket[b] = 1;
+
+                    distinct_g_ranks.insert(gmap_sub_bucket_rank[b][x]);
+                }
+
+                delete[] gmap_distinct_sub_bucket_rank[b];
+                gmap_distinct_sub_bucket_rank[b] = new int[distinct_g_ranks.size()];
+                u32 x = 0;
+                for ( auto it = distinct_g_ranks.begin(); it != distinct_g_ranks.end(); ++it )
+                {
+                    gmap_distinct_sub_bucket_rank[b][x] = *it;
+                    x++;
+                }
+                gmap_distinct_sub_bucket_rank_count[b] = x;
             }
-            gmap_distinct_sub_bucket_rank_count[b] = x;
         }
     }
 
@@ -714,11 +763,11 @@ void load_balance_G(u32 buckets, u32*& gmap_bucket, u32**& gmap_sub_bucket, u32*
                 Relation0Map* it2 = it->second;
                 for (auto dit2 = it2->begin(); dit2 != it2->end(); dit2++)
                 {
-                    uint64_t bucket_id = outer_hash(it->first) % buckets;
-                    uint64_t sub_bucket_id = outer_hash(dit2->first) % global_g_new_sub_bucket[bucket_id];
+                    uint64_t bucket_id = hash_function(it->first) % buckets;
+                    uint64_t sub_bucket_id = hash_function(dit2->first) % global_g_new_sub_bucket[bucket_id];
 
-                    uint64_t index = (outer_hash((bucket_id << 32)^sub_bucket_id))%nprocs;
-                    //int index = gmap_sub_bucket_rank[bucket_id][sub_bucket_id];
+                    //uint64_t index = (hash_function((bucket_id << 32)^sub_bucket_id))%nprocs;
+                    int index = gmap_sub_bucket_rank[bucket_id][sub_bucket_id];
                     process_size[index] = process_size[index] + COL_COUNT;
 
                     process_data_vector[index].push_back(it->first);
@@ -773,8 +822,8 @@ void load_balance_G(u32 buckets, u32*& gmap_bucket, u32**& gmap_sub_bucket, u32*
     //subbuckets_G[i] = global_g_new_sub_bucket[i];
     for (int in = 0; in < outer_hash_buffer_size; in = in + 2)
     {
-        uint64_t bucket_id = outer_hash((outer_hash_data)[in]) % buckets;
-        uint64_t sub_bucket_id = outer_hash((outer_hash_data)[in+1]) % global_g_new_sub_bucket[bucket_id];
+        uint64_t bucket_id = hash_function((outer_hash_data)[in]) % buckets;
+        uint64_t sub_bucket_id = hash_function((outer_hash_data)[in+1]) % global_g_new_sub_bucket[bucket_id];
         gmap_bucket[bucket_id] = 1;
         gmap_sub_bucket[bucket_id][sub_bucket_id]++;
 
@@ -837,12 +886,12 @@ void load_balance_G(u32 buckets, u32*& gmap_bucket, u32**& gmap_sub_bucket, u32*
 
     //assert(G_tuple_count_before_global == G_tuple_count_after_global);
 
-    //std::cout << "Balanced [G] Rank: " << rank << " Hashed count: " << outer_hash_buffer_size/2 << " Ratio: " << (float)((float) (outer_hash_buffer_size/2)/global_row_count)*100 << std::endl;
+    std::cout << "Balanced [G] Rank: " << rank << " Hashed count: " << G_tuple_count_after << " Ratio: " << (float)((float) (G_tuple_count_after)/global_row_count)*100 << std::endl;
 }
 
 
 
-void load_balance_T(u32 buckets, u32*& tmap_bucket, u32**& tmap_sub_bucket, u32*& subbuckets_T, Relation1Map*& T, u32*& dtmap_bucket, Relation1Map*& delta, int**& tmap_sub_bucket_rank, int*& tmap_distinct_sub_bucket_rank_count, int**& tmap_distinct_sub_bucket_rank)
+void load_balance_T(u32 buckets, u32*& tmap_bucket, u32**& tmap_sub_bucket, u32*& subbuckets_T, Relation1Map*& T, u32*& dtmap_bucket, Relation1Map*& delta, int**& tmap_sub_bucket_rank, int*& tmap_distinct_sub_bucket_rank_count, int**& tmap_distinct_sub_bucket_rank, int round_robin)
 {
     u64 dT_tuple_count_before = 0;
     u64 T_tuple_count_before = 0;
@@ -915,39 +964,99 @@ void load_balance_T(u32 buckets, u32*& tmap_bucket, u32**& tmap_sub_bucket, u32*
 
     MPI_Allreduce(t_new_sub_bucket, global_t_new_sub_bucket, buckets, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
 
+    for (u32 i = 0; i < buckets; i++)
+        if (global_t_new_sub_bucket[i] == 0)
+            global_t_new_sub_bucket[i] = 1;
 
-    int rcount = 0;
-    for (u64 b = 0; b < buckets; b++)
+
+    int rcount = tmap_distinct_sub_bucket_rank[buckets-1][subbuckets_T[buckets-1] - 1] + 1;
+    if (round_robin == 1)
     {
-        if (subbuckets_T[b] != global_t_new_sub_bucket[b])
+        for (u64 b = 0; b < buckets; b++)
         {
-            tmap_bucket[b] = 0;
-            dtmap_bucket[b] = 0;
-
-            std::unordered_set<int> distinct_t_ranks;
-            delete[] tmap_sub_bucket_rank[b];
-            tmap_sub_bucket_rank[b] = new int[global_t_new_sub_bucket[b]];
-
-            for (u64 x = 0; x < global_t_new_sub_bucket[b]; x++)
+            if (subbuckets_T[b] != global_t_new_sub_bucket[b])
             {
-                tmap_sub_bucket_rank[b][x] = (outer_hash((b << 32)^x))%nprocs;//rcount % nprocs;
+                tmap_bucket[b] = 0;
+                dtmap_bucket[b] = 0;
 
-                if (tmap_sub_bucket_rank[b][x] == rank)
-                    tmap_bucket[b] = 1;
+                std::unordered_set<int> distinct_t_ranks;
+                delete[] tmap_sub_bucket_rank[b];
+                tmap_sub_bucket_rank[b] = new int[global_t_new_sub_bucket[b]];
 
-                distinct_t_ranks.insert(tmap_sub_bucket_rank[b][x]);
-                rcount++;
+                //delete[] tmap_sub_bucket_rank[b];
+                //tmap_sub_bucket_rank[b] = new int[global_t_new_sub_bucket[b]];
+
+                for (u64 x = 0; x < global_t_new_sub_bucket[b]; x++)
+                {
+                    tmap_sub_bucket_rank[b][x] = rcount % nprocs;
+
+                    if (tmap_sub_bucket_rank[b][x] == rank)
+                        tmap_bucket[b] = 1;
+
+                    distinct_t_ranks.insert(tmap_sub_bucket_rank[b][x]);
+                    rcount++;
+                }
+
+                delete[] tmap_distinct_sub_bucket_rank[b];
+                tmap_distinct_sub_bucket_rank[b] = new int[distinct_t_ranks.size()];
+                u32 x = 0;
+                for ( auto it = distinct_t_ranks.begin(); it != distinct_t_ranks.end(); ++it )
+                {
+                    tmap_distinct_sub_bucket_rank[b][x] = *it;
+                    x++;
+                }
+                tmap_distinct_sub_bucket_rank_count[b] = x;
             }
+        }
 
-            delete[] tmap_distinct_sub_bucket_rank[b];
-            tmap_distinct_sub_bucket_rank[b] = new int[distinct_t_ranks.size()];
-            u32 x = 0;
-            for ( auto it = distinct_t_ranks.begin(); it != distinct_t_ranks.end(); ++it )
+    }
+    else
+    {
+
+        for (u64 b = 0; b < buckets; b++)
+        {
+            if (subbuckets_T[b] != global_t_new_sub_bucket[b])
             {
-                tmap_distinct_sub_bucket_rank[b][x] = *it;
-                x++;
+                tmap_bucket[b] = 0;
+                dtmap_bucket[b] = 0;
+
+                std::unordered_set<int> distinct_t_ranks;
+
+                int* temp = new int[subbuckets_T[b]];
+                memcpy(temp, tmap_sub_bucket_rank[b], sizeof(int) * subbuckets_T[b]);
+
+                delete[] tmap_sub_bucket_rank[b];
+                tmap_sub_bucket_rank[b] = new int[global_t_new_sub_bucket[b]];
+
+                memcpy(tmap_sub_bucket_rank[b], temp, sizeof(int) * subbuckets_T[b]);
+                delete[] temp;
+
+
+                //delete[] tmap_sub_bucket_rank[b];
+                //tmap_sub_bucket_rank[b] = new int[global_t_new_sub_bucket[b]];
+
+                for (u64 x = 0; x < global_t_new_sub_bucket[b]; x++)
+                {
+                    if (x >= subbuckets_T[b])
+                        tmap_sub_bucket_rank[b][x] = (hash_function((b << 32)^x))%nprocs;//rcount % nprocs;
+
+                    if (tmap_sub_bucket_rank[b][x] == rank)
+                        tmap_bucket[b] = 1;
+
+                    distinct_t_ranks.insert(tmap_sub_bucket_rank[b][x]);
+                    rcount++;
+                }
+
+                delete[] tmap_distinct_sub_bucket_rank[b];
+                tmap_distinct_sub_bucket_rank[b] = new int[distinct_t_ranks.size()];
+                u32 x = 0;
+                for ( auto it = distinct_t_ranks.begin(); it != distinct_t_ranks.end(); ++it )
+                {
+                    tmap_distinct_sub_bucket_rank[b][x] = *it;
+                    x++;
+                }
+                tmap_distinct_sub_bucket_rank_count[b] = x;
             }
-            tmap_distinct_sub_bucket_rank_count[b] = x;
         }
     }
 
@@ -981,11 +1090,11 @@ void load_balance_T(u32 buckets, u32*& tmap_bucket, u32**& tmap_sub_bucket, u32*
                 for (auto dit2 = it2->begin(); dit2 != it2->end(); dit2++)
                 {
                     //test
-                    uint64_t bucket_id = outer_hash(dit2->first) % buckets;
-                    uint64_t sub_bucket_id = outer_hash(it->first) % global_t_new_sub_bucket[bucket_id];
+                    uint64_t bucket_id = hash_function(dit2->first) % buckets;
+                    uint64_t sub_bucket_id = hash_function(it->first) % global_t_new_sub_bucket[bucket_id];
 
-                    uint64_t index = (outer_hash((bucket_id << 32)^sub_bucket_id))%nprocs;
-                    //int index = tmap_sub_bucket_rank[bucket_id][sub_bucket_id];
+                    //uint64_t index = (hash_function((bucket_id << 32)^sub_bucket_id))%nprocs;
+                    int index = tmap_sub_bucket_rank[bucket_id][sub_bucket_id];
                     process_size[index] = process_size[index] + col_count;
 
                     process_data_vector[index].push_back(it->first);
@@ -1042,8 +1151,8 @@ void load_balance_T(u32 buckets, u32*& tmap_bucket, u32**& tmap_sub_bucket, u32*
     //subbuckets_G[i] = global_t_new_sub_bucket[i];
     for (int in = 0; in < outer_hash_buffer_size; in = in + 2)
     {
-        uint64_t bucket_id = outer_hash((outer_hash_data)[in + 1]) % buckets;
-        uint64_t sub_bucket_id = outer_hash((outer_hash_data)[in]) % global_t_new_sub_bucket[bucket_id];
+        uint64_t bucket_id = hash_function((outer_hash_data)[in + 1]) % buckets;
+        uint64_t sub_bucket_id = hash_function((outer_hash_data)[in]) % global_t_new_sub_bucket[bucket_id];
         tmap_bucket[bucket_id] = 1;
         tmap_sub_bucket[bucket_id][sub_bucket_id]++;
 
@@ -1096,11 +1205,11 @@ void load_balance_T(u32 buckets, u32*& tmap_bucket, u32**& tmap_sub_bucket, u32*
                 Relation0Map* it2 = it->second;
                 for (auto dit2 = it2->begin(); dit2 != it2->end(); dit2++)
                 {
-                    uint64_t bucket_id = outer_hash(dit2->first) % buckets;
-                    uint64_t sub_bucket_id = outer_hash(it->first) % global_t_new_sub_bucket[bucket_id];
+                    uint64_t bucket_id = hash_function(dit2->first) % buckets;
+                    uint64_t sub_bucket_id = hash_function(it->first) % global_t_new_sub_bucket[bucket_id];
 
-                    //int index = tmap_sub_bucket_rank[bucket_id][sub_bucket_id];
-                    uint64_t index = (outer_hash((bucket_id << 32)^sub_bucket_id))%nprocs;
+                    int index = tmap_sub_bucket_rank[bucket_id][sub_bucket_id];
+                    //uint64_t index = (hash_function((bucket_id << 32)^sub_bucket_id))%nprocs;
                     process_size_dt[index] = process_size_dt[index] + col_count;
 
                     process_data_vector_dt[index].push_back(it->first);
@@ -1159,7 +1268,7 @@ void load_balance_T(u32 buckets, u32*& tmap_bucket, u32**& tmap_sub_bucket, u32*
     //subbuckets_G[i] = global_t_new_sub_bucket[i];
     for (int in = 0; in < outer_hash_buffer_size_dt; in = in + 2)
     {
-        uint64_t bucket_id = outer_hash((outer_hash_data_dt)[in+1]) % buckets;
+        uint64_t bucket_id = hash_function((outer_hash_data_dt)[in+1]) % buckets;
         dtmap_bucket[bucket_id] = 1;
 
         auto it = delta[bucket_id].find((outer_hash_data_dt)[in]);
@@ -1214,7 +1323,6 @@ void load_balance_T(u32 buckets, u32*& tmap_bucket, u32**& tmap_sub_bucket, u32*
                 //    std::cout << " Val " << it->first << " " << dit2->first << std::endl;
             }
         }
-        \
     }
     MPI_Allreduce(&T_tuple_count_after, &T_tuple_count_after_global, 1, MPI_UNSIGNED_LONG_LONG, MPI_SUM, MPI_COMM_WORLD);
     MPI_Allreduce(&dT_tuple_count_after, &dT_tuple_count_after_global, 1, MPI_UNSIGNED_LONG_LONG, MPI_SUM, MPI_COMM_WORLD);
@@ -1228,7 +1336,7 @@ void load_balance_T(u32 buckets, u32*& tmap_bucket, u32**& tmap_sub_bucket, u32*
     //assert(T_tuple_count_before_global == T_tuple_count_after_global);
     //assert(dT_tuple_count_before_global == dT_tuple_count_after_global);
 
-    //std::cout << "Balanced [dT] Rank: " << rank << " Hashed count: " << total_outer_hash_buffer_size_dT << " Ratio: " << (float)((float) total_outer_hash_buffer_size_dT/global_row_count)*100 << std::endl;
+    std::cout << "Balanced [T] Rank: " << rank << " Hashed count: " << T_tuple_count_after << " Ratio: " << (float)((float) T_tuple_count_after/global_row_count)*100 << std::endl;
 #endif
 
 }
@@ -1324,60 +1432,114 @@ int main(int argc, char **argv)
     u32 *gmap_bucket = new u32[buckets];
     memset(gmap_bucket, 0, sizeof(u32) * buckets);
 
-
-    int rcount = 0;
-    for (u64 b = 0; b < buckets; b++)
-    {
-        std::unordered_set<int> distinct_g_ranks;
-        for (u64 x = 0; x < subbuckets_G[b]; x++)
-        {
-            gmap_sub_bucket_rank[b][x] = (outer_hash((b << 32)^x))%nprocs;//rcount % nprocs;
-
-            if (gmap_sub_bucket_rank[b][x] == rank)
-                gmap_bucket[b] = 1;
-
-            distinct_g_ranks.insert(gmap_sub_bucket_rank[b][x]);
-            rcount++;
-        }
-        gmap_distinct_sub_bucket_rank[b] = new int[distinct_g_ranks.size()];
-        u32 x = 0;
-        for ( auto it = distinct_g_ranks.begin(); it != distinct_g_ranks.end(); ++it )
-        {
-            gmap_distinct_sub_bucket_rank[b][x] = *it;
-            x++;
-        }
-        gmap_distinct_sub_bucket_rank_count[b] = x;
-    }
-
-
     int** tmap_distinct_sub_bucket_rank = new int*[buckets];
     int* tmap_distinct_sub_bucket_rank_count = new int[buckets];
 
     u32 *tmap_bucket = new u32[buckets];
     memset(tmap_bucket, 0, sizeof(u32) * buckets);
 
-    rcount = 0;
-    for (u64 b = 0; b < buckets; b++)
+
+    int rcount = 0;
+
+    // hashing based distribution
+    if (atoi(argv[4]) == 0)
     {
-        std::unordered_set<int> distinct_t_ranks;
-        for (u64 x = 0; x < subbuckets_T[b]; x++)
+        for (u64 b = 0; b < buckets; b++)
         {
-            tmap_sub_bucket_rank[b][x] = (outer_hash((b << 32)^x))%nprocs;//rcount % nprocs;
+            std::unordered_set<int> distinct_g_ranks;
+            for (u64 x = 0; x < subbuckets_G[b]; x++)
+            {
+                gmap_sub_bucket_rank[b][x] = (hash_function((b << 32)^x))%nprocs;//rcount % nprocs;
 
-            if (tmap_sub_bucket_rank[b][x] == rank)
-                tmap_bucket[b] = 1;
+                if (gmap_sub_bucket_rank[b][x] == rank)
+                    gmap_bucket[b] = 1;
 
-            distinct_t_ranks.insert(tmap_sub_bucket_rank[b][x]);
-            rcount++;
+                distinct_g_ranks.insert(gmap_sub_bucket_rank[b][x]);
+                rcount++;
+            }
+            gmap_distinct_sub_bucket_rank[b] = new int[distinct_g_ranks.size()];
+            u32 x = 0;
+            for ( auto it = distinct_g_ranks.begin(); it != distinct_g_ranks.end(); ++it )
+            {
+                gmap_distinct_sub_bucket_rank[b][x] = *it;
+                x++;
+            }
+            gmap_distinct_sub_bucket_rank_count[b] = x;
         }
-        tmap_distinct_sub_bucket_rank[b] = new int[distinct_t_ranks.size()];
-        u32 x = 0;
-        for ( auto it = distinct_t_ranks.begin(); it != distinct_t_ranks.end(); ++it )
+
+        rcount = 0;
+        for (u64 b = 0; b < buckets; b++)
         {
-            tmap_distinct_sub_bucket_rank[b][x] = *it;
-            x++;
+            std::unordered_set<int> distinct_t_ranks;
+            for (u64 x = 0; x < subbuckets_T[b]; x++)
+            {
+                tmap_sub_bucket_rank[b][x] = (hash_function((b << 32)^x))%nprocs;//rcount % nprocs;
+
+                if (tmap_sub_bucket_rank[b][x] == rank)
+                    tmap_bucket[b] = 1;
+
+                distinct_t_ranks.insert(tmap_sub_bucket_rank[b][x]);
+                rcount++;
+            }
+            tmap_distinct_sub_bucket_rank[b] = new int[distinct_t_ranks.size()];
+            u32 x = 0;
+            for ( auto it = distinct_t_ranks.begin(); it != distinct_t_ranks.end(); ++it )
+            {
+                tmap_distinct_sub_bucket_rank[b][x] = *it;
+                x++;
+            }
+            tmap_distinct_sub_bucket_rank_count[b] = x;
         }
-        tmap_distinct_sub_bucket_rank_count[b] = x;
+    }
+    else
+    {
+        rcount = 0;
+        for (u64 b = 0; b < buckets; b++)
+        {
+            std::unordered_set<int> distinct_g_ranks;
+            for (u64 x = 0; x < subbuckets_G[b]; x++)
+            {
+                gmap_sub_bucket_rank[b][x] = rcount % nprocs;
+
+                if (gmap_sub_bucket_rank[b][x] == rank)
+                    gmap_bucket[b] = 1;
+
+                distinct_g_ranks.insert(gmap_sub_bucket_rank[b][x]);
+                rcount++;
+            }
+            gmap_distinct_sub_bucket_rank[b] = new int[distinct_g_ranks.size()];
+            u32 x = 0;
+            for ( auto it = distinct_g_ranks.begin(); it != distinct_g_ranks.end(); ++it )
+            {
+                gmap_distinct_sub_bucket_rank[b][x] = *it;
+                x++;
+            }
+            gmap_distinct_sub_bucket_rank_count[b] = x;
+        }
+
+        rcount = 0;
+        for (u64 b = 0; b < buckets; b++)
+        {
+            std::unordered_set<int> distinct_t_ranks;
+            for (u64 x = 0; x < subbuckets_T[b]; x++)
+            {
+                tmap_sub_bucket_rank[b][x] = rcount % nprocs;
+
+                if (tmap_sub_bucket_rank[b][x] == rank)
+                    tmap_bucket[b] = 1;
+
+                distinct_t_ranks.insert(tmap_sub_bucket_rank[b][x]);
+                rcount++;
+            }
+            tmap_distinct_sub_bucket_rank[b] = new int[distinct_t_ranks.size()];
+            u32 x = 0;
+            for ( auto it = distinct_t_ranks.begin(); it != distinct_t_ranks.end(); ++it )
+            {
+                tmap_distinct_sub_bucket_rank[b][x] = *it;
+                x++;
+            }
+            tmap_distinct_sub_bucket_rank_count[b] = x;
+        }
     }
 
 
@@ -1423,8 +1585,8 @@ int main(int argc, char **argv)
 
     for (u32 i = 0; i < COL_COUNT * G_hash_entry_count; i = i + 2)
     {
-        uint64_t bucket_id = outer_hash(G_hashed_data[i]) % buckets;
-        uint64_t sub_bucket_id = outer_hash(G_hashed_data[i+1]) % subbuckets_G[bucket_id];
+        uint64_t bucket_id = hash_function(G_hashed_data[i]) % buckets;
+        uint64_t sub_bucket_id = hash_function(G_hashed_data[i+1]) % subbuckets_G[bucket_id];
         gmap_bucket[bucket_id] = 1;
         gmap_sub_bucket[bucket_id][sub_bucket_id]++;
 
@@ -1480,8 +1642,8 @@ int main(int argc, char **argv)
 
     for (u32 i = 0; i < COL_COUNT * T_hash_entry_count; i = i + 2)
     {
-        uint64_t bucket_id = outer_hash(T_hashed_data[i+1]) % buckets;
-        uint64_t sub_bucket_id = outer_hash(T_hashed_data[i]) % subbuckets_T[bucket_id];
+        uint64_t bucket_id = hash_function(T_hashed_data[i+1]) % buckets;
+        uint64_t sub_bucket_id = hash_function(T_hashed_data[i]) % subbuckets_T[bucket_id];
         tmap_sub_bucket[bucket_id][sub_bucket_id]++;
         tmap_bucket[bucket_id] = 1;
 
@@ -1533,7 +1695,7 @@ int main(int argc, char **argv)
     int running_t_count = 0;
     for (u32 i = 0; i < COL_COUNT * T_hash_entry_count; i = i + 2)
     {
-        uint64_t bucket_id = outer_hash(T_hashed_data[i+1]) % buckets;
+        uint64_t bucket_id = hash_function(T_hashed_data[i+1]) % buckets;
         dtmap_bucket[bucket_id] = 1;
 
         auto it = dT[bucket_id].find(T_hashed_data[i]);
@@ -1564,15 +1726,26 @@ int main(int argc, char **argv)
     double relation_end = MPI_Wtime();
 
 
+    if (rank == 0)
+        std::cout << "[Before] Load balancing G" << std::endl;
+
 
     double load_balance_G_start = MPI_Wtime();
-    load_balance_G(buckets, gmap_bucket, gmap_sub_bucket, subbuckets_G, G, gmap_sub_bucket_rank, gmap_distinct_sub_bucket_rank_count, gmap_distinct_sub_bucket_rank);
+    load_balance_G(buckets, gmap_bucket, gmap_sub_bucket, subbuckets_G, G, gmap_sub_bucket_rank, gmap_distinct_sub_bucket_rank_count, gmap_distinct_sub_bucket_rank, atoi(argv[4]));
     double load_balance_G_end = MPI_Wtime();
 
+    if (rank == 0)
+        std::cout << "[After] Load balancing G" << std::endl;
+
+    if (rank == 0)
+        std::cout << "[Before] Load balancing T" << std::endl;
+
     double load_balance_T_start = MPI_Wtime();
-    load_balance_T(buckets, tmap_bucket, tmap_sub_bucket, subbuckets_T, T, dtmap_bucket, dT, tmap_sub_bucket_rank, tmap_distinct_sub_bucket_rank_count, tmap_distinct_sub_bucket_rank);
+    load_balance_T(buckets, tmap_bucket, tmap_sub_bucket, subbuckets_T, T, dtmap_bucket, dT, tmap_sub_bucket_rank, tmap_distinct_sub_bucket_rank_count, tmap_distinct_sub_bucket_rank, atoi(argv[4]));
     double load_balance_T_end = MPI_Wtime();
 
+    if (rank == 0)
+        std::cout << "[After] Load balancing T" << std::endl;
 
 
     u32 g_t_bucket_count = 0;
@@ -1592,8 +1765,6 @@ int main(int argc, char **argv)
             g_t_count++;
         }
     }
-
-
     double join_start = MPI_Wtime();
 
 
@@ -1601,7 +1772,7 @@ int main(int argc, char **argv)
     int lb = 0;
     double time = 0;
 
-    parallel_map_join(dT, dtmap_bucket, G, gmap_bucket, T, tmap_bucket, 0, &lb, &running_t_count, &time, buckets, subbuckets_T, g_t_bucket_indices, g_t_bucket_count, gmap_distinct_sub_bucket_rank_count, gmap_distinct_sub_bucket_rank, tmap_distinct_sub_bucket_rank_count, tmap_distinct_sub_bucket_rank);
+    parallel_map_join(dT, dtmap_bucket, G, gmap_bucket, T, tmap_bucket, 0, &lb, &running_t_count, &time, buckets, subbuckets_T, g_t_bucket_indices, g_t_bucket_count, gmap_distinct_sub_bucket_rank_count, gmap_distinct_sub_bucket_rank, tmap_distinct_sub_bucket_rank_count, tmap_distinct_sub_bucket_rank, tmap_sub_bucket_rank);
 
 #if 1
 
@@ -1609,7 +1780,7 @@ int main(int argc, char **argv)
     int lc = 1;
     while(true)
     {
-        parallel_map_join(dT, dtmap_bucket, G, gmap_bucket, T, tmap_bucket, lc, &lb, &running_t_count, &time, buckets, subbuckets_T, g_t_bucket_indices, g_t_bucket_count, gmap_distinct_sub_bucket_rank_count, gmap_distinct_sub_bucket_rank, tmap_distinct_sub_bucket_rank_count, tmap_distinct_sub_bucket_rank);
+        parallel_map_join(dT, dtmap_bucket, G, gmap_bucket, T, tmap_bucket, lc, &lb, &running_t_count, &time, buckets, subbuckets_T, g_t_bucket_indices, g_t_bucket_count, gmap_distinct_sub_bucket_rank_count, gmap_distinct_sub_bucket_rank, tmap_distinct_sub_bucket_rank_count, tmap_distinct_sub_bucket_rank,tmap_sub_bucket_rank);
 
         //load_balance_G(buckets, gmap_bucket, gmap_sub_bucket, subbuckets_G, G);
         //load_balance_T(buckets, tmap_bucket, tmap_sub_bucket, subbuckets_T, T, dtmap_bucket, dtmap_sub_bucket, dT);
