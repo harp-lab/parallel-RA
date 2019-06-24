@@ -35,6 +35,12 @@ The SuiteSparse Matrix Collection (formerly known as the University of Florida S
 For our experiments, we chose seven graphs (listed in Table 1) representing a wide range in terms of the number of edges.
 The transitive closure of a graph with $n$ edges can contain up to $n^2$ edges (a fully connected graph). The number of edges in the transitive closure of a graph depends on the connectedness and topology of the input graph. For example, the transitive closure of our third graph with $2,\!100,\!225$ edges contains $276,\!491,\!930,\!625$ edges, amounting to $4.4$ terabytes of data.
 
+
+We performed our experiments using the SuiteSparse Matrix Collection available at ~\cite{Davis:2011:UFS:2049662.2049663}.
+The SuiteSparse Matrix Collection (formerly known as the University of Florida Sparse Matrix Collection), is a large and actively maintained set of sparse matrices that arise in real applications. The Collection is widely used by the numerical linear algebra community for the development and performance evaluation of sparse matrix algorithms. 
+For our experiments, we chose seven graphs (listed in Table 1) representing a wide range in terms of the number of edges.
+The transitive closure of a graph with $n$ edges can contain up to $n^2$ edges (a fully connected graph). The number of edges in the transitive closure of a graph depends on the connectedness and topology of the input graph. For example, the transitive closure of our third graph with $2,\!100,\!225$ edges contains $276,\!491,\!930,\!625$ edges, amounting to $4.4$ terabytes of data.
+
 %We found our third graph with $2,100,225$ edges to be the most connected; the transitive closure of the graph generated 260 billion edges, which is 3 terabytes in size.
 %-- wide range in terms of number of edges
 %-- The transitive closure of third graph generated 260 billion edges, which corresponds to 4 tera bytes of data.

@@ -28,6 +28,7 @@ file (GLOB source_files_mpitc_map "${source_dir}/mpi_tc_unordered_map.cpp")
 file (GLOB source_files_mpitc_google_map "${source_dir}/mpi_tc_google_map.cpp")
 file (GLOB source_files_mpi_double_hash_tc_google_map "${source_dir}/mpi_double_hash_tc_google_map.cpp")
 file (GLOB source_files_mpi_buffered_double_hash_tc_google_map "${source_dir}/mpi_buffered_double_hash_tc_google_map.cpp")
+file (GLOB source_files_balanced_hash_tree_TC "${source_dir}/balanced_hash_tree_TC.cpp")
 file (GLOB source_files_mpi_load_balancer_test "${source_dir}/mpi_load_balancer_test.cpp")
 file (GLOB source_files_double_hash_tc_google_map "${source_dir}/double_hash_tc_google_map.cpp")
 file (GLOB source_files_otc "${source_dir}/optimized_transitive_closure.cpp")
@@ -79,6 +80,10 @@ TARGET_LINK_LIBRARIES(mpiTC_double_hash_googleMap ${MPI_LIBRARIES})
 add_executable(mpiTC_buffered_double_hash_googleMap ${source_files_mpi_buffered_double_hash_tc_google_map})
 INCLUDE_DIRECTORIES(${MPI_INCLUDE_PATH})
 TARGET_LINK_LIBRARIES(mpiTC_buffered_double_hash_googleMap ${MPI_LIBRARIES})
+
+add_executable(balanced_hash_tree_TC ${source_files_balanced_hash_tree_TC})
+INCLUDE_DIRECTORIES(${MPI_INCLUDE_PATH})
+TARGET_LINK_LIBRARIES(balanced_hash_tree_TC ${MPI_LIBRARIES})
 
 
 add_executable(mpi_load_balancer_test ${source_files_mpi_load_balancer_test})
