@@ -263,9 +263,12 @@ void parallel_map_join(Relation1Map*& delT, Relation1Map*& G, u32* gmap_bucket, 
     memset(process_size, 0, nprocs * sizeof(int));
     for (u32 i3 = 0; i3 < g_t_actual_bucket_count; i3++)
     {
-
         double c_s = MPI_Wtime();
         u32 i = g_t_bucket_indices[i3];
+
+        if (rank == 0)
+            std::cout << "[" << i << "] Meta Comm Start" << std::endl;
+
         //std::vector<tuple<2>> delT_temp;
         vector_buffer delT_temp = vector_buffer_create_empty();
 
@@ -310,6 +313,12 @@ void parallel_map_join(Relation1Map*& delT, Relation1Map*& G, u32* gmap_bucket, 
         }
 
         MPI_Waitall(req_counter1, req1, stat1);
+
+        if (rank == 0)
+            std::cout << "[" << i << "] Meta Comm End" << std::endl;
+
+        if (rank == 0)
+            std::cout << "[" << i << "] Comm Start" << std::endl;
 
         u64 total_buffer_size = 0;
         for (int r = 0; r < tmap_distinct_sub_bucket_rank_count[i]; r++)
@@ -360,12 +369,19 @@ void parallel_map_join(Relation1Map*& delT, Relation1Map*& G, u32* gmap_bucket, 
         delete[] stat2;
         delete[] size_buf;
 
+        if (rank == 0)
+            std::cout << "[" << i << "] Comm End" << std::endl;
+
         double c_e = MPI_Wtime();
         c = c + (c_e - c_s);
 
 
 
         double jo_s = MPI_Wtime();
+
+        if (rank == 0)
+            std::cout << "[" << i << "] Join Start" << std::endl;
+
         Relation1Map tempT;
         for (u32 k1 = 0; k1 < total_buffer_size; k1=k1+2)
         {
@@ -430,6 +446,9 @@ void parallel_map_join(Relation1Map*& delT, Relation1Map*& G, u32* gmap_bucket, 
             delete (ix->second);
         delete[]  recvbuf;
 
+        if (rank == 0)
+            std::cout << "[" << i << "] Join End" << std::endl;
+
         double jo_e = MPI_Wtime();
         jo = jo + (jo_e - jo_s);
 #endif
@@ -443,6 +462,9 @@ void parallel_map_join(Relation1Map*& delT, Relation1Map*& G, u32* gmap_bucket, 
 #if 1
 #if 1
     double c1 = MPI_Wtime();
+
+    if (rank == 0)
+        std::cout << "Global Comm Start" << std::endl;
 
     int prefix_sum_process_size[nprocs];
     memset(prefix_sum_process_size, 0, nprocs * sizeof(int));
@@ -506,6 +528,12 @@ void parallel_map_join(Relation1Map*& delT, Relation1Map*& G, u32* gmap_bucket, 
             delete (iy->second);
         delT[i].clear();
     }
+
+    if (rank == 0)
+        std::cout << "Global Comm End" << std::endl;
+
+    if (rank == 0)
+        std::cout << "Insert Start" << std::endl;
 
     double c2 = MPI_Wtime();
     double global_comm_time = (c2-c1);
@@ -581,6 +609,10 @@ void parallel_map_join(Relation1Map*& delT, Relation1Map*& G, u32* gmap_bucket, 
     delete[] hash_buffer;
     delete[] process_data;
     double i2 = MPI_Wtime();
+
+    if (rank == 0)
+        std::cout << "[Insert End" << std::endl;
+
     double insert_time = (i2 - i1);
 
 #if 1
