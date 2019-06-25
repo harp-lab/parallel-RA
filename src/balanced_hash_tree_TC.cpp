@@ -18,6 +18,7 @@
 #include <unordered_set>
 
 #define DEBUG 1
+#define T_DEBUG 1
 
 #define COL_COUNT 2
 
@@ -922,7 +923,7 @@ void load_balance_G(u32 buckets, u32*& gmap_bucket, u32**& gmap_sub_bucket, u32*
         uint64_t bucket_id = hash_function((outer_hash_data)[in]) % buckets;
         uint64_t sub_bucket_id = hash_function((outer_hash_data)[in+1]) % global_g_new_sub_bucket[bucket_id];
         gmap_bucket[bucket_id] = 1;
-        gmap_sub_bucket[bucket_id][sub_bucket_id]++;
+
 
         //if (rank == 1)
         //std::cout << "Val " << outer_hash_data[in] << " b " << bucket_id << " sbi " << sub_bucket_id << std::endl;
@@ -936,12 +937,14 @@ void load_balance_G(u32 buckets, u32*& gmap_bucket, u32**& gmap_sub_bucket, u32*
             else{
                 (it->second)->insert(std::make_pair((outer_hash_data)[in + 1], 0));
                 G[bucket_id][(outer_hash_data)[in]] = it->second;
+                gmap_sub_bucket[bucket_id][sub_bucket_id]++;
             }
         }
         else {
             Relation0Map *k = new Relation0Map;
             k->insert(std::make_pair((outer_hash_data)[in + 1], 0));
             G[bucket_id].insert(std::make_pair((outer_hash_data)[in],k));
+            gmap_sub_bucket[bucket_id][sub_bucket_id]++;
         }
     }
 
@@ -1281,7 +1284,6 @@ void load_balance_T(u32 buckets, u32*& tmap_bucket, u32**& tmap_sub_bucket, u32*
     {
         uint64_t bucket_id = hash_function((outer_hash_data)[in + 1]) % buckets;
         uint64_t sub_bucket_id = hash_function((outer_hash_data)[in]) % global_t_new_sub_bucket[bucket_id];
-        tmap_sub_bucket[bucket_id][sub_bucket_id]++;
         tmap_bucket[bucket_id] = 1;
 
 
@@ -1294,12 +1296,14 @@ void load_balance_T(u32 buckets, u32*& tmap_bucket, u32**& tmap_sub_bucket, u32*
             else{
                 (it->second)->insert(std::make_pair((outer_hash_data)[in + 1], 0));
                 T[bucket_id][(outer_hash_data)[in]] = it->second;
+                tmap_sub_bucket[bucket_id][sub_bucket_id]++;
             }
         }
         else {
             Relation0Map *k = new Relation0Map;
             k->insert(std::make_pair((outer_hash_data)[in + 1], 0));
             T[bucket_id].insert(std::make_pair((outer_hash_data)[in],k));
+            tmap_sub_bucket[bucket_id][sub_bucket_id]++;
         }
     }
 
@@ -1688,6 +1692,8 @@ int main(int argc, char **argv)
 
     u32 entry_count;
     u64 *input_buffer = NULL;
+
+
     parallel_read_input_relation_from_file_to_local_buffer(argv[1], &input_buffer, &entry_count);
 
     double ior_end = MPI_Wtime();
@@ -1701,11 +1707,13 @@ int main(int argc, char **argv)
     std::cout << "[G] Rank: " << rank << " Hashed count: " << G_hash_entry_count << " Ratio: " << (float)((float) G_hash_entry_count/global_row_count)*100 << std::endl;
 
 
+#if T_DEBUG
     u32 T_hash_entry_count;
     u64 *T_hashed_data = NULL;
     buffer_data_to_hash_buffer(entry_count, input_buffer,  1, &T_hashed_data, &T_hash_entry_count, MPI_COMM_WORLD, buckets, subbuckets_G, subbuckets_T, tmap_sub_bucket_rank);
 
     std::cout << "[T] Rank: " << rank << " Hashed count: " << T_hash_entry_count << " Ratio: " << (float)((float) T_hash_entry_count/global_row_count)*100 << std::endl;
+#endif
 
     delete[] input_buffer;
     double hash_end = MPI_Wtime();
@@ -1731,7 +1739,7 @@ int main(int argc, char **argv)
         uint64_t bucket_id = hash_function(G_hashed_data[i]) % buckets;
         uint64_t sub_bucket_id = hash_function(G_hashed_data[i+1]) % subbuckets_G[bucket_id];
         gmap_bucket[bucket_id] = 1;
-        gmap_sub_bucket[bucket_id][sub_bucket_id]++;
+
 
         auto it = G[bucket_id].find(G_hashed_data[i]);
         if( it != G[bucket_id].end() ) {
@@ -1742,39 +1750,24 @@ int main(int argc, char **argv)
             else{
                 (it->second)->insert(std::make_pair(G_hashed_data[i + 1], 0));
                 G[bucket_id][G_hashed_data[i]] = it->second;
+                gmap_sub_bucket[bucket_id][sub_bucket_id]++;
             }
         }
         else {
             Relation0Map *k = new Relation0Map;
             k->insert(std::make_pair(G_hashed_data[i + 1], 0));
             G[bucket_id].insert(std::make_pair(G_hashed_data[i],k));
+            gmap_sub_bucket[bucket_id][sub_bucket_id]++;
         }
     }
 
+    if (rank == 0)
+        std::cout << rank << " Finished inserting " << std::endl;
 
-#if 0
-    for (u32 i = 0; i < buckets; i++)
-    {
-        for (u32 j = 0; j < subbuckets_G[i]; j++)
-        {
-            int counter = 0;
-            for (auto it = G[i][j].begin(); it != G[i][j].end(); it++)
-            {
-                Relation0Map* it2 = it->second;
-                for (auto dit2 = it2->begin(); dit2 != it2->end(); dit2++)
-                {
-                    //std::cout << "Rank " << rank << " G [" << i << ", " << j << ", " << counter << "] " << it->first << " " << dit2->first << std::endl;
-                    counter++;
-                }
-            }
-        }
-    }
-#endif
 
+#if T_DEBUG
     //u32 tmap[buckets];
     Relation1Map *T = new Relation1Map[buckets];
-
-
     u32 **tmap_sub_bucket = new u32*[buckets];
     memset(tmap_sub_bucket, 0, sizeof(u32*) * buckets);
     for (u32 i = 0; i < buckets; i++)
@@ -1787,7 +1780,7 @@ int main(int argc, char **argv)
     {
         uint64_t bucket_id = hash_function(T_hashed_data[i+1]) % buckets;
         uint64_t sub_bucket_id = hash_function(T_hashed_data[i]) % subbuckets_T[bucket_id];
-        tmap_sub_bucket[bucket_id][sub_bucket_id]++;
+
         tmap_bucket[bucket_id] = 1;
 
         auto it = T[bucket_id].find(T_hashed_data[i]);
@@ -1799,34 +1792,16 @@ int main(int argc, char **argv)
             else{
                 (it->second)->insert(std::make_pair(T_hashed_data[i + 1], 0));
                 T[bucket_id][T_hashed_data[i]] = it->second;
+                tmap_sub_bucket[bucket_id][sub_bucket_id]++;
             }
         }
         else {
             Relation0Map *k = new Relation0Map;
             k->insert(std::make_pair(T_hashed_data[i + 1], 0));
             T[bucket_id].insert(std::make_pair(T_hashed_data[i],k));
+            tmap_sub_bucket[bucket_id][sub_bucket_id]++;
         }
     }
-
-#if 0
-    for (u32 i = 0; i < buckets; i++)
-    {
-        for (u32 j = 0; j < subbuckets_T[i]; j++)
-        {
-            int counter = 0;
-            for (auto it = T[i][j].begin(); it != T[i][j].end(); it++)
-            {
-                Relation0Map* it2 = it->second;
-                for (auto dit2 = it2->begin(); dit2 != it2->end(); dit2++)
-                {
-
-                    //std::cout << "Rank " << rank << " T [" << i << ", " << j << ", " << counter << "] " << it->first << " " << dit2->first << std::endl;
-                    counter++;
-                }
-            }
-        }
-    }
-#endif
 
 
 
@@ -1858,6 +1833,8 @@ int main(int argc, char **argv)
         }
     }
     delete[] T_hashed_data;
+#endif
+
     delete[] G_hashed_data;
 
     double relation_end = MPI_Wtime();
@@ -1869,6 +1846,7 @@ int main(int argc, char **argv)
     // No load balancing
     if (atoi(argv[5]) == 0)
     {
+#if T_DEBUG
         join_start = MPI_Wtime();
         u32 g_t_bucket_count = 0;
         for (u32 bk = 0; bk < buckets; bk++)
@@ -1903,10 +1881,12 @@ int main(int argc, char **argv)
         }
         delete[] g_t_bucket_indices;
         join_end = MPI_Wtime();
+#endif
     }
     // Initial load balancing
     else if (atoi(argv[5]) == 1)
     {
+#if T_DEBUG
         if (rank == 0)
             std::cout << "[Before] Load balancing G" << std::endl;
 
@@ -1965,12 +1945,12 @@ int main(int argc, char **argv)
 
         delete[] g_t_bucket_indices;
         join_end = MPI_Wtime();
-
-
+#endif
     }
     // load balancing every 20 iterations
     else if (atoi(argv[5]) == 2)
     {
+#if T_DEBUG
         if (rank == 0)
             std::cout << "[Before] Load balancing G" << std::endl;
 
@@ -2052,10 +2032,23 @@ int main(int argc, char **argv)
 
         delete[] g_t_bucket_indices;
         join_end = MPI_Wtime();
+#endif
+    }
+    else if (atoi(argv[5]) == 3)
+    {
+        if (rank == 0)
+            std::cout << "[Before] Load balancing G" << std::endl;
+
+        load_balance_G_start = MPI_Wtime();
+        load_balance_G(buckets, gmap_bucket, gmap_sub_bucket, subbuckets_G, G, gmap_sub_bucket_rank, gmap_distinct_sub_bucket_rank_count, gmap_distinct_sub_bucket_rank, atoi(argv[4]));
+        load_balance_G_end = MPI_Wtime();
+
+        if (rank == 0)
+            std::cout << "[After] Load balancing G" << std::endl;
     }
 
 
-
+#if T_DEBUG
     u64 total_sum = 0;
     u64 Tcounter = 0;
     for (u32 i = 0; i < buckets; i++)
@@ -2070,6 +2063,7 @@ int main(int argc, char **argv)
 
     }
     MPI_Allreduce(&Tcounter, &total_sum, 1, MPI_UNSIGNED_LONG_LONG, MPI_SUM, comm);
+#endif
 
     if (rank == 0)
     {
@@ -2078,7 +2072,7 @@ int main(int argc, char **argv)
                   << " G: "
                   << global_row_count
                   << " A2a " << atoi(argv[4])
-                << " T: " << total_sum
+                //<< " T: " << total_sum
                 << " Read time: " << (ior_end - ior_start)
                 << " Init hash: " << (hash_end - hash_start)
                 << " Relation init: " << (relation_end - relation_start)
@@ -2093,7 +2087,7 @@ int main(int argc, char **argv)
     {
         std::cout << "n: " << nprocs
                   << " G: " << global_row_count
-                  << " T: " << total_sum
+                  //<< " T: " << total_sum
                   << " CT: " << atoi(argv[4])
                 << " BT: " << atoi(argv[5])
                 << " Read time: " << (ior_end - ior_start)
@@ -2107,9 +2101,18 @@ int main(int argc, char **argv)
 
     for (u32 i = 0; i < buckets; i++)
     {
+#if T_DEBUG
         Relation1Map::iterator iy1 = T[i].begin();
         for(; iy1 != T[i].end(); iy1++)
             delete (iy1->second);
+
+
+        Relation1Map::iterator iy = dT[i].begin();
+        for(; iy != dT[i].end(); iy++)
+            delete (iy->second);
+        delete[] tmap_sub_bucket[i];
+#endif
+        delete[] tmap_sub_bucket_rank[i];
 
 
         Relation1Map::iterator iy2 = G[i].begin();
@@ -2117,46 +2120,39 @@ int main(int argc, char **argv)
             delete (iy2->second);
 
 
-        Relation1Map::iterator iy = dT[i].begin();
-        for(; iy != dT[i].end(); iy++)
-            delete (iy->second);
-
-
-        delete[] tmap_sub_bucket_rank[i];
         delete[] gmap_sub_bucket_rank[i];
-
         delete[] gmap_sub_bucket[i];
-        delete[] tmap_sub_bucket[i];
     }
+
 
     delete[] gmap_distinct_sub_bucket_rank_count;
     for (u64 b = 0; b < buckets; b++)
         delete[] gmap_distinct_sub_bucket_rank[b];
     delete[] gmap_distinct_sub_bucket_rank;
 
+#if T_DEBUG
     delete[] tmap_distinct_sub_bucket_rank_count;
     for (u64 b = 0; b < buckets; b++)
         delete[] tmap_distinct_sub_bucket_rank[b];
     delete[] tmap_distinct_sub_bucket_rank;
 
-
-    delete[] tmap_sub_bucket_rank;
-    delete[] gmap_sub_bucket_rank;
-
-    delete[] gmap_sub_bucket;
-    delete[] tmap_sub_bucket;
-
     delete[] dT;
     delete[] T;
-    delete[] G;
 
-    delete[] tmap_bucket;
-    delete[] gmap_bucket;
-
-    delete[] subbuckets_G;
     delete[] subbuckets_T;
+    delete[] tmap_bucket;
+    delete[] tmap_sub_bucket;
+#endif
+
+    delete[] tmap_sub_bucket_rank;
 
 
+    delete[] gmap_sub_bucket_rank;
+    delete[] gmap_sub_bucket;
+
+    delete[] G;
+    delete[] gmap_bucket;
+    delete[] subbuckets_G;
 
 #endif
     // Finalizing MPI
