@@ -17,6 +17,7 @@
 #include "vector.h"
 #include <unordered_set>
 
+#define DEBUG 1
 
 #define COL_COUNT 2
 
@@ -139,7 +140,7 @@ void buffer_data_to_hash_buffer(u32 local_number_of_rows, u64* input_data,  int 
     //std::vector<u64> process_data_vector[nprocs];
     vector_buffer* process_data_vector = (vector_buffer*)malloc(sizeof(vector_buffer) * nprocs);
     for (u32 i = 0; i < nprocs; ++i) {
-      process_data_vector[i] = vector_buffer_create_empty();
+        process_data_vector[i] = vector_buffer_create_empty();
     }
 
     u64 val[2] = {0, 0};
@@ -252,7 +253,7 @@ void parallel_map_join(Relation1Map*& delT, Relation1Map*& G, u32* gmap_bucket, 
     //process_data_vector = new std::vector<tuple<2>>[nprocs];
     vector_buffer* process_data_vector = (vector_buffer*)malloc(sizeof(vector_buffer) * nprocs);
     for (u32 i = 0; i < nprocs; ++i) {
-      process_data_vector[i] = vector_buffer_create_empty();
+        process_data_vector[i] = vector_buffer_create_empty();
     }
 
     u64 tuple_count = 0;
@@ -266,8 +267,10 @@ void parallel_map_join(Relation1Map*& delT, Relation1Map*& G, u32* gmap_bucket, 
         double c_s = MPI_Wtime();
         u32 i = g_t_bucket_indices[i3];
 
+#if DEBUG
         if (rank == 0)
             std::cout << "[" << i << "] Meta Comm Start" << std::endl;
+#endif
 
         //std::vector<tuple<2>> delT_temp;
         vector_buffer delT_temp = vector_buffer_create_empty();
@@ -297,7 +300,6 @@ void parallel_map_join(Relation1Map*& delT, Relation1Map*& G, u32* gmap_bucket, 
         {
             for (int r = 0; r < gmap_distinct_sub_bucket_rank_count[i]; r++)
             {
-                //std::cout << "Sending " << buffer_size << " to " << gmap_distinct_sub_bucket_rank[i][r] << std::endl;
                 MPI_Isend(&buffer_size, 1, MPI_INT, gmap_distinct_sub_bucket_rank[i][r], 123, MPI_COMM_WORLD, &req1[req_counter1]);
                 req_counter1++;
             }
@@ -314,16 +316,17 @@ void parallel_map_join(Relation1Map*& delT, Relation1Map*& G, u32* gmap_bucket, 
 
         MPI_Waitall(req_counter1, req1, stat1);
 
+#if DEBUG
         if (rank == 0)
             std::cout << "[" << i << "] Meta Comm End" << std::endl;
 
         if (rank == 0)
             std::cout << "[" << i << "] Comm Start" << std::endl;
+#endif
 
         u64 total_buffer_size = 0;
         for (int r = 0; r < tmap_distinct_sub_bucket_rank_count[i]; r++)
             total_buffer_size = total_buffer_size + size_buf[r];
-        //
 
 #if 1
         u32 req_counter2 = 0;
@@ -369,9 +372,10 @@ void parallel_map_join(Relation1Map*& delT, Relation1Map*& G, u32* gmap_bucket, 
         delete[] stat2;
         delete[] size_buf;
 
+#if DEBUG
         if (rank == 0)
             std::cout << "[" << i << "] Comm End" << std::endl;
-
+#endif
         double c_e = MPI_Wtime();
         c = c + (c_e - c_s);
 
@@ -379,8 +383,10 @@ void parallel_map_join(Relation1Map*& delT, Relation1Map*& G, u32* gmap_bucket, 
 
         double jo_s = MPI_Wtime();
 
+#if DEBUG
         if (rank == 0)
             std::cout << "[" << i << "] Join Start" << std::endl;
+#endif
 
         Relation1Map tempT;
         for (u32 k1 = 0; k1 < total_buffer_size; k1=k1+2)
@@ -446,8 +452,10 @@ void parallel_map_join(Relation1Map*& delT, Relation1Map*& G, u32* gmap_bucket, 
             delete (ix->second);
         delete[]  recvbuf;
 
+#if DEBUG
         if (rank == 0)
             std::cout << "[" << i << "] Join End" << std::endl;
+#endif
 
         double jo_e = MPI_Wtime();
         jo = jo + (jo_e - jo_s);
@@ -463,8 +471,10 @@ void parallel_map_join(Relation1Map*& delT, Relation1Map*& G, u32* gmap_bucket, 
 #if 1
     double c1 = MPI_Wtime();
 
+#if DEBUG
     if (rank == 0)
         std::cout << "Global Comm Start" << std::endl;
+#endif
 
     int prefix_sum_process_size[nprocs];
     memset(prefix_sum_process_size, 0, nprocs * sizeof(int));
@@ -529,11 +539,13 @@ void parallel_map_join(Relation1Map*& delT, Relation1Map*& G, u32* gmap_bucket, 
         delT[i].clear();
     }
 
+#if DEBUG
     if (rank == 0)
         std::cout << "Global Comm End" << std::endl;
 
     if (rank == 0)
         std::cout << "Insert Start" << std::endl;
+#endif
 
     double c2 = MPI_Wtime();
     double global_comm_time = (c2-c1);
@@ -610,8 +622,10 @@ void parallel_map_join(Relation1Map*& delT, Relation1Map*& G, u32* gmap_bucket, 
     delete[] process_data;
     double i2 = MPI_Wtime();
 
+#if DEBUG
     if (rank == 0)
-        std::cout << "[Insert End" << std::endl;
+        std::cout << "Insert End" << std::endl;
+#endif
 
     double insert_time = (i2 - i1);
 
@@ -639,7 +653,7 @@ void parallel_map_join(Relation1Map*& delT, Relation1Map*& G, u32* gmap_bucket, 
     if (rank == 0)
         std::cout << lc << " [" << v2-t1_s << "][" << c+jo+global_comm_time+insert_time+(v2-v1) << "][" << *running_time << "]"
                   << " N t " << tuple_count
-                  //<< " non dup: " << non_deduplicate_tuple_count
+                     //<< " non dup: " << non_deduplicate_tuple_count
                   << " Intra: " << c
                   << " Join: " << jo
                   << " C+J: " << c_j << " [" << c + jo << "]"
@@ -656,8 +670,10 @@ void parallel_map_join(Relation1Map*& delT, Relation1Map*& G, u32* gmap_bucket, 
 }
 
 
-void load_balance_G(u32 buckets, u32*& gmap_bucket, u32 g_bucket_index_count, u32* g_bucket_indices, u32**& gmap_sub_bucket, u32*& subbuckets_G, Relation1Map*& G, int**& gmap_sub_bucket_rank, int*& gmap_distinct_sub_bucket_rank_count, int**& gmap_distinct_sub_bucket_rank, int round_robin)
+void load_balance_G(u32 buckets, u32*& gmap_bucket, u32**& gmap_sub_bucket, u32*& subbuckets_G, Relation1Map*& G, int**& gmap_sub_bucket_rank, int*& gmap_distinct_sub_bucket_rank_count, int**& gmap_distinct_sub_bucket_rank, int round_robin)
 {
+
+#if DEBUG
     u64 G_tuple_count_before = 0;
     u64 G_tuple_count_before_global = 0;
     for (u32 bk = 0; bk < buckets; bk++)
@@ -674,6 +690,7 @@ void load_balance_G(u32 buckets, u32*& gmap_bucket, u32 g_bucket_index_count, u3
     MPI_Allreduce(&G_tuple_count_before, &G_tuple_count_before_global, 1, MPI_UNSIGNED_LONG_LONG, MPI_SUM, MPI_COMM_WORLD);
     if (rank == 0)
         std::cout << "[G] Before Load balancing: " << G_tuple_count_before_global << std::endl;
+#endif
 
 
     u32 max_sub_bucket_size = 0;
@@ -715,12 +732,17 @@ void load_balance_G(u32 buckets, u32*& gmap_bucket, u32 g_bucket_index_count, u3
         if (global_g_new_sub_bucket[i] == 0)
             global_g_new_sub_bucket[i] = 1;
 
+#if DEBUG
+    if (rank == 0)
+        std::cout << "[G Load Balance] New sub-bucket counts" << std::endl;
+#endif
+
     int rcount = gmap_sub_bucket_rank[buckets-1][subbuckets_G[buckets-1] - 1] + 1;
     if (round_robin == 1)
     {
         for (u64 b = 0; b < buckets; b++)
         {
-            if (subbuckets_G[b] <= global_g_new_sub_bucket[b])
+            if (subbuckets_G[b] < global_g_new_sub_bucket[b])
             {
                 //gmap_bucket[b] = 0;
                 std::unordered_set<int> distinct_g_ranks;
@@ -794,6 +816,11 @@ void load_balance_G(u32 buckets, u32*& gmap_bucket, u32 g_bucket_index_count, u3
         }
     }
 
+#if DEBUG
+    if (rank == 0)
+        std::cout << "[G Load Balance] Rank allocation" << std::endl;
+#endif
+
     /* process_size[j] stores the number of samples to be sent to process with rank j */
     int process_size[nprocs];
     memset(process_size, 0, nprocs * sizeof(int));
@@ -801,7 +828,7 @@ void load_balance_G(u32 buckets, u32*& gmap_bucket, u32 g_bucket_index_count, u3
     /* vector[i] contains the data that needs to be sent to process i */
     vector_buffer* process_data_vector = (vector_buffer*)malloc(sizeof(vector_buffer) * nprocs);
     for (u32 i = 0; i < nprocs; ++i) {
-      process_data_vector[i] = vector_buffer_create_empty();
+        process_data_vector[i] = vector_buffer_create_empty();
     }
 
     int prefix_sum_process_size[nprocs];
@@ -812,13 +839,10 @@ void load_balance_G(u32 buckets, u32*& gmap_bucket, u32 g_bucket_index_count, u3
 
 
     int process_data_buffer_size = 0;
-
     u64 val[2] = {0,0};
-
-    for (u32 x = 0; x < g_bucket_index_count; x++)
+    for (u32 i = 0; i < buckets; i++)
     {
-        int i = g_bucket_indices[x];
-        if (global_g_new_sub_bucket[i] != subbuckets_G[i])
+        if (global_g_new_sub_bucket[i] != subbuckets_G[i] && gmap_bucket[i] == 1)
         {
             delete[] gmap_sub_bucket[i];
             gmap_sub_bucket[i] = new u32[global_g_new_sub_bucket[i]];
@@ -851,9 +875,10 @@ void load_balance_G(u32 buckets, u32*& gmap_bucket, u32 g_bucket_index_count, u3
         }
     }
 
-
-    //if (rank == 1)
-    //    std::cout << "process_size[0] " << process_size[0] << " process_size[1] " << process_size[1] << std::endl;
+#if DEBUG
+    if (rank == 0)
+        std::cout << "[G Load Balance] Collecting data to send" << std::endl;
+#endif
 
     for (u32 ix = 1; ix < nprocs; ix++)
         prefix_sum_process_size[ix] = prefix_sum_process_size[ix - 1] + process_size[ix - 1];
@@ -890,7 +915,10 @@ void load_balance_G(u32 buckets, u32*& gmap_bucket, u32 g_bucket_index_count, u3
 
     delete[] process_data;
 
-
+#if DEBUG
+    if (rank == 0)
+        std::cout << "[G Load Balance] All to All" << std::endl;
+#endif
     //subbuckets_G[i] = global_g_new_sub_bucket[i];
     for (int in = 0; in < outer_hash_buffer_size; in = in + 2)
     {
@@ -923,46 +951,45 @@ void load_balance_G(u32 buckets, u32*& gmap_bucket, u32 g_bucket_index_count, u3
     delete[] outer_hash_data;
 #endif
 
-    //
     if (rank == 0)
     {
         for (u32 i = 0; i < buckets; i++)
             std::cout << i << "[G] Bucket count changed from " << subbuckets_G[i] << " to " << global_g_new_sub_bucket[i] << std::endl;
-
-        //for (u32 i = 0; i < buckets; i++)
-        //    for (u32 j = 0; j < global_g_new_sub_bucket[i]; j++)
-        //        std::cout << "[After] Element count at " << i << " " << j << " is " << gmap_sub_bucket[i][j] << std::endl;
     }
-    //
-
     memcpy(subbuckets_G, global_g_new_sub_bucket, sizeof(u32)*buckets);
 
+#if DEBUG
+    if (rank == 0)
+        std::cout << "[G Load Balance] Local inserts" << std::endl;
+#endif
+
+#if DEBUG
     u64 G_tuple_count_after = 0;
     u64 G_tuple_count_after_global = 0;
     for (u32 bk = 0; bk < buckets; bk++)
     {
-
         for (auto it = G[bk].begin(); it != G[bk].end(); it++)
         {
             Relation0Map* it2 = it->second;
             for (auto dit2 = it2->begin(); dit2 != it2->end(); dit2++)
                 G_tuple_count_after++;
         }
-
     }
     MPI_Allreduce(&G_tuple_count_after, &G_tuple_count_after_global, 1, MPI_UNSIGNED_LONG_LONG, MPI_SUM, MPI_COMM_WORLD);
-
 
     if (rank == 0)
         std::cout << "[G] After Load balanging " << G_tuple_count_before_global << " " << G_tuple_count_after_global << std::endl;
 
     std::cout << "Balanced [G] Rank: " << rank << " Hashed count: " << G_tuple_count_after << " Ratio: " << (float)((float) (G_tuple_count_after)/global_row_count)*100 << std::endl;
+#endif
+
 }
 
 
 
 void load_balance_T(u32 buckets, u32*& tmap_bucket, u32**& tmap_sub_bucket, u32*& subbuckets_T, Relation1Map*& T, Relation1Map*& delta, int**& tmap_sub_bucket_rank, int*& tmap_distinct_sub_bucket_rank_count, int**& tmap_distinct_sub_bucket_rank, int round_robin)
 {
+#if DEBUG
     u64 dT_tuple_count_before = 0;
     u64 T_tuple_count_before = 0;
     u64 dT_tuple_count_before_global = 0;
@@ -982,6 +1009,7 @@ void load_balance_T(u32 buckets, u32*& tmap_bucket, u32**& tmap_sub_bucket, u32*
 
     if (rank == 0)
         std::cout << "[T] Before Load balancing " << T_tuple_count_before_global << std::endl;
+#endif
 
 
     u32 max_sub_bucket_size = 0;
@@ -1023,24 +1051,22 @@ void load_balance_T(u32 buckets, u32*& tmap_bucket, u32**& tmap_sub_bucket, u32*
         if (global_t_new_sub_bucket[i] == 0)
             global_t_new_sub_bucket[i] = 1;
 
+#if DEBUG
+    if (rank == 0)
+        std::cout << "[T Load Balance] New sub-bucket counts" << std::endl;
+#endif
+
 
     int rcount = tmap_distinct_sub_bucket_rank[buckets-1][subbuckets_T[buckets-1] - 1] + 1;
     if (round_robin == 1)
     {
         for (u64 b = 0; b < buckets; b++)
         {
-            if (subbuckets_T[b] <= global_t_new_sub_bucket[b])
+            if (subbuckets_T[b] < global_t_new_sub_bucket[b])
             {
                 tmap_bucket[b] = 0;
 
                 std::unordered_set<int> distinct_t_ranks;
-
-                //delete[] tmap_sub_bucket_rank[b];
-                //tmap_sub_bucket_rank[b] = new int[global_t_new_sub_bucket[b]];
-
-                //delete[] tmap_sub_bucket_rank[b];
-                //tmap_sub_bucket_rank[b] = new int[global_t_new_sub_bucket[b]];
-
                 int* temp = new int[subbuckets_T[b]];
                 memcpy(temp, tmap_sub_bucket_rank[b], sizeof(int) * subbuckets_T[b]);
 
@@ -1116,6 +1142,10 @@ void load_balance_T(u32 buckets, u32*& tmap_bucket, u32**& tmap_sub_bucket, u32*
         }
     }
 
+#if DEBUG
+    if (rank == 0)
+        std::cout << "[T Load Balance] Rank allocation" << std::endl;
+#endif
 
 #if 1
 
@@ -1126,7 +1156,7 @@ void load_balance_T(u32 buckets, u32*& tmap_bucket, u32**& tmap_sub_bucket, u32*
     /* vector[i] contains the data that needs to be sent to process i */
     vector_buffer* process_data_vector = (vector_buffer*)malloc(sizeof(vector_buffer) * nprocs);
     for (u32 i = 0; i < nprocs; ++i) {
-      process_data_vector[i] = vector_buffer_create_empty();
+        process_data_vector[i] = vector_buffer_create_empty();
     }
 
     int prefix_sum_process_size[nprocs];
@@ -1170,6 +1200,11 @@ void load_balance_T(u32 buckets, u32*& tmap_bucket, u32**& tmap_sub_bucket, u32*
         }
     }
 
+#if DEBUG
+    if (rank == 0)
+        std::cout << "[T Load Balance] Collecting data to send" << std::endl;
+#endif
+
     for (u32 ix = 1; ix < nprocs; ix++)
         prefix_sum_process_size[ix] = prefix_sum_process_size[ix - 1] + process_size[ix - 1];
 
@@ -1211,6 +1246,11 @@ void load_balance_T(u32 buckets, u32*& tmap_bucket, u32**& tmap_sub_bucket, u32*
 
     delete[] process_data;
 
+#if DEBUG
+    if (rank == 0)
+        std::cout << "[T Load Balance] All to All" << std::endl;
+#endif
+
 #if 1
     //std::cout << "outer_hash_buffer_size " << outer_hash_buffer_size << std::endl;
     //subbuckets_G[i] = global_t_new_sub_bucket[i];
@@ -1241,7 +1281,12 @@ void load_balance_T(u32 buckets, u32*& tmap_bucket, u32**& tmap_sub_bucket, u32*
 
     delete[] outer_hash_data;
 
+#if DEBUG
+    if (rank == 0)
+        std::cout << "[T Load Balance] Local inserts" << std::endl;
+#endif
 
+#if DEBUG
     u64 T_tuple_count_after = 0;
     u64 T_tuple_count_after_global = 0;
     for (u32 bk = 0; bk < buckets; bk++)
@@ -1256,7 +1301,7 @@ void load_balance_T(u32 buckets, u32*& tmap_bucket, u32**& tmap_sub_bucket, u32*
     MPI_Allreduce(&T_tuple_count_after, &T_tuple_count_after_global, 1, MPI_UNSIGNED_LONG_LONG, MPI_SUM, MPI_COMM_WORLD);
     if (rank == 0)
         std::cout << "[T] After Load balancing " << T_tuple_count_before_global << " " << T_tuple_count_after_global << std::endl;
-
+#endif
 
 
 #endif
@@ -1265,7 +1310,7 @@ void load_balance_T(u32 buckets, u32*& tmap_bucket, u32**& tmap_sub_bucket, u32*
 #endif
 
 #if 1
-
+#if DEBUG
     for (u32 bk = 0; bk < buckets; bk++)
     {
         for (auto it = delta[bk].begin(); it != delta[bk].end(); it++)
@@ -1279,7 +1324,7 @@ void load_balance_T(u32 buckets, u32*& tmap_bucket, u32**& tmap_sub_bucket, u32*
 
     if (rank == 0)
         std::cout << "[dT] Before Load balancing " << dT_tuple_count_before_global << std::endl;
-
+#endif
 
     /* process_size[j] stores the number of samples to be sent to process with rank j */
     int process_size_dt[nprocs];
@@ -1288,7 +1333,7 @@ void load_balance_T(u32 buckets, u32*& tmap_bucket, u32**& tmap_sub_bucket, u32*
     /* vector[i] contains the data that needs to be sent to process i */
     vector_buffer* process_data_vector_dt1 = (vector_buffer*)malloc(sizeof(vector_buffer) * nprocs);
     for (u32 i = 0; i < nprocs; ++i) {
-      process_data_vector_dt1[i] = vector_buffer_create_empty();
+        process_data_vector_dt1[i] = vector_buffer_create_empty();
     }
 
     int prefix_sum_process_size_dt[nprocs];
@@ -1326,6 +1371,10 @@ void load_balance_T(u32 buckets, u32*& tmap_bucket, u32**& tmap_sub_bucket, u32*
             delta[bk].clear();
         }
     }
+#if DEBUG
+    if (rank == 0)
+        std::cout << "[dT Load Balance] Collecting data to send" << std::endl;
+#endif
 
     for (u32 ix = 1; ix < nprocs; ix++)
         prefix_sum_process_size_dt[ix] = prefix_sum_process_size_dt[ix - 1] + process_size_dt[ix - 1];
@@ -1369,6 +1418,11 @@ void load_balance_T(u32 buckets, u32*& tmap_bucket, u32**& tmap_sub_bucket, u32*
 
     delete[] process_data_dt;
 
+#if DEBUG
+    if (rank == 0)
+        std::cout << "[dT Load Balance] All to All" << std::endl;
+#endif
+
 
     //std::cout << "outer_hash_buffer_size " << outer_hash_buffer_size << std::endl;
     //subbuckets_G[i] = global_t_new_sub_bucket[i];
@@ -1396,6 +1450,10 @@ void load_balance_T(u32 buckets, u32*& tmap_bucket, u32**& tmap_sub_bucket, u32*
 #endif
     delete[] outer_hash_data_dt;
 
+#if DEBUG
+    if (rank == 0)
+        std::cout << "[dT Load Balance] Local inserts" << std::endl;
+#endif
 
     if (rank == 0)
         for (u32 i = 0; i < buckets; i++)
@@ -1404,7 +1462,7 @@ void load_balance_T(u32 buckets, u32*& tmap_bucket, u32**& tmap_sub_bucket, u32*
     memcpy(subbuckets_T, global_t_new_sub_bucket, sizeof(u32)*buckets);
 
     //std::cout << "Balanced [T] Rank: " << rank << " Hashed count: " << outer_hash_buffer_size << " Ratio: " << (float)((float) outer_hash_buffer_size/global_row_count)*100 << std::endl;
-
+#if DEBUG
     u64 dT_tuple_count_after = 0;
     u64 dT_tuple_count_after_global = 0;
     for (u32 bk = 0; bk < buckets; bk++)
@@ -1427,6 +1485,7 @@ void load_balance_T(u32 buckets, u32*& tmap_bucket, u32**& tmap_sub_bucket, u32*
     //assert(dT_tuple_count_before_global == dT_tuple_count_after_global);
 
     std::cout << "Balanced [T] Rank: " << rank << " Hashed count: " << T_tuple_count_after << " Ratio: " << (float)((float) T_tuple_count_after/global_row_count)*100 << std::endl;
+#endif
 #endif
 
 }
@@ -1471,11 +1530,11 @@ int main(int argc, char **argv)
     MPI_Comm_size(MPI_COMM_WORLD, &size);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
-    if (argc != 5)
+    if (argc != 6)
     {
         if (rank == 0)
         {
-            std::cout << "Usage:" << "TC <bucket count factor> <initial sub bucket count> <comm type>"   << std::endl;
+            std::cout << "Usage:" << "TC <bucket count factor> <initial sub bucket count> <comm type> <balance type>"   << std::endl;
             MPI_Abort(MPI_COMM_WORLD, -1);
         }
     }
@@ -1804,148 +1863,202 @@ int main(int argc, char **argv)
             running_t_count++;
         }
     }
-
-
-
     delete[] T_hashed_data;
     delete[] G_hashed_data;
 
     double relation_end = MPI_Wtime();
 
+    double join_end = 0, join_start = 0;
+    double load_balance_T_start = 0, load_balance_T_end = 0;
+    double load_balance_G_start = 0, load_balance_G_end = 0;
 
-
-    u32 g_bucket_count = 0;
-    u32 t_bucket_count = 0;
-    u32 g_t_bucket_count = 0;
-    for (u32 bk = 0; bk < buckets; bk++)
+    // No load balancing
+    if (atoi(argv[5]) == 0)
     {
-        if (gmap_bucket[bk] == 1)
-            g_bucket_count++;
+        join_start = MPI_Wtime();
+        u32 g_t_bucket_count = 0;
+        for (u32 bk = 0; bk < buckets; bk++)
+        {
+            if (gmap_bucket[bk] == 1 || tmap_bucket[bk] == 1)
+                g_t_bucket_count++;
+        }
+        u32* g_t_bucket_indices = new u32[g_t_bucket_count];
 
-        if (tmap_bucket[bk] == 1)
-            t_bucket_count++;
+        u32 g_t_count = 0;
+        for (u32 bk = 0; bk < buckets; bk++)
+        {
+            if (gmap_bucket[bk] == 1 || tmap_bucket[bk] == 1)
+            {
+                g_t_bucket_indices[g_t_count] = bk;
+                g_t_count++;
+            }
+        }
 
-        if (gmap_bucket[bk] == 1 || tmap_bucket[bk] == 1)
-            g_t_bucket_count++;
+        int lb = 0;
+        double time = 0;
+
+        parallel_map_join(dT, G, gmap_bucket, T, tmap_bucket, 0, &lb, &running_t_count, &time, buckets, subbuckets_T, g_t_bucket_indices, g_t_bucket_count, gmap_distinct_sub_bucket_rank_count, gmap_distinct_sub_bucket_rank, tmap_distinct_sub_bucket_rank_count, tmap_distinct_sub_bucket_rank, tmap_sub_bucket_rank);
+
+        int lc = 1;
+        while(true)
+        {
+            parallel_map_join(dT, G, gmap_bucket, T, tmap_bucket, lc, &lb, &running_t_count, &time, buckets, subbuckets_T, g_t_bucket_indices, g_t_bucket_count, gmap_distinct_sub_bucket_rank_count, gmap_distinct_sub_bucket_rank, tmap_distinct_sub_bucket_rank_count, tmap_distinct_sub_bucket_rank,tmap_sub_bucket_rank);
+
+            if (lb == 1)  break;
+            lc++;
+        }
+        delete[] g_t_bucket_indices;
+        join_end = MPI_Wtime();
     }
-    u32* g_t_bucket_indices = new u32[g_t_bucket_count];
-    u32* g_bucket_indices = new u32[g_bucket_count];
-    u32* t_bucket_indices = new u32[t_bucket_count];
-
-    u32 g_t_count = 0;
-    u32 g_count = 0;
-    u32 t_count = 0;
-    for (u32 bk = 0; bk < buckets; bk++)
+    // Initial load balancing
+    else if (atoi(argv[5]) == 1)
     {
-        if (gmap_bucket[bk] == 1 || tmap_bucket[bk] == 1)
+        if (rank == 0)
+            std::cout << "[Before] Load balancing G" << std::endl;
+
+        load_balance_G_start = MPI_Wtime();
+        load_balance_G(buckets, gmap_bucket, gmap_sub_bucket, subbuckets_G, G, gmap_sub_bucket_rank, gmap_distinct_sub_bucket_rank_count, gmap_distinct_sub_bucket_rank, atoi(argv[4]));
+        load_balance_G_end = MPI_Wtime();
+
+        if (rank == 0)
+            std::cout << "[After] Load balancing G" << std::endl;
+
+        if (rank == 0)
+            std::cout << "[Before] Load balancing T" << std::endl;
+
+        load_balance_T_start = MPI_Wtime();
+        load_balance_T(buckets, tmap_bucket, tmap_sub_bucket, subbuckets_T, T, dT, tmap_sub_bucket_rank, tmap_distinct_sub_bucket_rank_count, tmap_distinct_sub_bucket_rank, atoi(argv[4]));
+        load_balance_T_end = MPI_Wtime();
+
+        join_start = MPI_Wtime();
+
+        u32 g_t_bucket_count = 0;
+        for (u32 bk = 0; bk < buckets; bk++)
         {
-            g_t_bucket_indices[g_t_count] = bk;
-            g_t_count++;
+            if (gmap_bucket[bk] == 1 || tmap_bucket[bk] == 1)
+                g_t_bucket_count++;
+        }
+        u32* g_t_bucket_indices = new u32[g_t_bucket_count];
+
+        u32 g_t_count = 0;
+        for (u32 bk = 0; bk < buckets; bk++)
+        {
+            if (gmap_bucket[bk] == 1 || tmap_bucket[bk] == 1)
+            {
+                g_t_bucket_indices[g_t_count] = bk;
+                g_t_count++;
+            }
         }
 
-        if (gmap_bucket[bk] == 1)
+        if (rank == 0)
+            std::cout << "[After] Load balancing T" << std::endl;
+
+
+
+        int lb = 0;
+        double time = 0;
+
+        parallel_map_join(dT, G, gmap_bucket, T, tmap_bucket, 0, &lb, &running_t_count, &time, buckets, subbuckets_T, g_t_bucket_indices, g_t_bucket_count, gmap_distinct_sub_bucket_rank_count, gmap_distinct_sub_bucket_rank, tmap_distinct_sub_bucket_rank_count, tmap_distinct_sub_bucket_rank, tmap_sub_bucket_rank);
+
+        int lc = 1;
+        while(true)
         {
-            g_bucket_indices[g_count] = bk;
-            g_count++;
+            parallel_map_join(dT, G, gmap_bucket, T, tmap_bucket, lc, &lb, &running_t_count, &time, buckets, subbuckets_T, g_t_bucket_indices, g_t_bucket_count, gmap_distinct_sub_bucket_rank_count, gmap_distinct_sub_bucket_rank, tmap_distinct_sub_bucket_rank_count, tmap_distinct_sub_bucket_rank,tmap_sub_bucket_rank);
+
+            if (lb == 1)  break;
+            lc++;
         }
 
-        if (gmap_bucket[bk] == 1)
-        {
-            t_bucket_indices[t_count] = bk;
-            t_count++;
-        }
+        delete[] g_t_bucket_indices;
+        join_end = MPI_Wtime();
+
+
     }
-
-    if (rank == 0)
-        std::cout << "[Before] Load balancing G" << std::endl;
-
-    double load_balance_G_start = MPI_Wtime();
-    load_balance_G(buckets, gmap_bucket, g_bucket_count, g_bucket_indices, gmap_sub_bucket, subbuckets_G, G, gmap_sub_bucket_rank, gmap_distinct_sub_bucket_rank_count, gmap_distinct_sub_bucket_rank, atoi(argv[4]));
-    double load_balance_G_end = MPI_Wtime();
-
-    if (rank == 0)
-        std::cout << "[After] Load balancing G" << std::endl;
-
-    if (rank == 0)
-        std::cout << "[Before] Load balancing T" << std::endl;
-
-    double load_balance_T_start = MPI_Wtime();
-    load_balance_T(buckets, tmap_bucket, tmap_sub_bucket, subbuckets_T, T, dT, tmap_sub_bucket_rank, tmap_distinct_sub_bucket_rank_count, tmap_distinct_sub_bucket_rank, atoi(argv[4]));
-    double load_balance_T_end = MPI_Wtime();
-
-    if (rank == 0)
-        std::cout << "[After] Load balancing T" << std::endl;
-
-    g_bucket_count = 0;
-    t_bucket_count = 0;
-    g_t_bucket_count = 0;
-    for (u32 bk = 0; bk < buckets; bk++)
+    // load balancing every 20 iterations
+    else if (atoi(argv[5]) == 2)
     {
-        if (gmap_bucket[bk] == 1)
-            g_bucket_count++;
+        if (rank == 0)
+            std::cout << "[Before] Load balancing G" << std::endl;
 
-        if (tmap_bucket[bk] == 1)
-            t_bucket_count++;
+        load_balance_G_start = MPI_Wtime();
+        load_balance_G(buckets, gmap_bucket, gmap_sub_bucket, subbuckets_G, G, gmap_sub_bucket_rank, gmap_distinct_sub_bucket_rank_count, gmap_distinct_sub_bucket_rank, atoi(argv[4]));
+        load_balance_G_end = MPI_Wtime();
 
-        if (gmap_bucket[bk] == 1 || tmap_bucket[bk] == 1)
-            g_t_bucket_count++;
-    }
+        if (rank == 0)
+            std::cout << "[After] Load balancing G" << std::endl;
 
-    delete[] g_t_bucket_indices;
-    delete[] g_bucket_indices;
-    delete[] t_bucket_indices;
+        if (rank == 0)
+            std::cout << "[Before] Load balancing T" << std::endl;
 
-    g_t_bucket_indices = new u32[g_t_bucket_count];
-    g_bucket_indices = new u32[g_bucket_count];
-    t_bucket_indices = new u32[t_bucket_count];
+        load_balance_T_start = MPI_Wtime();
+        load_balance_T(buckets, tmap_bucket, tmap_sub_bucket, subbuckets_T, T, dT, tmap_sub_bucket_rank, tmap_distinct_sub_bucket_rank_count, tmap_distinct_sub_bucket_rank, atoi(argv[4]));
+        load_balance_T_end = MPI_Wtime();
 
-    g_t_count = 0;
-    g_count = 0;
-    t_count = 0;
-    for (u32 bk = 0; bk < buckets; bk++)
-    {
-        if (gmap_bucket[bk] == 1 || tmap_bucket[bk] == 1)
+        join_start = MPI_Wtime();
+
+        u32 g_t_bucket_count = 0;
+        for (u32 bk = 0; bk < buckets; bk++)
         {
-            g_t_bucket_indices[g_t_count] = bk;
-            g_t_count++;
+            if (gmap_bucket[bk] == 1 || tmap_bucket[bk] == 1)
+                g_t_bucket_count++;
+        }
+        u32* g_t_bucket_indices = new u32[g_t_bucket_count];
+
+        u32 g_t_count = 0;
+        for (u32 bk = 0; bk < buckets; bk++)
+        {
+            if (gmap_bucket[bk] == 1 || tmap_bucket[bk] == 1)
+            {
+                g_t_bucket_indices[g_t_count] = bk;
+                g_t_count++;
+            }
         }
 
-        if (gmap_bucket[bk] == 1)
+        if (rank == 0)
+            std::cout << "[After] Load balancing T" << std::endl;
+
+        int lb = 0;
+        double time = 0;
+
+        parallel_map_join(dT, G, gmap_bucket, T, tmap_bucket, 0, &lb, &running_t_count, &time, buckets, subbuckets_T, g_t_bucket_indices, g_t_bucket_count, gmap_distinct_sub_bucket_rank_count, gmap_distinct_sub_bucket_rank, tmap_distinct_sub_bucket_rank_count, tmap_distinct_sub_bucket_rank, tmap_sub_bucket_rank);
+
+        int lc = 1;
+        while(true)
         {
-            g_bucket_indices[g_count] = bk;
-            g_count++;
+            parallel_map_join(dT, G, gmap_bucket, T, tmap_bucket, lc, &lb, &running_t_count, &time, buckets, subbuckets_T, g_t_bucket_indices, g_t_bucket_count, gmap_distinct_sub_bucket_rank_count, gmap_distinct_sub_bucket_rank, tmap_distinct_sub_bucket_rank_count, tmap_distinct_sub_bucket_rank,tmap_sub_bucket_rank);
+
+            if (lc % 10 == 0)
+            {
+                load_balance_T(buckets, tmap_bucket, tmap_sub_bucket, subbuckets_T, T, dT, tmap_sub_bucket_rank, tmap_distinct_sub_bucket_rank_count, tmap_distinct_sub_bucket_rank, atoi(argv[4]));
+
+                g_t_bucket_count = 0;
+                for (u32 bk = 0; bk < buckets; bk++)
+                {
+                    if (gmap_bucket[bk] == 1 || tmap_bucket[bk] == 1)
+                        g_t_bucket_count++;
+                }
+
+                delete[] g_t_bucket_indices;
+                g_t_bucket_indices = new u32[g_t_bucket_count];
+
+                g_t_count = 0;
+                for (u32 bk = 0; bk < buckets; bk++)
+                {
+                    if (gmap_bucket[bk] == 1 || tmap_bucket[bk] == 1)
+                    {
+                        g_t_bucket_indices[g_t_count] = bk;
+                        g_t_count++;
+                    }
+                }
+            }
+
+            if (lb == 1)  break;
+            lc++;
         }
 
-        if (gmap_bucket[bk] == 1)
-        {
-            t_bucket_indices[t_count] = bk;
-            t_count++;
-        }
+        delete[] g_t_bucket_indices;
+        join_end = MPI_Wtime();
     }
-
-    double join_start = MPI_Wtime();
-
-
-
-    int lb = 0;
-    double time = 0;
-
-    parallel_map_join(dT, G, gmap_bucket, T, tmap_bucket, 0, &lb, &running_t_count, &time, buckets, subbuckets_T, g_t_bucket_indices, g_t_bucket_count, gmap_distinct_sub_bucket_rank_count, gmap_distinct_sub_bucket_rank, tmap_distinct_sub_bucket_rank_count, tmap_distinct_sub_bucket_rank, tmap_sub_bucket_rank);
-
-#if 1
-
-#if 1
-    int lc = 1;
-    while(true)
-    {
-        parallel_map_join(dT, G, gmap_bucket, T, tmap_bucket, lc, &lb, &running_t_count, &time, buckets, subbuckets_T, g_t_bucket_indices, g_t_bucket_count, gmap_distinct_sub_bucket_rank_count, gmap_distinct_sub_bucket_rank, tmap_distinct_sub_bucket_rank_count, tmap_distinct_sub_bucket_rank,tmap_sub_bucket_rank);
-
-
-        if (lb == 1)  break;
-        lc++;
-    }
-#endif
-    double join_end = MPI_Wtime();
 
 
 
@@ -1963,8 +2076,6 @@ int main(int argc, char **argv)
 
     }
     MPI_Allreduce(&Tcounter, &total_sum, 1, MPI_UNSIGNED_LONG_LONG, MPI_SUM, comm);
-
-
 
     if (rank == 0)
     {
@@ -1989,15 +2100,15 @@ int main(int argc, char **argv)
         std::cout << "n: " << nprocs
                   << " G: " << global_row_count
                   << " T: " << total_sum
-                  << " Read time: " << (ior_end - ior_start)
-                  << " Init hash: " << (hash_end - hash_start)
-                  << " Relation init: " << (relation_end - relation_start)
-                  << " Fixed point: " << (join_end - join_start)
-                  << " Total: " << (join_end - ior_start)
-                  << " [" << (ior_end - ior_start) + (hash_end - hash_start) + (relation_end - relation_start) + (load_balance_G_end - load_balance_G_start) + (load_balance_T_end - load_balance_T_start) + (join_end - join_start) << "]" << std::endl;
+                  << " CT: " << atoi(argv[4])
+                << " BT: " << atoi(argv[5])
+                << " Read time: " << (ior_end - ior_start)
+                << " Init hash: " << (hash_end - hash_start)
+                << " Relation init: " << (relation_end - relation_start)
+                << " Fixed point: " << (join_end - join_start)
+                << " Total: " << (join_end - ior_start)
+                << " [" << (ior_end - ior_start) + (hash_end - hash_start) + (relation_end - relation_start) + (load_balance_G_end - load_balance_G_start) + (load_balance_T_end - load_balance_T_start) + (join_end - join_start) << "]" << std::endl;
     }
-#endif
-    delete[] g_t_bucket_indices;
 
 
     for (u32 i = 0; i < buckets; i++)
@@ -2033,8 +2144,6 @@ int main(int argc, char **argv)
     for (u64 b = 0; b < buckets; b++)
         delete[] tmap_distinct_sub_bucket_rank[b];
     delete[] tmap_distinct_sub_bucket_rank;
-
-
 
 
     delete[] tmap_sub_bucket_rank;
