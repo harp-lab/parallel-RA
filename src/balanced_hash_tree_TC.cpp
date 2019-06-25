@@ -839,7 +839,7 @@ void load_balance_G(u32 buckets, u32*& gmap_bucket, u32**& gmap_sub_bucket, u32*
     u64 val[2] = {0,0};
     for (u32 i = 0; i < buckets; i++)
     {
-        if (global_g_new_sub_bucket[i] != subbuckets_G[i] && gmap_bucket[i] == 1)
+        if (global_g_new_sub_bucket[i] != subbuckets_G[i])
         {
             delete[] gmap_sub_bucket[i];
             gmap_sub_bucket[i] = new u32[global_g_new_sub_bucket[i]];
@@ -973,6 +973,7 @@ void load_balance_G(u32 buckets, u32*& gmap_bucket, u32**& gmap_sub_bucket, u32*
     if (rank == 0)
         std::cout << "[G] After Load balanging " << G_tuple_count_before_global << " " << G_tuple_count_after_global << std::endl;
 
+    assert(G_tuple_count_before_global == G_tuple_count_after_global);
     std::cout << "Balanced [G] Rank: " << rank << " Hashed count: " << G_tuple_count_after << " Ratio: " << (float)((float) (G_tuple_count_after)/global_row_count)*100 << std::endl;
 #endif
 
