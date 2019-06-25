@@ -400,7 +400,7 @@ void parallel_map_join(Relation1Map*& delT, Relation1Map*& G, u32* gmap_bucket, 
         if (rank == 0)
             std::cout << rank << " [" << i3 << "] Join Start" << total_buffer_size[i3] << std::endl;
 #endif
-        Relation1Map tempT;
+        //Relation1Map tempT;
         for (u32 k1 = 0; k1 < total_buffer_size[i3]; k1=k1+2)
         {
             auto itd = G[i].find(recvbuf[i3][k1+1]);
@@ -409,7 +409,7 @@ void parallel_map_join(Relation1Map*& delT, Relation1Map*& G, u32* gmap_bucket, 
                 for (auto it2 = Git->begin(); it2 != Git->end(); it2++)
                 {
                     tuple_count++;
-
+#if 0
                     auto itx = tempT.find(recvbuf[i3][k1]);
                     if( itx != tempT.end() ) {
                         auto it2x = (itx->second)->find(it2->first);
@@ -429,7 +429,7 @@ void parallel_map_join(Relation1Map*& delT, Relation1Map*& G, u32* gmap_bucket, 
 
                             val[0] = recvbuf[i3][k1];
                             val[1] = it2->first;
-                            vector_buffer_append(&process_data_vector[index], (unsigned char *) val, sizeof(u64)*2);
+                            //vector_buffer_append(&process_data_vector[index], (unsigned char *) val, sizeof(u64)*2);
 
                             process_size[index] = process_size[index] + COL_COUNT;
                             //process_data_vector[index].push_back(dt);
@@ -450,19 +450,20 @@ void parallel_map_join(Relation1Map*& delT, Relation1Map*& G, u32* gmap_bucket, 
 
                         val[0] = recvbuf[i3][k1];
                         val[1] = it2->first;
-                        vector_buffer_append(&process_data_vector[index], (unsigned char *) val, sizeof(u64)*2);
+                        //vector_buffer_append(&process_data_vector[index], (unsigned char *) val, sizeof(u64)*2);
 
                         process_size[index] = process_size[index] + COL_COUNT;
                         //process_data_vector[index].push_back(dt);
                     }
+#endif
                 }
             }
         }
 
-        Relation1Map::iterator ix = tempT.begin();
-        for(; ix != tempT.end(); ix++)
-            delete (ix->second);
-        tempT.clear();
+        //Relation1Map::iterator ix = tempT.begin();
+        //for(; ix != tempT.end(); ix++)
+        //    delete (ix->second);
+        //tempT.clear();
 
         delete[]  recvbuf[i3];
 
