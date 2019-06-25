@@ -384,6 +384,8 @@ void parallel_map_join(Relation1Map*& delT, Relation1Map*& G, u32* gmap_bucket, 
     double jo_s = MPI_Wtime();
 
 
+    std::cout << rank << " [" << g_t_actual_bucket_count << "] XXXX Bucket Count" << std::endl;
+
     vector_buffer* process_data_vector = (vector_buffer*)malloc(sizeof(vector_buffer) * nprocs);
     for (u32 i = 0; i < nprocs; ++i) {
         process_data_vector[i] = vector_buffer_create_empty();
@@ -396,7 +398,7 @@ void parallel_map_join(Relation1Map*& delT, Relation1Map*& G, u32* gmap_bucket, 
         u32 i = g_t_bucket_indices[i3];
 #if DEBUG
         if (rank == 0)
-            std::cout << "[" << i3 << "] Join Start" << std::endl;
+            std::cout << rank << " [" << i3 << "] Join Start" << total_buffer_size[i3] << std::endl;
 #endif
         Relation1Map tempT;
         for (u32 k1 = 0; k1 < total_buffer_size[i3]; k1=k1+2)
@@ -460,6 +462,8 @@ void parallel_map_join(Relation1Map*& delT, Relation1Map*& G, u32* gmap_bucket, 
         Relation1Map::iterator ix = tempT.begin();
         for(; ix != tempT.end(); ix++)
             delete (ix->second);
+        tempT.clear();
+
         delete[]  recvbuf[i3];
 
 #if DEBUG
