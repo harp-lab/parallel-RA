@@ -17,7 +17,7 @@
 #include "vector.h"
 #include <unordered_set>
 
-//#define DEBUG 1
+#define DEBUG 1
 
 #define COL_COUNT 2
 
