@@ -192,15 +192,15 @@ void check(u32 index, u64 rc, u64* read_buffer)
 int main()
 {
 
-    u64 rowC = 32823354/2;
-    int fp = open("24_T", O_RDONLY);
+    u64 rowC = 240023949/2;
+    int fp = open("data.raw", O_RDONLY);
     u64 * read_buffer = new u64[rowC * 2];
     u32 rb_size = pread(fp, read_buffer, rowC * 2 * sizeof(u64), 0);
     if (rb_size != rowC * 2 * sizeof(u64))
       std::cout << "Error !!!!" << std::endl;
     close(fp);
 
-    check(0, rowC, read_buffer);
+    //check(0, rowC, read_buffer);
 
     u32 c = 0;
     for (u64 rc = 20000; rc <= rowC; rc = rc +  40000)
