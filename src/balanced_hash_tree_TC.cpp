@@ -1044,6 +1044,13 @@ void load_balance_T(u32 buckets, u32*& tmap_bucket, u32**& tmap_sub_bucket, u32*
             global_t_new_sub_bucket[i] = nprocs;
     }
 
+    int cx1 = 0;
+    for (u32 i = 0; i < buckets; i++)
+    {
+        if (global_t_new_sub_bucket[i] == subbuckets_T[i])
+            cx1++;
+    }
+
 #if DEBUG
     if (rank == 0)
         std::cout << "[T Load Balance] New sub-bucket counts" << std::endl;
