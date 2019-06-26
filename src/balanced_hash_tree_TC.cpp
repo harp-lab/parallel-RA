@@ -1044,12 +1044,6 @@ void load_balance_T(u32 buckets, u32*& tmap_bucket, u32**& tmap_sub_bucket, u32*
             global_t_new_sub_bucket[i] = nprocs;
     }
 
-    int cx1 = 0;
-    for (u32 i = 0; i < buckets; i++)
-    {
-        if (global_t_new_sub_bucket[i] == subbuckets_T[i])
-            cx1++;
-    }
 
 #if DEBUG
     if (rank == 0)
@@ -2041,7 +2035,7 @@ int main(int argc, char **argv)
         {
             parallel_map_join(dT, G, gmap_bucket, T, tmap_bucket, lc, &lb, &running_t_count, &time, buckets, subbuckets_T, g_t_bucket_indices, g_t_bucket_count, gmap_distinct_sub_bucket_rank_count, gmap_distinct_sub_bucket_rank, tmap_distinct_sub_bucket_rank_count, tmap_distinct_sub_bucket_rank,tmap_sub_bucket_rank, tmap_sub_bucket);
 
-            if (lc % 10 == 0)
+            if (lc % 100 == 0)
             {
                 load_balance_T(buckets, tmap_bucket, tmap_sub_bucket, subbuckets_T, T, dT, tmap_sub_bucket_rank, tmap_distinct_sub_bucket_rank_count, tmap_distinct_sub_bucket_rank, atoi(argv[4]), lb_factor);
 
