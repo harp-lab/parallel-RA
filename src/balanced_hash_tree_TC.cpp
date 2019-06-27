@@ -730,8 +730,8 @@ void load_balance_G(u32 buckets, u32*& gmap_bucket, u32**& gmap_sub_bucket, u32*
         if (global_g_new_sub_bucket[i] == 0)
             global_g_new_sub_bucket[i] = 1;
 
-        if (global_g_new_sub_bucket[i] > nprocs/16)
-            global_g_new_sub_bucket[i] = nprocs/16;
+        if (global_g_new_sub_bucket[i] > nprocs/32)
+            global_g_new_sub_bucket[i] = nprocs/32;
     }
 
 #if DEBUG
@@ -1046,8 +1046,8 @@ void load_balance_T(u32 buckets, u32*& tmap_bucket, u32**& tmap_sub_bucket, u32*
     {
         if (global_t_new_sub_bucket[i] == 0)
             global_t_new_sub_bucket[i] = 1;
-        if (global_t_new_sub_bucket[i] > nprocs/16)
-            global_t_new_sub_bucket[i] = nprocs/16;
+        if (global_t_new_sub_bucket[i] > nprocs/32)
+            global_t_new_sub_bucket[i] = nprocs/32;
 
         if (global_t_new_sub_bucket[i] == subbuckets_T[i])
             ct++;
@@ -1996,9 +1996,11 @@ int main(int argc, char **argv)
     // load balancing every 20 iterations
     else if (atoi(argv[5]) == 2)
     {
+        double LB_t = 0;
         if (rank == 0)
             std::cout << "[Before] Load balancing G" << std::endl;
 
+        double LB_s = MPI_Wtime();
         load_balance_G_start = MPI_Wtime();
         load_balance_G(buckets, gmap_bucket, gmap_sub_bucket, subbuckets_G, G, gmap_sub_bucket_rank, gmap_distinct_sub_bucket_rank_count, gmap_distinct_sub_bucket_rank, atoi(argv[4]), lb_factor);
         load_balance_G_end = MPI_Wtime();
@@ -2032,6 +2034,10 @@ int main(int argc, char **argv)
                 g_t_count++;
             }
         }
+        double LB_e = MPI_Wtime();
+        LB_t = LB_t + (LB_e - LB_s);
+        if (rank == 0)
+            std::cout << "Load Balancing " << LB_e - LB_s << " Running LB time " << LB_t << std::endl;
 
         if (rank == 0)
             std::cout << "[After] Load balancing T" << std::endl;
@@ -2048,6 +2054,7 @@ int main(int argc, char **argv)
 
             if (lc % 100 == 0)
             {
+                LB_s = MPI_Wtime();
                 load_balance_T(buckets, tmap_bucket, tmap_sub_bucket, subbuckets_T, T, dT, tmap_sub_bucket_rank, tmap_distinct_sub_bucket_rank_count, tmap_distinct_sub_bucket_rank, atoi(argv[4]), lb_factor);
 
                 g_t_bucket_count = 0;
@@ -2069,6 +2076,10 @@ int main(int argc, char **argv)
                         g_t_count++;
                     }
                 }
+                LB_e = MPI_Wtime();
+                LB_t = LB_t + (LB_e - LB_s);
+                if (rank == 0)
+                    std::cout << "Load Balancing  " << LB_e - LB_s << " Running LB time " << LB_t << std::endl;
             }
 
             if (lb == 1)  break;
