@@ -726,8 +726,13 @@ void load_balance_G(u32 buckets, u32*& gmap_bucket, u32**& gmap_sub_bucket, u32*
     MPI_Allreduce(g_new_sub_bucket, global_g_new_sub_bucket, buckets, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
 
     for (u32 i = 0; i < buckets; i++)
+    {
         if (global_g_new_sub_bucket[i] == 0)
             global_g_new_sub_bucket[i] = 1;
+
+        if (global_g_new_sub_bucket[i] > nprocs/16)
+            global_g_new_sub_bucket[i] = nprocs/16;
+    }
 
 #if DEBUG
     if (rank == 0)
@@ -1041,8 +1046,8 @@ void load_balance_T(u32 buckets, u32*& tmap_bucket, u32**& tmap_sub_bucket, u32*
     {
         if (global_t_new_sub_bucket[i] == 0)
             global_t_new_sub_bucket[i] = 1;
-        if (global_t_new_sub_bucket[i] > nprocs/4)
-            global_t_new_sub_bucket[i] = nprocs/4;
+        if (global_t_new_sub_bucket[i] > nprocs/16)
+            global_t_new_sub_bucket[i] = nprocs/16;
 
         if (global_t_new_sub_bucket[i] == subbuckets_T[i])
             ct++;
