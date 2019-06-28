@@ -131,11 +131,11 @@ void testGoogleBtree(u64 * tup, u64 rc)
 void check(u32 index, u64 rc, u64* read_buffer)
 {
 
-    std::cout << std::endl;
-    std::cout << index << " [O] ------------------------------------------- " << rc << " -------------------------------------------" << std::endl;
+    //std::cout << std::endl;
+    //std::cout << index << " [O] ------------------------------------------- " << rc << " -------------------------------------------" << std::endl;
 
 
-    u32 iteration_count = 1;
+    /*
     auto btree_start = std::chrono::high_resolution_clock::now();
     for (u32 i = 0; i < iteration_count; i++)
     {
@@ -148,9 +148,10 @@ void check(u32 index, u64 rc, u64* read_buffer)
     auto btree_finish = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> btree_elapsed = btree_finish - btree_start;
     std::cout << "[" << rc << "] Btree " << btree_elapsed.count() / iteration_count << std::endl;
+    */
 
 
-
+    u32 iteration_count = 5;
     auto google_start = std::chrono::high_resolution_clock::now();
     for (u32 i = 0; i < iteration_count; i++)
     {
@@ -162,7 +163,7 @@ void check(u32 index, u64 rc, u64* read_buffer)
     }
     auto google_finish = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> google_elapsed = google_finish - google_start;
-    std::cout << "[" << rc << "] Google " << google_elapsed.count() / iteration_count << std::endl;
+    std::cout << rc << "\t" << "Google" << "\t" << google_elapsed.count() / iteration_count << std::endl;
 
 
 
@@ -177,7 +178,8 @@ void check(u32 index, u64 rc, u64* read_buffer)
     }
     auto map_finish = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> map_elapsed = map_finish - map_start;
-    std::cout << "[" << rc << "] Map " << map_elapsed.count() / iteration_count << std::endl;
+    //std::cout << "[" << rc << "] Map " << map_elapsed.count() / iteration_count << std::endl;
+    std::cout << rc << "\t" << "Table" << "\t" << map_elapsed.count() / iteration_count << std::endl;
 
 
 
@@ -192,22 +194,23 @@ void check(u32 index, u64 rc, u64* read_buffer)
 int main()
 {
 
-    u64 rowC = 240023949/2;
+    u64 rowC = 40451631;
     int fp = open("data.raw", O_RDONLY);
     u64 * read_buffer = new u64[rowC * 2];
     u32 rb_size = pread(fp, read_buffer, rowC * 2 * sizeof(u64), 0);
     if (rb_size != rowC * 2 * sizeof(u64))
-      std::cout << "Error !!!!" << std::endl;
+      std::cout << "Error !!!!" << rb_size << " " << rowC * 2 * sizeof(u64) << std::endl;
     close(fp);
 
     //check(0, rowC, read_buffer);
 
     u32 c = 0;
-    for (u64 rc = 20000; rc <= rowC; rc = rc +  40000)
+    for (u64 rc = 0; rc <= rowC; rc = rc +  400000)
     {
         check(c, rc, read_buffer);
         c++;
     }
+    check(c,136024430 , read_buffer);
 
     delete[] read_buffer;
 
