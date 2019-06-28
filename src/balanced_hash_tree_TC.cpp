@@ -730,8 +730,8 @@ void load_balance_G(u32 buckets, u32*& gmap_bucket, u32**& gmap_sub_bucket, u32*
         if (global_g_new_sub_bucket[i] == 0)
             global_g_new_sub_bucket[i] = 1;
 
-        if (global_g_new_sub_bucket[i] > nprocs/32)
-            global_g_new_sub_bucket[i] = nprocs/32;
+        if (global_g_new_sub_bucket[i] > 16)
+            global_g_new_sub_bucket[i] = 16;
     }
 
 #if DEBUG
@@ -1046,8 +1046,8 @@ void load_balance_T(u32 buckets, u32*& tmap_bucket, u32**& tmap_sub_bucket, u32*
     {
         if (global_t_new_sub_bucket[i] == 0)
             global_t_new_sub_bucket[i] = 1;
-        if (global_t_new_sub_bucket[i] > nprocs/32)
-            global_t_new_sub_bucket[i] = nprocs/32;
+        if (global_t_new_sub_bucket[i] > 16)
+            global_t_new_sub_bucket[i] = 16;
 
         if (global_t_new_sub_bucket[i] == subbuckets_T[i])
             ct++;
