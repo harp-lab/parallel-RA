@@ -6,7 +6,7 @@ class tuple
 {
     typedef tuple<arity-1> subtuple;
 private:
-    u64 vals[arity];
+    s64 vals[arity];
 
 public:
     tuple()
@@ -27,12 +27,12 @@ public:
             vals[i] = t[i - 1];
     }
 
-    u64& operator[](unsigned i)
+    s64& operator[](unsigned i)
     {
         return vals[i];
     }
 
-    const u64& operator[](unsigned i) const
+    const s64& operator[](unsigned i) const
     {
         return vals[i];
     }

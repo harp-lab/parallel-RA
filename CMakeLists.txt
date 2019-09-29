@@ -20,8 +20,12 @@ set (source_dir "${PROJECT_SOURCE_DIR}/src")
 file (GLOB source_files_btree "${source_dir}/btree.cpp")
 file (GLOB source_files_tc "${source_dir}/transitive_closure.cpp")
 file (GLOB source_files_mpitc "${source_dir}/mpi_transitive_closure.cpp")
+file (GLOB source_files_btc "${source_dir}/balanced_transitive_closure.cpp")
+file (GLOB source_files_btc_tjt "${source_dir}/balanced_transitive_closure_t_join_t.cpp")
+file (GLOB source_files_copy "${source_dir}/balanced_copy.cpp")
 file (GLOB source_files_union "${source_dir}/union.cpp")
 file (GLOB source_files_aggregated_union "${source_dir}/aggregated_union.cpp")
+file (GLOB source_files_new_join "${source_dir}/new_join.cpp")
 file (GLOB source_files_join "${source_dir}/join.cpp")
 file (GLOB source_files_ata "${source_dir}/all_to_all.cpp")
 file (GLOB source_files_mpitc_map "${source_dir}/mpi_tc_unordered_map.cpp")
@@ -47,6 +51,18 @@ add_executable(mpiTC ${source_files_mpitc})
 INCLUDE_DIRECTORIES(${MPI_INCLUDE_PATH})
 TARGET_LINK_LIBRARIES(mpiTC ${MPI_LIBRARIES})
 
+add_executable(bTC ${source_files_btc})
+INCLUDE_DIRECTORIES(${MPI_INCLUDE_PATH})
+TARGET_LINK_LIBRARIES(bTC ${MPI_LIBRARIES})
+
+add_executable(b_copy ${source_files_copy})
+INCLUDE_DIRECTORIES(${MPI_INCLUDE_PATH})
+TARGET_LINK_LIBRARIES(b_copy ${MPI_LIBRARIES})
+
+add_executable(bTC_tjt ${source_files_btc_tjt})
+INCLUDE_DIRECTORIES(${MPI_INCLUDE_PATH})
+TARGET_LINK_LIBRARIES(bTC_tjt ${MPI_LIBRARIES})
+
 
 add_executable(union ${source_files_union})
 INCLUDE_DIRECTORIES(${MPI_INCLUDE_PATH})
@@ -61,6 +77,10 @@ TARGET_LINK_LIBRARIES(aggregated_union ${MPI_LIBRARIES})
 add_executable(join ${source_files_join})
 INCLUDE_DIRECTORIES(${MPI_INCLUDE_PATH})
 TARGET_LINK_LIBRARIES(join ${MPI_LIBRARIES})
+
+add_executable(new_join ${source_files_new_join})
+INCLUDE_DIRECTORIES(${MPI_INCLUDE_PATH})
+TARGET_LINK_LIBRARIES(new_join ${MPI_LIBRARIES})
 
 
 add_executable(mpiTCmap ${source_files_mpitc_map})

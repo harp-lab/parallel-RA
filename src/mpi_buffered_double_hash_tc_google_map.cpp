@@ -412,7 +412,6 @@ Relation1Map *** parallel_map_join(Relation1Map*** delT, u32* dtmap, Relation1Ma
                     {
                         MPI_Isend(&buffer_size, 1, MPI_INT, g_recv_rank[i][r], 123, MPI_COMM_WORLD, &req1[req_counter1]);
                         req_counter1++;
-
                     }
                 }
                 if (gmap_bucket[i] == 1)

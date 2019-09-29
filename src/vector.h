@@ -3,7 +3,7 @@
 
 #define Max2ab(a,b)      (((a)> (b))?(a):(b))
 
-// A resizeable buffer, similar to std::vector
+/* A resizeable buffer, similar to std::vector */
 typedef struct vector_buffer {
   unsigned char *buffer;
   uint64_t size;

@@ -70,7 +70,7 @@ public:
                 {
                     btit.advance();
                     if (!btit.more())
-                      return;
+                        return;
 
                     srit = btit.getval()->select(selection.tail());
                 }
@@ -101,6 +101,17 @@ public:
     }
 
     relation(u32 buffer_size, u64* buffer)
+    {
+        for (u32 i = 0; i < buffer_size; i = i + arity)
+        {
+            tuple<arity> t;
+            for (unsigned j = 0; j < arity; j++)
+                t[j] = buffer[i + j];
+            insert(t);
+        }
+    }
+
+    void initialize(u32 buffer_size, u64* buffer)
     {
         for (u32 i = 0; i < buffer_size; i = i + arity)
         {
