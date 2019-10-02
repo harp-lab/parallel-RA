@@ -18,7 +18,7 @@ private:
     u64 *clique_buf_output_size;
     u64 **clique_buf_output;
 
-    std::queue<u64> *clique_output_queue;
+    std::queue<u64> **clique_output_queue;
 
     vector_buffer** local_join_output;
     int **local_join_output_size;
@@ -57,6 +57,11 @@ public:
                 std::cout << "Input 0 " << current_ra.full_count(input) << std::endl;
                 std::cout << "Input 1 " << current_ra.full_count(output) << std::endl;
             }
+            else if (current_ra.get_RA_type() == JOIN)
+            {
+                relation* output = current_ra.get_join_output();
+                std::cout << "Output 1 " << current_ra.full_count(output) << std::endl;
+            }
         }
         return;
     }
@@ -66,6 +71,7 @@ public:
     bool check_for_fixed_point()
     {
         bool fixed_point = true;
+        u32 counter = 0;
         for (std::vector<parallel_RA>::iterator it = RA_list.begin() ; it != RA_list.end(); ++it)
         {
             parallel_RA current_ra = *it;
@@ -76,9 +82,17 @@ public:
             }
             else if (current_ra.get_RA_type() == JOIN)
             {
+                relation* input0 = current_ra.get_join_input0();
+                relation* input1 = current_ra.get_join_input1();
                 relation* output = current_ra.get_join_output();
-                fixed_point = fixed_point & current_ra.fixed_point_check(output);
+                fixed_point = fixed_point & current_ra.fixed_point_check(input0)
+                                          & current_ra.fixed_point_check(input1)
+                                          & current_ra.fixed_point_check(output);
+
+                if (clique_output_queue[counter]->size() != 0)
+                    return false;
             }
+            counter++;
         }
 
         return fixed_point;
@@ -94,7 +108,7 @@ public:
 
         clique_buf_output_size = new u64[RA_count];
         clique_buf_output = new u64*[RA_count];
-        clique_output_queue = new std::queue<u64>[RA_count];
+
 
         for (std::vector<parallel_RA>::iterator it = RA_list.begin() ; it != RA_list.end(); ++it)
         {
@@ -106,12 +120,12 @@ public:
 
                 if (current_ra.get_copy_input0_graph_type() == FULL)
                 {
-                    current_ra.full_clique_comm(input, output, &clique_buf_output_size[counter], &clique_buf_output[counter]);
+                    current_ra.clique_comm(input->get_arity(), input->get_full(), input->get_distinct_sub_bucket_rank_count(), input->get_distinct_sub_bucket_rank(), input->get_bucket_map(), output, &clique_buf_output_size[counter], &clique_buf_output[counter]);
                     total_data_moved = total_data_moved + clique_buf_output_size[counter];
                 }
                 else if (current_ra.get_copy_input0_graph_type() == DELTA)
                 {
-                    current_ra.delta_clique_comm(input, output, &clique_buf_output_size[counter], &clique_buf_output[counter]);
+                    current_ra.clique_comm(input->get_arity(), input->get_delta(), input->get_distinct_sub_bucket_rank_count(), input->get_distinct_sub_bucket_rank(), input->get_bucket_map(), output, &clique_buf_output_size[counter], &clique_buf_output[counter]);
                     total_data_moved = total_data_moved + clique_buf_output_size[counter];
                 }
             }
@@ -123,19 +137,20 @@ public:
 
                 if (current_ra.get_join_input1_graph_type() == FULL)
                 {
-                    current_ra.full_clique_comm(input, output, &clique_buf_output_size[counter], &clique_buf_output[counter]);
+                    current_ra.clique_comm(input->get_arity(), input->get_full(), input->get_distinct_sub_bucket_rank_count(), input->get_distinct_sub_bucket_rank(), input->get_bucket_map(), output, &clique_buf_output_size[counter], &clique_buf_output[counter]);
                     total_data_moved = total_data_moved + clique_buf_output_size[counter];
                 }
                 else if (current_ra.get_join_input1_graph_type() == DELTA)
                 {
-                    current_ra.delta_clique_comm(input, output, &clique_buf_output_size[counter], &clique_buf_output[counter]);
+                    current_ra.clique_comm(input->get_arity(), input->get_delta(), input->get_distinct_sub_bucket_rank_count(), input->get_distinct_sub_bucket_rank(), input->get_bucket_map(), output, &clique_buf_output_size[counter], &clique_buf_output[counter]);
                     total_data_moved = total_data_moved + clique_buf_output_size[counter];
                 }
             }
 
             for (u64 i = 0; i < clique_buf_output_size[counter]; i++)
-                clique_output_queue[counter].push(clique_buf_output[counter][i]);
+                clique_output_queue[counter]->push(clique_buf_output[counter][i]);
 
+            delete[] clique_buf_output[counter];
             counter++;
         }
 
@@ -146,6 +161,7 @@ public:
 
     u64 local_join()
     {
+        u32 threshold = 100;
         u32 total_join_tuples = 0;
         u32 RA_count = RA_list.size();
         u32 nprocs = (u32)mcomm.get_nprocs();
@@ -170,21 +186,39 @@ public:
             if (current_ra.get_RA_type() == COPY)
             {
                 relation* output = current_ra.get_copy_output();
+#if 1
                 current_ra.local_copy(clique_buf_output_size[counter], 2, clique_buf_output[counter], output, local_join_output[counter], local_join_output_size[counter]);
+#endif
+#if 0
+                current_ra.thresholded_local_copy(clique_output_queue[counter], threshold, output, local_join_output[counter], local_join_output_size[counter]);
+#endif
             }
             else if (current_ra.get_RA_type() == JOIN)
             {
                 relation* input0 = current_ra.get_join_input0();
                 relation* output = current_ra.get_join_output();
 
+#if 0
                 if (current_ra.get_join_input0_graph_type() == FULL)
                 {
-                    total_join_tuples = total_join_tuples + current_ra.local_join_full(clique_buf_output_size[counter], 2, clique_buf_output[counter], input0, output, local_join_output[counter], local_join_output_size[counter], current_ra.get_projection_index());
+                    total_join_tuples = total_join_tuples + current_ra.local_join(clique_buf_output_size[counter], 2, clique_buf_output[counter], input0->get_full(), input0->get_full_element_count(), output, local_join_output[counter], local_join_output_size[counter], current_ra.get_projection_index());
                 }
                 else if (current_ra.get_join_input0_graph_type() == DELTA)
                 {
-                    total_join_tuples = total_join_tuples + current_ra.local_join_delta(clique_buf_output_size[counter], 2, clique_buf_output[counter], input0, output, local_join_output[counter], local_join_output_size[counter], current_ra.get_projection_index());
+                    total_join_tuples = total_join_tuples + current_ra.local_join(clique_buf_output_size[counter], 2, clique_buf_output[counter], input0->get_delta(), input0->get_delta_element_count(), output, local_join_output[counter], local_join_output_size[counter], current_ra.get_projection_index());
                 }
+#endif
+
+#if 1
+                if (current_ra.get_join_input0_graph_type() == FULL)
+                {
+                    total_join_tuples = total_join_tuples + current_ra.thresholded_local_join((clique_output_queue[counter]), threshold, input0->get_full(), input0->get_full_element_count(), output, local_join_output[counter], local_join_output_size[counter], current_ra.get_projection_index());
+                }
+                else if (current_ra.get_join_input0_graph_type() == DELTA)
+                {
+                    total_join_tuples = total_join_tuples + current_ra.thresholded_local_join((clique_output_queue[counter]), threshold, input0->get_delta(), input0->get_delta_element_count(), output, local_join_output[counter], local_join_output_size[counter], current_ra.get_projection_index());
+                }
+#endif
             }
             counter++;
         }
@@ -304,6 +338,11 @@ public:
         double iteration_time = 0;
         double running_time = 0;
 
+        u32 RA_count = RA_list.size();
+        clique_output_queue = new std::queue<u64>*[RA_count];
+        for (u32 i = 0; i < RA_count; i++)
+            clique_output_queue[i] = new std::queue<u64>;
+
         while (true)
         {
             clique_start = MPI_Wtime();
@@ -334,8 +373,8 @@ public:
             insert_delta_end = MPI_Wtime();
 
 
-            //std::cout << "ITERATION [" << iteration <<"] " << clique_comm_count << " " << local_join_count << " " << all_to_all_count << " " << insert_in_full_count << " " << insert_in_delta << std::endl;
-            //std::cout << "RUNNING ITERATION [" << iteration <<"] " << running_clique_comm_count << " " << running_local_join_count << " " << running_all_to_all_count << " " << running_insert_in_full_count << " " << running_insert_in_delta << std::endl;
+            std::cout << "ITERATION [" << iteration <<"] " << clique_comm_count << " " << local_join_count << " " << all_to_all_count << " " << insert_in_full_count << " " << insert_in_delta << std::endl;
+            std::cout << "RUNNING ITERATION [" << iteration <<"] " << running_clique_comm_count << " " << running_local_join_count << " " << running_all_to_all_count << " " << running_insert_in_full_count << " " << running_insert_in_delta << std::endl;
 
 
             verify_start = MPI_Wtime();
@@ -375,6 +414,11 @@ public:
 
             iteration++;
         }
+
+
+        for (u32 i = 0; i < RA_count; i++)
+            delete clique_output_queue[i];
+        delete[] clique_output_queue;
 
         print_full();
     }

@@ -50,6 +50,8 @@ int main(int argc, char **argv)
     scc1.execute();
 #endif
 
+    delete G;
+    delete T;
 
     mcomm.destroy();
 

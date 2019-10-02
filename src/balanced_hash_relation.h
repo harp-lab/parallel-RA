@@ -56,6 +56,8 @@ private:
     int join_column_count;
     int arity;
 
+
+
     google_relation *full;
     u32 full_element_count;
     u32 **full_sub_bucket_element_count;

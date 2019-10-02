@@ -2,7 +2,7 @@
 #define PARALLEL_JOIN_H
 
 #include <mpi.h>
-
+#include <queue>
 #include "balanced_hash_relation.h"
 #include "balanced_parallel_io.h"
 #include "btree/btree_map.h"
@@ -152,17 +152,13 @@ public:
 
 
 
-    void full_clique_comm(relation* input, relation* output, u64 *total_buffer_size, u64 **recvbuf)
+    void clique_comm(int input_arity, google_relation *full, int* input_distinct_sub_bucket_rank_count, int** input_distinct_sub_bucket_rank, u32* input_bucket_map, relation* output, u64 *total_buffer_size, u64 **recvbuf)
     {
         u32 buckets = mcomm.get_number_of_buckets();
         u32 nprocs = mcomm.get_nprocs();
 
         vector_buffer *input_buffer = new vector_buffer[buckets];
         int *input_buffer_size = new int[buckets];
-
-        int* input_distinct_sub_bucket_rank_count;
-        int** input_distinct_sub_bucket_rank;
-        u32* input_bucket_map;
 
         int* output_distinct_sub_bucket_rank_count;
         int** output_distinct_sub_bucket_rank;
@@ -174,16 +170,16 @@ public:
         *total_buffer_size = 0;
         u32* bucket_offset = new u32[nprocs];
 
+        u64 val[input_arity];
+
+        output_distinct_sub_bucket_rank_count = output->get_distinct_sub_bucket_rank_count();
+        output_distinct_sub_bucket_rank = output->get_distinct_sub_bucket_rank();
+        output_bucket_map = output->get_bucket_map();
+
         /* Meta-data exchange */
         for (u32 i = 0; i < buckets; i++)
         {
-            u32 input_arity = input->get_arity();
-            //u32 output_arity = output->get_arity();
-            //assert (input_arity == 2 && output_arity == 2);
             input_buffer[i] = vector_buffer_create_empty();
-
-            u64 val[input_arity];
-            google_relation *full = input->get_full();
             for (auto it = full[i].begin(); it != full[i].end(); it++)
             {
                 Map0* it2 = it->second;
@@ -197,13 +193,6 @@ public:
 
             input_buffer_size[i] = (&input_buffer[i])->size / sizeof(u64);
 
-            input_distinct_sub_bucket_rank_count = input->get_distinct_sub_bucket_rank_count();
-            input_distinct_sub_bucket_rank = input->get_distinct_sub_bucket_rank();
-            input_bucket_map = input->get_bucket_map();
-
-            output_distinct_sub_bucket_rank_count = output->get_distinct_sub_bucket_rank_count();
-            output_distinct_sub_bucket_rank = output->get_distinct_sub_bucket_rank();
-            output_bucket_map = output->get_bucket_map();
 
             meta_buffer_size[i] = new u32[input_distinct_sub_bucket_rank_count[i]];
             memset(meta_buffer_size[i], 0, sizeof(u32) * input_distinct_sub_bucket_rank_count[i]);
@@ -241,10 +230,8 @@ public:
             delete[] stat1;
         }
 
-
         /* Allocate buffer */
         *recvbuf = new u64[*total_buffer_size];
-
 
         /* Actual data exchange */
         for (u32 i = 0; i < buckets; i++)
@@ -296,273 +283,6 @@ public:
 
         return;
     }
-
-
-
-    void delta_clique_comm(relation* input, relation* output, u64 *total_buffer_size, u64 **recvbuf)
-    {
-        u32 buckets = mcomm.get_number_of_buckets();
-        u32 nprocs = mcomm.get_nprocs();
-
-        //std::cout << "[CLIQUE] buckets " << buckets << std::endl;
-
-        vector_buffer *input_buffer = new vector_buffer[buckets];
-        int *input_buffer_size = new int[buckets];
-
-        int* input_distinct_sub_bucket_rank_count;
-        int** input_distinct_sub_bucket_rank;
-        u32* input_bucket_map;
-
-        int* output_distinct_sub_bucket_rank_count;
-        int** output_distinct_sub_bucket_rank;
-        u32* output_bucket_map;
-
-        u32** meta_buffer_size = new u32*[buckets];
-        memset(meta_buffer_size, 0, sizeof(u32*) * buckets);
-
-        *total_buffer_size = 0;
-        u32* bucket_offset = new u32[nprocs];
-
-        u32 input_arity = input->get_arity();
-        //u32 output_arity = output->get_arity();
-        //assert (input_arity == 2 && output_arity == 2);
-
-        google_relation *delta = input->get_delta();
-
-        input_distinct_sub_bucket_rank_count = input->get_distinct_sub_bucket_rank_count();
-        input_distinct_sub_bucket_rank = input->get_distinct_sub_bucket_rank();
-        input_bucket_map = input->get_bucket_map();
-
-        output_distinct_sub_bucket_rank_count = output->get_distinct_sub_bucket_rank_count();
-        output_distinct_sub_bucket_rank = output->get_distinct_sub_bucket_rank();
-        output_bucket_map = output->get_bucket_map();
-
-
-        /* Meta-data exchange */
-        for (u32 i = 0; i < buckets; i++)
-        {
-            //std::cout << "[CLIQUE] input_distinct_sub_bucket_rank_count " << input_distinct_sub_bucket_rank_count[i] << std::endl;
-            input_buffer[i] = vector_buffer_create_empty();
-            u64 val[input_arity];
-
-            for (auto it = delta[i].begin(); it != delta[i].end(); it++)
-            {
-                Map0* it2 = it->second;
-                for (auto dit2 = it2->begin(); dit2 != it2->end(); dit2++)
-                {
-                    val[0] = it->first;
-                    val[1] = dit2->first;
-                    vector_buffer_append(&input_buffer[i],(unsigned char *) val, sizeof(u64)*input_arity);
-                }
-            }
-
-            input_buffer_size[i] = (&input_buffer[i])->size / sizeof(u64);
-            //std::cout << "[CLIQUE] BS: " << input_buffer_size[i] << std::endl;
-
-            meta_buffer_size[i] = new u32[input_distinct_sub_bucket_rank_count[i]];
-            memset(meta_buffer_size[i], 0, sizeof(u32) * input_distinct_sub_bucket_rank_count[i]);
-#if 1
-            u32 req_counter1 = 0;
-            MPI_Request *req1 = new MPI_Request[output_distinct_sub_bucket_rank_count[i] + input_distinct_sub_bucket_rank_count[i]];
-            MPI_Status *stat1 = new MPI_Status[output_distinct_sub_bucket_rank_count[i] + input_distinct_sub_bucket_rank_count[i]];
-
-            if (input_bucket_map[i] == 1)
-            {
-                for (int r = 0; r < output_distinct_sub_bucket_rank_count[i]; r++)
-                {
-                    int buffer_size = input_buffer_size[i];
-                    MPI_Isend(&buffer_size, 1, MPI_INT, output_distinct_sub_bucket_rank[i][r], 123, MPI_COMM_WORLD, &req1[req_counter1]);
-                    req_counter1++;
-                }
-            }
-
-            if (output_bucket_map[i] == 1)
-            {
-                for (int r = 0; r < input_distinct_sub_bucket_rank_count[i]; r++)
-                {
-                    MPI_Irecv(meta_buffer_size[i] + r, 1, MPI_INT, input_distinct_sub_bucket_rank[i][r], 123, MPI_COMM_WORLD, &req1[req_counter1]);
-                    req_counter1++;
-                }
-            }
-
-            MPI_Waitall(req_counter1, req1, stat1);
-
-            bucket_offset[i] = *total_buffer_size;
-            for (int r = 0; r < input_distinct_sub_bucket_rank_count[i]; r++)
-                *total_buffer_size = *total_buffer_size + meta_buffer_size[i][r];
-
-            delete[] req1;
-            delete[] stat1;
-#endif
-        }
-
-
-        //std::cout << "[CLIQUE] Buffer Size " << *total_buffer_size << std::endl;
-#if 1
-        /* Allocate buffer */
-        *recvbuf = new u64[*total_buffer_size];
-
-
-        /* Actual data exchange */
-        for (u32 i = 0; i < buckets; i++)
-        {
-            u32 req_counter2 = 0;
-            MPI_Request *req2 = new MPI_Request[output_distinct_sub_bucket_rank_count[i] + input_distinct_sub_bucket_rank_count[i]];
-            MPI_Status *stat2 = new MPI_Status[output_distinct_sub_bucket_rank_count[i] + input_distinct_sub_bucket_rank_count[i]];
-
-            // data
-            if (input_bucket_map[i] == 1)
-            {
-                for (int r = 0; r < output_distinct_sub_bucket_rank_count[i]; r++)
-                {
-                    if (input_buffer_size[i] != 0)
-                    {
-                        MPI_Isend(input_buffer[i].buffer, input_buffer_size[i], MPI_UNSIGNED_LONG_LONG, output_distinct_sub_bucket_rank[i][r], 123, MPI_COMM_WORLD, &req2[req_counter2]);
-                        req_counter2++;
-                    }
-                }
-            }
-
-            u32 offset = 0;
-            if (output_bucket_map[i] == 1)
-            {
-                for (int r = 0; r < input_distinct_sub_bucket_rank_count[i]; r++)
-                {
-                    if (meta_buffer_size[i][r] != 0)
-                    {
-                        MPI_Irecv((*recvbuf) + offset + bucket_offset[i], meta_buffer_size[i][r], MPI_UNSIGNED_LONG_LONG, input_distinct_sub_bucket_rank[i][r], 123, MPI_COMM_WORLD, &req2[req_counter2]);
-                        offset = offset + meta_buffer_size[i][r];
-                        req_counter2++;
-                    }
-                }
-            }
-
-            MPI_Waitall(req_counter2, req2, stat2);
-            vector_buffer_free(&input_buffer[i]);
-
-            delete[] req2;
-            delete[] stat2;
-
-            delete[] meta_buffer_size[i];
-        }
-#endif
-
-        delete[] meta_buffer_size;
-        delete[] input_buffer;
-        delete[] input_buffer_size;
-        delete[] bucket_offset;
-
-        return;
-    }
-
-    // 1 2  // 2 1
-    // 2 3  // 3 2
-
-    int local_join_delta(int input0_buffer_size, int input0_arity, u64 *input0_buffer, relation* i1, relation* output, vector_buffer* local_join_output, int* process_size, int* projection_and_rename)
-    {
-        u32 local_join_duplicates = 0;
-        u32 local_join_inserts = 0;
-        google_relation tempT;
-        google_relation *input1 = i1->get_delta();
-        u32 i1_size = i1->get_delta_element_count();
-        //u32 input1_arity = i1->get_arity();
-        u32 output_arity = output->get_arity();
-        u32* output_sub_bucket_count = output->get_sub_bucket_count();
-        u32** output_sub_bucket_rank = output->get_sub_bucket_rank();
-        int buckets = mcomm.get_number_of_buckets();
-        u64 val[2] = {0, 0};
-
-        //assert(input1_arity == 2 && input0_arity == 2 && output_arity == 2);
-
-        for (int k1 = 0; k1 < input0_buffer_size; k1 = k1 + input0_arity)
-        {
-            for (int i = 0; i < buckets; i++)
-            {
-                auto itd = input1[i].find(input0_buffer[k1]);
-                if ( itd != input1[i].end() )
-                {
-                    Map0* Git = itd->second;
-                    for (auto it2 = Git->begin(); it2 != Git->end(); it2++)
-                    {
-                        auto itx = tempT.find(input0_buffer[k1 + 1]);
-                        if( itx != tempT.end() )
-                        {
-                            auto it2x = (itx->second)->find(it2->first);
-                            if( it2x != (itx->second)->end() )
-                            {
-                                local_join_duplicates++;
-                            }
-                            else
-                            {
-                                (itx->second)->insert(std::make_pair(it2->first, 0));
-                                tempT[input0_buffer[k1 + 1]] = itx->second;
-                                local_join_inserts++;
-
-                                if (projection_and_rename[1] == 0 && projection_and_rename[2] == 1)
-                                {
-                                    val[0] = it2->first;
-                                    val[1] = input0_buffer[k1 + 1];
-                                    uint64_t bucket_id = hash_function(val[0]) % buckets;
-                                    uint64_t sub_bucket_id = hash_function(val[1]) % output_sub_bucket_count[bucket_id];
-                                    int index = output_sub_bucket_rank[bucket_id][sub_bucket_id];
-                                    vector_buffer_append(&local_join_output[index], (unsigned char *) val, sizeof(u64) * output_arity);
-                                    process_size[index] = process_size[index] + output_arity;
-                                }
-                                else if (projection_and_rename[1] == 1 && projection_and_rename[2] == 0)
-                                {
-                                    val[1] = it2->first;
-                                    val[0] = input0_buffer[k1 + 1];
-                                    uint64_t bucket_id = hash_function(val[0]) % buckets;
-                                    uint64_t sub_bucket_id = hash_function(val[1]) % output_sub_bucket_count[bucket_id];
-                                    int index = output_sub_bucket_rank[bucket_id][sub_bucket_id];
-                                    vector_buffer_append(&local_join_output[index], (unsigned char *) val, sizeof(u64) * output_arity);
-                                    process_size[index] = process_size[index] + output_arity;
-                                }
-                            }
-                        }
-                        else
-                        {
-                            Map0* k = new Map0();
-                            k->insert(std::make_pair(it2->first, 0));
-                            tempT[input0_buffer[k1 + 1]] = k;
-                            local_join_inserts++;
-
-                            if (projection_and_rename[1] == 0 && projection_and_rename[2] == 1)
-                            {
-                                val[0] = it2->first;
-                                val[1] = input0_buffer[k1 + 1];
-                                uint64_t bucket_id = hash_function(val[0]) % buckets;
-                                uint64_t sub_bucket_id = hash_function(val[1]) % output_sub_bucket_count[bucket_id];
-                                int index = output_sub_bucket_rank[bucket_id][sub_bucket_id];
-                                vector_buffer_append(&local_join_output[index], (unsigned char *) val, sizeof(u64) * output_arity);
-                                process_size[index] = process_size[index] + output_arity;
-                            }
-                            else if (projection_and_rename[1] == 1 && projection_and_rename[2] == 0)
-                            {
-                                val[1] = it2->first;
-                                val[0] = input0_buffer[k1 + 1];
-                                uint64_t bucket_id = hash_function(val[0]) % buckets;
-                                uint64_t sub_bucket_id = hash_function(val[1]) % output_sub_bucket_count[bucket_id];
-                                int index = output_sub_bucket_rank[bucket_id][sub_bucket_id];
-                                vector_buffer_append(&local_join_output[index], (unsigned char *) val, sizeof(u64) * output_arity);
-                                process_size[index] = process_size[index] + output_arity;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-
-        for(google_relation::iterator ix = tempT.begin(); ix != tempT.end(); ix++)
-            delete (ix->second);
-
-        delete[]  input0_buffer;
-
-        std::cout << "[Local Join D] " << i1_size << " " << input0_buffer_size/2 << " " << local_join_inserts << std::endl;
-        return local_join_inserts;
-    }
-
 
     void local_copy(int input0_buffer_size, int input0_arity, u64 *input0_buffer, relation* output, vector_buffer* local_join_output, int* process_size)
     {
@@ -678,16 +398,12 @@ public:
         return insert_success;
     }
 
-    // 1 2 // 2 1
-    // 2 3 // 3 2
 
-    u32 local_join_full(int input0_buffer_size, int input0_arity, u64 *input0_buffer, relation* i1, relation* output, vector_buffer* local_join_output, int* process_size, int* projection_and_rename)
+    u32 local_join(int input0_buffer_size, int input0_arity, u64 *input0_buffer, google_relation *input1, u32 i1_size, relation* output, vector_buffer* local_join_output, int* process_size, int* projection_and_rename)
     {
         u32 local_join_duplicates = 0;
         u32 local_join_inserts = 0;
         google_relation tempT;
-        google_relation *input1 = i1->get_full();
-        u32 i1_size = i1->get_full_element_count();
         u32 output_arity = output->get_arity();
         u32* output_sub_bucket_count = output->get_sub_bucket_count();
         u32** output_sub_bucket_rank = output->get_sub_bucket_rank();
@@ -774,14 +490,120 @@ public:
                 }
             }
         }
+        std::cout << "[Local Join] " << i1_size << " " << input0_buffer_size/2 << " " << local_join_inserts << std::endl;
 
-        std::cout << "[Local Join F] " << i1_size << " " << input0_buffer_size/2 << " " << local_join_inserts << std::endl;
-
-        google_relation::iterator ix = tempT.begin();
-        for(; ix != tempT.end(); ix++)
+        for(google_relation::iterator ix = tempT.begin(); ix != tempT.end(); ix++)
             delete (ix->second);
         delete[]  input0_buffer;
+        return local_join_inserts;
+    }
 
+
+    u32 thresholded_local_join(std::queue<u64> *clique_output_queue, u32 threshhold, google_relation *input1, u32 i1_size, relation* output, vector_buffer* local_join_output, int* process_size, int* projection_and_rename)
+    {
+        u32 local_join_duplicates = 0;
+        u32 local_join_inserts = 0;
+        google_relation tempT;
+        u32 output_arity = output->get_arity();
+        u32* output_sub_bucket_count = output->get_sub_bucket_count();
+        u32** output_sub_bucket_rank = output->get_sub_bucket_rank();
+        int buckets = mcomm.get_number_of_buckets();
+        u64 val[2] = {0, 0};
+        u32 elements_accessed = 0;
+
+        while(!clique_output_queue->empty())
+        //for (int k1 = 0; k1 < input0_buffer_size; k1=k1+input0_arity)
+        {
+            elements_accessed++;
+            if (local_join_inserts > threshhold)
+                break;
+
+            u64 val0 = clique_output_queue->front();
+            clique_output_queue->pop();
+            u64 val1 = clique_output_queue->front();
+            clique_output_queue->pop();
+
+            for (int i = 0; i < buckets; i++)
+            {
+                auto itd = input1[i].find(val0);
+                if( itd != input1[i].end() )
+                {
+                    Map0* Git = itd->second;
+                    for (auto it2 = Git->begin(); it2 != Git->end(); it2++)
+                    {
+                        auto itx = tempT.find(val1);
+                        if( itx != tempT.end() )
+                        {
+                            auto it2x = (itx->second)->find(it2->first);
+                            if( it2x != (itx->second)->end() )
+                            {
+                                local_join_duplicates++;
+                            }
+                            else
+                            {
+                                (itx->second)->insert(std::make_pair(it2->first, 0));
+                                tempT[val1] = itx->second;
+                                local_join_inserts++;
+
+                                if (projection_and_rename[1] == 0 && projection_and_rename[2] == 1)
+                                {
+                                    val[0] = it2->first;
+                                    val[1] = val1;
+                                    uint64_t bucket_id = hash_function(val[0]) % buckets;
+                                    uint64_t sub_bucket_id = hash_function(val[1]) % output_sub_bucket_count[bucket_id];
+                                    int index = output_sub_bucket_rank[bucket_id][sub_bucket_id];
+                                    vector_buffer_append(&(local_join_output[index]), (unsigned char *) val, sizeof(u64) * output_arity);
+                                    process_size[index] = process_size[index] + output_arity;
+                                }
+                                else if (projection_and_rename[1] == 1 && projection_and_rename[2] == 0)
+                                {
+                                    val[1] = it2->first;
+                                    val[0] = val1;
+                                    uint64_t bucket_id = hash_function(val[0]) % buckets;
+                                    uint64_t sub_bucket_id = hash_function(val[1]) % output_sub_bucket_count[bucket_id];
+                                    int index = output_sub_bucket_rank[bucket_id][sub_bucket_id];
+                                    vector_buffer_append(&(local_join_output[index]), (unsigned char *) val, sizeof(u64) * output_arity);
+                                    process_size[index] = process_size[index] + output_arity;
+                                }
+                            }
+                        }
+                        else
+                        {
+                            Map0* k = new Map0();
+                            k->insert(std::make_pair(it2->first, 0));
+                            tempT[val1] = k;
+                            local_join_inserts++;
+
+                            if (projection_and_rename[1] == 0 && projection_and_rename[2] == 1)
+                            {
+                                val[0] = it2->first;
+                                val[1] = val1;
+                                uint64_t bucket_id = hash_function(val[0]) % buckets;
+                                uint64_t sub_bucket_id = hash_function(val[1]) % output_sub_bucket_count[bucket_id];
+                                int index = output_sub_bucket_rank[bucket_id][sub_bucket_id];
+                                vector_buffer_append(&(local_join_output[index]), (unsigned char *) val, sizeof(u64) * output_arity);
+                                process_size[index] = process_size[index] + output_arity;
+                            }
+                            else if (projection_and_rename[1] == 1 && projection_and_rename[2] == 0)
+                            {
+                                val[1] = it2->first;
+                                val[0] = val1;
+                                uint64_t bucket_id = hash_function(val[0]) % buckets;
+                                uint64_t sub_bucket_id = hash_function(val[1]) % output_sub_bucket_count[bucket_id];
+                                int index = output_sub_bucket_rank[bucket_id][sub_bucket_id];
+                                vector_buffer_append(&(local_join_output[index]), (unsigned char *) val, sizeof(u64) * output_arity);
+                                process_size[index] = process_size[index] + output_arity;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        std::cout << "[Local Join] " << i1_size << " " << elements_accessed << " " << local_join_inserts << std::endl;
+
+        for(google_relation::iterator ix = tempT.begin(); ix != tempT.end(); ix++)
+            delete (ix->second);
+        //delete[]  input0_buffer;
         return local_join_inserts;
     }
 
