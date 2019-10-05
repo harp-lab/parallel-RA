@@ -72,6 +72,12 @@ public:
     }
 
 
+    u64 get_hash_buffer_size()
+    {
+        return hash_buffer_size;
+    }
+
+
 
     void parallel_read_input_relation_from_file_to_local_buffer(const char *fname, int rank, int nprocs)
     {
@@ -155,7 +161,7 @@ public:
     /// Hashing based on the first and the second column
     /// The first column decises the bucket id
     /// The second column decides the sub-bucket id
-    void buffer_data_to_hash_buffer_col(u32 nprocs, MPI_Comm comm, u32 buckets, u32** sub_bucket_rank, u32* sub_bucket_count)
+    void buffer_data_to_hash_buffer_col(u32 nprocs, MPI_Comm comm, u32 buckets, u32** sub_bucket_rank, u32* sub_bucket_count, int col_index)
     {
         /* process_size[i] stores the number of samples to be sent to process with rank i */
         int* process_size = new int[nprocs];
@@ -168,18 +174,44 @@ public:
 
         /* Hashing and buffering data for all to all comm */
         u64 val[col_count];
-        for (u32 i = 0; i < entry_count * col_count; i=i+col_count)
+
+        u32 count = 0;
+        if (col_index == 0)
         {
-            uint64_t bucket_id = hash_function(input_buffer[i]) % buckets;
-            uint64_t sub_bucket_id = hash_function(input_buffer[i+1]) % sub_bucket_count[bucket_id];
+            for (u32 i = 0; i < entry_count * col_count; i=i+col_count)
+            {
+                uint64_t bucket_id = hash_function(input_buffer[i]) % buckets;
+                uint64_t sub_bucket_id = hash_function(input_buffer[i+1]) % sub_bucket_count[bucket_id];
 
-            int index = sub_bucket_rank[bucket_id][sub_bucket_id];
-            process_size[index] = process_size[index] + col_count;
+                int index = sub_bucket_rank[bucket_id][sub_bucket_id];
+                process_size[index] = process_size[index] + col_count;
 
-            for (u32 j = 0; j < col_count; j++)
-                val[j] = input_buffer[i + j];
+                for (u32 j = 0; j < col_count; j++)
+                    val[j] = input_buffer[i + j];
 
-            vector_buffer_append(&process_data_vector[index],(unsigned char *) val, sizeof(u64)*col_count);
+                vector_buffer_append(&process_data_vector[index],(unsigned char *) val, sizeof(u64)*col_count);
+            }
+        }
+        else
+        {
+            for (u32 i = 0; i < entry_count * col_count; i=i+col_count)
+            {
+                uint64_t bucket_id = hash_function(input_buffer[i + 1]) % buckets;
+                uint64_t sub_bucket_id = hash_function(input_buffer[i]) % sub_bucket_count[bucket_id];
+
+                int index = sub_bucket_rank[bucket_id][sub_bucket_id];
+                process_size[index] = process_size[index] + col_count;
+
+                //for (u32 j = 0; j < col_count; j++)
+                //val[j] = input_buffer[i + j];
+                val[0] = input_buffer[i];
+                val[1] = input_buffer[i + 1];
+                count++;
+
+
+                vector_buffer_append(&process_data_vector[index],(unsigned char *) val, sizeof(u64)*col_count);
+            }
+            //std::cout << "DDDDDDDDDD " << count << std::endl;
         }
 
         /* Transmit the packaged data process_data_vector to all processes */
@@ -202,7 +234,9 @@ public:
     void all_to_all_comm(vector_buffer* process_data_vector, int* process_size, MPI_Comm comm)
     {
         int nprocs;
+        int rank;
         MPI_Comm_size(comm, &nprocs);
+        MPI_Comm_rank(comm, &rank);
 
         /* prefix sum on the send side (required for all to all communication) */
         int prefix_sum_process_size[nprocs];
@@ -237,13 +271,19 @@ public:
             prefix_sum_recv_process_size_buffer[i] = prefix_sum_recv_process_size_buffer[i - 1] + recv_process_size_buffer[i - 1];
 
         /* Total data received during all to all */
-        int hash_buffer_size = prefix_sum_recv_process_size_buffer[nprocs - 1] + recv_process_size_buffer[nprocs - 1];
+        hash_buffer_size = prefix_sum_recv_process_size_buffer[nprocs - 1] + recv_process_size_buffer[nprocs - 1];
 
         /* Buffer to be reveived after all to all */
         hash_buffer = new u64[hash_buffer_size];
 
         /* All to all communication */
         MPI_Alltoallv(process_data, process_size, prefix_sum_process_size, MPI_UNSIGNED_LONG_LONG, hash_buffer, recv_process_size_buffer, prefix_sum_recv_process_size_buffer, MPI_UNSIGNED_LONG_LONG, comm);
+
+        //if (rank == 0)
+        //{
+        //    for (u32 x = 0; x < hash_buffer_size; x=x+2)
+        //        std::cout << hash_buffer_size << "BSSSSSSSSS " << hash_buffer[x] << " " << hash_buffer[x+1] << std::endl;
+        //}
 
         /* Delete the send buffer */
         delete[] process_data;

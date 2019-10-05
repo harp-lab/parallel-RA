@@ -18,10 +18,10 @@ int main(int argc, char **argv)
 
     relation* G = new relation();
     relation* T = new relation();
-    G->initialize(arity, join_column_count, STATIC, sub_buckets_per_bucket_G, argv[1], FULL, mcomm);
+    G->initialize(arity, join_column_count, STATIC, sub_buckets_per_bucket_G, argv[1], FULL, mcomm, 0);
 
     int rename_and_project_copy[2] = {1,0};
-    T->initialize_with_rename_and_projection(arity, join_column_count, DYNAMIC, sub_buckets_per_bucket_T, argv[1], DELTA, rename_and_project_copy, mcomm);
+    T->initialize_with_rename_and_projection(arity, join_column_count, DYNAMIC, sub_buckets_per_bucket_T, argv[1], DELTA, rename_and_project_copy, mcomm, 1);
 
 
     /*
@@ -36,13 +36,13 @@ int main(int argc, char **argv)
     */
 
     /////// SCC 1 (exchanged)
-    int rename_and_project_join[3] = {-1,0,1};
-    parallel_RA join_1(JOIN, mcomm);
-    join_1.join_input0(G, FULL);
-    join_1.join_input1(T, DELTA);
-    join_1.join_output(T);
+    //int rename_and_project_join[3] = {-1,0,1};
+    parallel_RA* join_1 = new parallel_RA(JOIN, mcomm);
+    join_1->join_input0(G, FULL);
+    join_1->join_input1(T, DELTA);
+    join_1->join_output(T);
 
-    join_1.set_projection_index(rename_and_project_join);
+    join_1->set_join_projection_index(-1, 0, 1);
 
 #if 1
     RAM scc1(mcomm);

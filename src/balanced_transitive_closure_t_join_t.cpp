@@ -6,7 +6,7 @@
 
 int main(int argc, char **argv)
 {
-
+#if 1
     mpi_comm mcomm;
     mcomm.create(argc, argv);
     mcomm.set_number_of_buckets(1);
@@ -19,11 +19,11 @@ int main(int argc, char **argv)
 
     relation* T0 = new relation();
     int rename_and_project_copy0[2] = {0,1};
-    T0->initialize_with_rename_and_projection(arity, join_column_count, DYNAMIC, sub_buckets_per_bucket_T, argv[1], DELTA, rename_and_project_copy0, mcomm);
+    T0->initialize_with_rename_and_projection(arity, join_column_count, DYNAMIC, sub_buckets_per_bucket_T, argv[1], DELTA, rename_and_project_copy0, mcomm, 0);
 
     relation* T1 = new relation();
     int rename_and_project_copy1[2] = {1,0};
-    T1->initialize_with_rename_and_projection(arity, join_column_count, DYNAMIC, sub_buckets_per_bucket_T, argv[1], DELTA, rename_and_project_copy1, mcomm);
+    T1->initialize_with_rename_and_projection(arity, join_column_count, DYNAMIC, sub_buckets_per_bucket_T, argv[1], DELTA, rename_and_project_copy1, mcomm, 1);
 
 
 #if 0
@@ -48,30 +48,30 @@ int main(int argc, char **argv)
 
 
     /////// SCC 1
-    int rename_and_project_join[3] = {-1,0,1};
-    parallel_RA join_0(JOIN, mcomm);
-    join_0.join_input0(T1, DELTA);
-    join_0.join_input1(T0, DELTA);
-    join_0.join_output(T0);
-    join_0.set_projection_index(rename_and_project_join);
+    //int rename_and_project_join[3] = {-1,0,1};
+    parallel_RA* join_0 = new parallel_RA(JOIN, mcomm);
+    join_0->join_input0(T1, DELTA);
+    join_0->join_input1(T0, DELTA);
+    join_0->join_output(T0);
+    join_0->set_join_projection_index(-1, 0, 1);
 
-    parallel_RA join_1(JOIN, mcomm);
-    join_1.join_input0(T1, FULL);
-    join_1.join_input1(T0, DELTA);
-    join_1.join_output(T0);
-    join_1.set_projection_index(rename_and_project_join);
+    parallel_RA* join_1 = new parallel_RA(JOIN, mcomm);
+    join_1->join_input0(T1, FULL);
+    join_1->join_input1(T0, DELTA);
+    join_1->join_output(T0);
+    join_1->set_join_projection_index(-1, 0, 1);
 
-    parallel_RA join_2(JOIN, mcomm);
-    join_2.join_input0(T1, DELTA);
-    join_2.join_input1(T0, FULL);
-    join_2.join_output(T0);
-    join_2.set_projection_index(rename_and_project_join);
+    parallel_RA* join_2 = new parallel_RA(JOIN, mcomm);
+    join_2->join_input0(T1, DELTA);
+    join_2->join_input1(T0, FULL);
+    join_2->join_output(T0);
+    join_2->set_join_projection_index(-1, 0, 1);
 
-    int rename_and_project_acopy[2] = {1,0};
-    parallel_RA copy_0(COPY, mcomm);
-    copy_0.copy_input(T0, DELTA);
-    copy_0.copy_output(T1);
-    copy_0.set_projection_index(rename_and_project_acopy);
+    //int rename_and_project_acopy[2] = {1,0};
+    parallel_RA* copy_0 = new parallel_RA(COPY, mcomm);
+    copy_0->copy_input(T0, DELTA);
+    copy_0->copy_output(T1);
+    copy_0->set_copy_projection_index(1, 0);
 
     RAM scc1(mcomm);
     scc1.push_back(join_0);
@@ -84,6 +84,6 @@ int main(int argc, char **argv)
     delete T1;
 
     mcomm.destroy();
-
+#endif
     return 0;
 }
