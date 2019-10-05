@@ -31,7 +31,7 @@ public:
     void set_number_of_buckets(u32 bucket_factor)
     {
         buckets = bucket_factor * nprocs;
-        std::cout << "Number of buckets " << buckets << std::endl;
+        //std::cout << "Number of buckets " << buckets << std::endl;
     }
 
 
@@ -71,7 +71,7 @@ public:
         MPI_Comm_rank(MPI_COMM_WORLD, &rank);
         world_comm = MPI_COMM_WORLD;
 
-        std::cout << "[COMM] nprocs " << nprocs << " rank " << rank << std::endl;
+        //std::cout << "[COMM] nprocs " << nprocs << " rank " << rank << std::endl;
     }
 
 

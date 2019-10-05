@@ -182,8 +182,8 @@ public:
 
     void clique_comm(int input_arity, google_relation *full, u32 full_size, int* input_distinct_sub_bucket_rank_count, int** input_distinct_sub_bucket_rank, u32* input_bucket_map, relation* output, u64 *total_buffer_size, u64 **recvbuf)
     {
-        u32 buckets = mcomm.get_number_of_buckets();
 #if 0
+        u32 buckets = mcomm.get_number_of_buckets();
         int rank;
         rank = mcomm.get_rank();
 
@@ -338,7 +338,8 @@ public:
         *total_buffer_size = full_size * 2;
         u32 c = 0;
         u64 val[2];
-        for (u32 i = 0; i < buckets; i++)
+        //for (u32 i = 0; i < buckets; i++)
+        u32 i = mcomm.get_rank();
         {
             for (auto it = full[i].begin(); it != full[i].end(); it++)
             {
@@ -371,7 +372,7 @@ public:
         u64 val[2] = {0, 0};
 
         u32 input0_buffer_size = 0;
-        //assert(input0_arity == 2 && output_arity == 2);
+
 
         //for (int k1 = 0; k1 < input0_buffer_size; k1=k1+input0_arity)
         for (int i = 0; i < buckets; i++)
@@ -456,8 +457,13 @@ public:
 
         //std::cout << "Entering JOIN " << rank << std::endl;
 
-        if (*offset >= input0_buffer_size)
+        if (*offset > input0_buffer_size || input0_buffer_size == 0 || i1_size == 0)
+        {
+            if (rank == 0)
+                std::cout  <<"[Join Done] [Local Join] " << i1_size << " " << elements_accessed << " (" << input0_buffer_size << ") " << local_join_inserts << " Duplicates " << local_join_duplicates << " Offset " << *offset << std::endl;
+
             return true;
+        }
 
 
         /*
@@ -555,7 +561,8 @@ public:
                 {
                     //std::cout << "FINAL1 " << input0_buffer[k1] << " " << input0_buffer[k1 + 1] << " " << k1 << " Temp Count " << temp_count << std::endl;
 
-                    std::cout << "[Threshold reached] [Local Join] " << i1_size << " " << elements_accessed << " (" << input0_buffer_size << ") " << local_join_inserts << " Offset "<< *offset << std::endl;
+                    if (rank == 0)
+                        std::cout << "[Threshold reached A] [Local Join] " << i1_size << " " << elements_accessed << " (" << input0_buffer_size << ") " << local_join_inserts << " Offset "<< *offset << std::endl;
 
                     for(google_relation::iterator ix = tempT.begin(); ix != tempT.end(); ix++)
                         delete (ix->second);
@@ -639,7 +646,7 @@ public:
                     //std::cout << "FINAL1 " << input0_buffer[k1] << " " << input0_buffer[k1 + 1] << " " << k1 << " Temp Count " << temp_count << std::endl;
 
                     if (rank == 0)
-                        std::cout << " [Threshold reached] [Local Join] " << i1_size << " " << elements_accessed << " (" << input0_buffer_size << ") " << local_join_inserts << " Offset "<< *offset << std::endl;
+                        std::cout << "[Threshold reached B] [Local Join] " << i1_size << " " << elements_accessed << " (" << input0_buffer_size << ") " << local_join_inserts << " Offset "<< *offset << std::endl;
 
                     for(google_relation::iterator ix = tempT.begin(); ix != tempT.end(); ix++)
                         delete (ix->second);
@@ -662,15 +669,16 @@ public:
             delete (ix->second);
 
         *local_join_count = local_join_inserts;
+        //*offset = input0_buffer_size + 1;
 
         return true;
     }
 
 
-    int all_to_all(vector_buffer* local_join_output, int* process_size, relation* output)
+    void all_to_all(vector_buffer* local_join_output, int* process_size, u64 *outer_hash_buffer_size, u64 **outer_hash_data)
     {
         int nprocs = mcomm.get_nprocs();
-        int rank = mcomm.get_rank();
+        //int rank = mcomm.get_rank();
 
         int prefix_sum_process_size[nprocs];
         memset(prefix_sum_process_size, 0, nprocs * sizeof(int));
@@ -701,29 +709,35 @@ public:
         memset(prefix_sum_recv_process_size_buffer, 0, nprocs * sizeof(int));
 
         /* Sending data to all processes: What is the buffer size to allocate */
-        u64 outer_hash_buffer_size = recv_process_size_buffer[0];
+        *outer_hash_buffer_size = recv_process_size_buffer[0];
         for(int i = 1; i < nprocs; i++)
         {
             prefix_sum_recv_process_size_buffer[i] = prefix_sum_recv_process_size_buffer[i - 1] + recv_process_size_buffer[i - 1];
-            outer_hash_buffer_size = outer_hash_buffer_size + recv_process_size_buffer[i];
+            *outer_hash_buffer_size = *outer_hash_buffer_size + recv_process_size_buffer[i];
         }
 
-        u64 *outer_hash_data = new u64[outer_hash_buffer_size];
-        memset(outer_hash_data, 0, outer_hash_buffer_size * sizeof(u64));
+        *outer_hash_data = new u64[*outer_hash_buffer_size];
+        memset(*outer_hash_data, 0, *outer_hash_buffer_size * sizeof(u64));
 
 
-        MPI_Alltoallv(process_data, process_size, prefix_sum_process_size, MPI_UNSIGNED_LONG_LONG, outer_hash_data, recv_process_size_buffer, prefix_sum_recv_process_size_buffer, MPI_UNSIGNED_LONG_LONG, mcomm.get_comm());
+        MPI_Alltoallv(process_data, process_size, prefix_sum_process_size, MPI_UNSIGNED_LONG_LONG, *outer_hash_data, recv_process_size_buffer, prefix_sum_recv_process_size_buffer, MPI_UNSIGNED_LONG_LONG, mcomm.get_comm());
 
         delete[] process_data;
 
-        u32 arity = output->get_arity();
+        return;
+    }
 
+    int insert_in_newt(u64 *outer_hash_buffer_size, u64 **outer_hash_data, relation* output)
+    {
+        int rank = mcomm.get_rank();
+        u32 arity = output->get_arity();
         u32 successful_insert = 0;
         u64 t[2];
-        for (u64 i = 0; i < outer_hash_buffer_size; i = i + arity)
+
+        for (u64 i = 0; i < *outer_hash_buffer_size; i = i + arity)
         {
-            t[0] = outer_hash_data[i];
-            t[1] = outer_hash_data[i + 1];
+            t[0] = (*outer_hash_data)[i];
+            t[1] = (*outer_hash_data)[i + 1];
 
             if (output->find_in_full(t) == false)
             {
@@ -738,9 +752,11 @@ public:
             std::cout << "Local Inserts in new " << successful_insert << " (" << new_count << ")" << std::endl;
         }
 
-        delete[] outer_hash_data;
+        delete[] (*outer_hash_data);
 
         return successful_insert;
     }
+
+
 };
 #endif

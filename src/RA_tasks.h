@@ -12,7 +12,7 @@
 
 u32 running_total = 0;
 bool threshold_enabled = false;
-u32 threshold = 10;
+u32 threshold = 100000;
 
 class RAM
 {
@@ -24,6 +24,9 @@ private:
 
     vector_buffer** local_join_output;
     int **local_join_output_size;
+
+    u64 *all_to_all_buffer_size;
+    u64 **all_to_all_buffer;
 
     mpi_comm mcomm;
 
@@ -59,8 +62,8 @@ public:
 
                 if (rank == 0)
                 {
-                std::cout << "Input 0 " << s0 << std::endl;
-                std::cout << "Input 1 " << s1 << std::endl;
+                    std::cout << "Input 0 " << s0 << std::endl;
+                    std::cout << "Input 1 " << s1 << std::endl;
                 }
             }
             else if (current_ra->get_RA_type() == JOIN)
@@ -100,15 +103,8 @@ public:
                 relation* input1 = current_ra->get_join_input1();
                 relation* output = current_ra->get_join_output();
                 fixed_point = fixed_point & current_ra->fixed_point_check(input0)
-                                          & current_ra->fixed_point_check(input1)
-                                          & current_ra->fixed_point_check(output);
-
-                //if (threshold_enabled == true)
-                //{
-                    //std::cout << "VVVVVVVVVVV " << clique_output_queue[counter]->size() << std::endl;
-                //    if (clique_output_queue[counter]->size() != 0)
-                //        return false;
-                //}
+                        & current_ra->fixed_point_check(input1)
+                        & current_ra->fixed_point_check(output);
             }
             counter++;
         }
@@ -165,10 +161,6 @@ public:
                     current_ra->clique_comm(input->get_arity(), input->get_delta(), input->get_delta_element_count(), input->get_distinct_sub_bucket_rank_count(), input->get_distinct_sub_bucket_rank(), input->get_bucket_map(), output, &clique_buf_output_size[counter], &clique_buf_output[counter]);
                     total_data_moved = total_data_moved + clique_buf_output_size[counter];
                 }
-
-                //for (u64 i = 0; i < clique_buf_output_size[counter]; i++)
-                //    clique_output_queue[counter]->push(clique_buf_output[counter][i]);
-                //std::cout << "[Queue] pushing " << clique_buf_output_size[counter]/2 << std::endl;
             }
             counter++;
         }
@@ -212,31 +204,30 @@ public:
             }
             else if (current_ra->get_RA_type() == JOIN)
             {
-                    //std::cout << "OFFSET " << offset[counter] << std::endl;
-                    if (current_ra->get_join_input0_graph_type() == DELTA && current_ra->get_join_input1_graph_type() == DELTA)
-                    {
-                        relation* input0 = current_ra->get_join_input0();
-                        relation* output = current_ra->get_join_output();
+                if (current_ra->get_join_input0_graph_type() == DELTA && current_ra->get_join_input1_graph_type() == DELTA)
+                {
+                    relation* input0 = current_ra->get_join_input0();
+                    relation* output = current_ra->get_join_output();
 
-                        join_completed = join_completed & current_ra->local_join(threshold, clique_buf_output_size[counter], &(offset[counter]), 2, clique_buf_output[counter], input0->get_delta(), input0->get_delta_element_count(), output, local_join_output[counter], local_join_output_size[counter], 0, 1, &join_tuples, iteration);
-                        total_join_tuples = total_join_tuples + join_tuples;
-                    }
-                    else if (current_ra->get_join_input0_graph_type() == DELTA && current_ra->get_join_input1_graph_type() == FULL)
-                    {
-                        relation* input1 = current_ra->get_join_input1();
-                        relation* output = current_ra->get_join_output();
+                    join_completed = join_completed & current_ra->local_join(threshold, clique_buf_output_size[counter], &(offset[counter]), 2, clique_buf_output[counter], input0->get_delta(), input0->get_delta_element_count(), output, local_join_output[counter], local_join_output_size[counter], 0, 1, &join_tuples, iteration);
+                    total_join_tuples = total_join_tuples + join_tuples;
+                }
+                else if (current_ra->get_join_input0_graph_type() == DELTA && current_ra->get_join_input1_graph_type() == FULL)
+                {
+                    relation* input1 = current_ra->get_join_input1();
+                    relation* output = current_ra->get_join_output();
 
-                        join_completed = join_completed & current_ra->local_join(threshold, clique_buf_output_size[counter], &(offset[counter]), 2, clique_buf_output[counter], input1->get_full(), input1->get_full_element_count(), output, local_join_output[counter], local_join_output_size[counter], 1, 0, &join_tuples, iteration);
-                        total_join_tuples = total_join_tuples + join_tuples;
-                    }
-                    else if (current_ra->get_join_input0_graph_type() == FULL && current_ra->get_join_input1_graph_type() == DELTA)
-                    {
-                        relation* input0 = current_ra->get_join_input0();
-                        relation* output = current_ra->get_join_output();
+                    join_completed = join_completed & current_ra->local_join(threshold, clique_buf_output_size[counter], &(offset[counter]), 2, clique_buf_output[counter], input1->get_full(), input1->get_full_element_count(), output, local_join_output[counter], local_join_output_size[counter], 1, 0, &join_tuples, iteration);
+                    total_join_tuples = total_join_tuples + join_tuples;
+                }
+                else if (current_ra->get_join_input0_graph_type() == FULL && current_ra->get_join_input1_graph_type() == DELTA)
+                {
+                    relation* input0 = current_ra->get_join_input0();
+                    relation* output = current_ra->get_join_output();
 
-                        join_completed = join_completed & current_ra->local_join(threshold, clique_buf_output_size[counter], &(offset[counter]), 2, clique_buf_output[counter], input0->get_full(), input0->get_full_element_count(), output, local_join_output[counter], local_join_output_size[counter], 0, 1, &join_tuples, iteration);
-                        total_join_tuples = total_join_tuples + join_tuples;
-                    }
+                    join_completed = join_completed & current_ra->local_join(threshold, clique_buf_output_size[counter], &(offset[counter]), 2, clique_buf_output[counter], input0->get_full(), input0->get_full_element_count(), output, local_join_output[counter], local_join_output_size[counter], 0, 1, &join_tuples, iteration);
+                    total_join_tuples = total_join_tuples + join_tuples;
+                }
             }
             counter++;
         }
@@ -268,9 +259,6 @@ public:
         }
         else
             return false;
-
-        //return join_completed;
-        //return total_join_tuples;
     }
 
 
@@ -281,8 +269,32 @@ public:
 
         u32 RA_count = RA_list.size();
 
-        //int rank = mcomm.get_rank();
-        //std::cout << "ALL TO ALL RANK " << rank << std::endl;
+        all_to_all_buffer_size = new u64[RA_count];
+        all_to_all_buffer = new u64*[RA_count];
+
+        u32 counter = 0;
+        for (std::vector<parallel_RA*>::iterator it = RA_list.begin() ; it != RA_list.end(); ++it)
+        {
+            parallel_RA* current_ra = *it;
+            current_ra->all_to_all(local_join_output[counter], local_join_output_size[counter], &(all_to_all_buffer_size[counter]), &(all_to_all_buffer[counter]));
+
+            delete[] local_join_output[counter];
+            delete[] local_join_output_size[counter];
+
+            counter++;
+        }
+
+        delete[] local_join_output;
+        delete[] local_join_output_size;
+
+
+        return total_all_to_all;
+    }
+
+
+
+    void local_insert_in_newt()
+    {
         u32 counter = 0;
         for (std::vector<parallel_RA*>::iterator it = RA_list.begin() ; it != RA_list.end(); ++it)
         {
@@ -291,27 +303,18 @@ public:
             if (current_ra->get_RA_type() == COPY)
             {
                 relation* output = current_ra->get_copy_output();
-                current_ra->all_to_all(local_join_output[counter], local_join_output_size[counter], output);
+                current_ra->insert_in_newt(&(all_to_all_buffer_size[counter]), &(all_to_all_buffer[counter]), output);
             }
             if (current_ra->get_RA_type() == JOIN)
             {
                 relation* output = current_ra->get_join_output();
-                current_ra->all_to_all(local_join_output[counter], local_join_output_size[counter], output);
+                current_ra->insert_in_newt(&(all_to_all_buffer_size[counter]), &(all_to_all_buffer[counter]), output);
             }
-
             counter++;
         }
 
-        for (u32 i = 0; i < RA_count; i++)
-        {
-            delete[] local_join_output[i];
-            delete[] local_join_output_size[i];
-        }
-        delete[] local_join_output;
-        delete[] local_join_output_size;
-
-
-        return total_all_to_all;
+        delete[] all_to_all_buffer_size;
+        delete[] all_to_all_buffer;
     }
 
 
@@ -341,19 +344,23 @@ public:
                 relation* output = current_ra->get_copy_output();
 
                 local_insert = local_insert + input->insert_delta_in_full();
+                input->local_insert_in_delta();
+
                 local_insert = local_insert + output->insert_delta_in_full();
+                output->local_insert_in_delta();
 
             }
             if (current_ra->get_RA_type() == JOIN)
             {
                 relation* input0 = current_ra->get_join_input0();
                 relation* input1 = current_ra->get_join_input1();
-                //relation* output = current_ra->get_copy_output();
 
                 local_insert = local_insert + input0->insert_delta_in_full();
+                input0->local_insert_in_delta();
+
                 local_insert = local_insert + input1->insert_delta_in_full();
+                input1->local_insert_in_delta();
                 break;
-                //local_insert = local_insert + output->insert_delta_in_full();
             }
         }
 
@@ -361,121 +368,80 @@ public:
     }
 
 
-#if 1
-    void local_insert_in_delta(bool local_join_status)
-    {
-        if (local_join_status == false)
-            return;
-
-        /*
-        for (std::vector<relation*>::iterator it = relation_list.begin() ; it != relation_list.end(); ++it)
-        {
-            relation* rel = *it;
-            rel->local_insert_in_delta();
-        }
-        */
-
-        for (std::vector<parallel_RA*>::iterator it = RA_list.begin() ; it != RA_list.end(); ++it)
-        {
-            parallel_RA* current_ra = *it;
-            if (current_ra->get_RA_type() == COPY)
-            {
-                relation* input = current_ra->get_copy_input();
-                relation* output = current_ra->get_copy_output();
-
-                input->local_insert_in_delta();
-                output->local_insert_in_delta();
-                break;
-            }
-            if (current_ra->get_RA_type() == JOIN)
-            {
-                relation* input0 = current_ra->get_join_input0();
-                relation* input1 = current_ra->get_join_input1();
-                //relation* output = current_ra->get_copy_output();
-
-                input0->local_insert_in_delta();
-                input1->local_insert_in_delta();
-                break;
-                //output->local_insert_in_delta();
-            }
-        }
-
-        return;
-    }
-#endif
-
-
     void execute()
     {
         //u32 iteration = 0;
-        u32 clique_comm_count = 0;
-        u32 local_join_count = 0;
-        u32 all_to_all_count = 0;
-        u32 insert_in_full_count = 0;
-        //u32 insert_in_delta = 0;
 
-        u32 running_clique_comm_count = 0;
-        u32 running_local_join_count = 0;
-        u32 running_all_to_all_count = 0;
-        u32 running_insert_in_full_count = 0;
-        //u32 running_insert_in_delta = 0;
+        //u32 clique_comm_count = 0;
+        u32 local_join_count = 0;
+        //u32 all_to_all_count = 0;
+        //u32 insert_in_full_count = 0;
+        //u32 insert_in_newt_count = 0;
+
+        //u32 running_clique_comm_count = 0;
+        //u32 running_local_join_count = 0;
+        //u32 running_all_to_all_count = 0;
+        //u32 running_insert_in_full_count = 0;
+        //u32 running_insert_in_newt_count = 0;
+
+        double running_clique_comm_time = 0;
+        double running_local_join_time = 0;
+        double running_all_to_all_time = 0;
+        double running_insert_in_full_time = 0;
+        double running_insert_in_newt_time = 0;
+        double running_verify_time = 0;
 
         double clique_start = 0, clique_end = 0;
         double local_join_start = 0, local_join_end = 0;
         double all_to_all_start = 0, all_to_all_end = 0;
         double insert_full_start = 0, insert_full_end = 0;
-        double insert_delta_start = 0, insert_delta_end = 0;
+        double insert_newt_start = 0, insert_newt_end = 0;
         double verify_start = 0, verify_end = 0;
 
         double iteration_time = 0;
         double running_time = 0;
 
         u32 RA_count = RA_list.size();
-        //clique_output_queue = new std::queue<u64>*[RA_count];
-        //for (u32 i = 0; i < RA_count; i++)
-        //    clique_output_queue[i] = new std::queue<u64>;
-
         int *offset = new int[RA_count];
         for (u32 i =0; i < RA_count; i++)
             offset[i] = 0;
+
         bool local_join_status = true;
-        int xc = 400;
         int rank = mcomm.get_rank();
-        //while (xc != 0)
         int iteration = 1;
+
+        double start_time = MPI_Wtime();
         while (true)
         {
             clique_start = MPI_Wtime();
-            clique_comm_count = clique_comm(local_join_status);
-            running_clique_comm_count = running_clique_comm_count + clique_comm_count;
+            clique_comm(local_join_status);
             clique_end = MPI_Wtime();
+            running_clique_comm_time = running_clique_comm_time + (clique_end - clique_start);
 
             local_join_start = MPI_Wtime();
             local_join_status = local_join(&local_join_count, offset, iteration);
-            running_local_join_count = running_local_join_count + local_join_count;
             local_join_end = MPI_Wtime();
+            running_local_join_time = running_local_join_time + (local_join_end - local_join_start);
 
             all_to_all_start = MPI_Wtime();
-            all_to_all_count = all_to_all();
-            running_all_to_all_count = running_all_to_all_count + all_to_all_count;
+            all_to_all();
             all_to_all_end = MPI_Wtime();
+            running_all_to_all_time = running_all_to_all_time + (all_to_all_end - all_to_all_start);
 
-            MPI_Barrier(mcomm.get_comm());
+            insert_newt_start = MPI_Wtime();
+            local_insert_in_newt();
+            insert_newt_end = MPI_Wtime();
+            running_insert_in_newt_time = running_insert_in_newt_time + (insert_newt_end - insert_newt_start);
+
 
             insert_full_start = MPI_Wtime();
-            insert_in_full_count = local_insert_in_full(local_join_status);
-            running_insert_in_full_count = running_insert_in_full_count + insert_in_full_count;
+            local_insert_in_full(local_join_status);
             insert_full_end = MPI_Wtime();
-
-            insert_delta_start = MPI_Wtime();
-            local_insert_in_delta(local_join_status);
-            //insert_in_delta = local_insert_in_delta(local_join_status);
-            //running_insert_in_delta = running_insert_in_delta + insert_in_delta;
-            insert_delta_end = MPI_Wtime();
+            running_insert_in_full_time = running_insert_in_full_time + (insert_full_end - insert_full_start);
 
 
-            if (rank == 0)
-                std::cout << "ITERATION [" << iteration <<"] " << clique_comm_count << " " << local_join_count << " " << all_to_all_count << " " << insert_in_full_count << std::endl;
+            //if (rank == 0)
+            //std::cout << "ITERATION [" << iteration <<"] " <<  local_join_count << " " << all_to_all_count << " " << insert_in_full_count << std::endl;
             //std::cout << "RUNNING ITERATION [" << iteration <<"] " << running_clique_comm_count << " " << running_local_join_count << " " << running_all_to_all_count << " " << running_insert_in_full_count << " " << running_insert_in_delta << std::endl;
 
 
@@ -483,48 +449,47 @@ public:
             if (check_for_fixed_point(local_join_status) == true)
             {
                 verify_end = MPI_Wtime();
-                iteration_time = (verify_end - verify_start) + (insert_delta_end - insert_delta_start) + (insert_full_end - insert_full_start) + (all_to_all_end - all_to_all_start) + (local_join_end - local_join_start) + (clique_end - clique_start);
+                running_verify_time = running_verify_time + (verify_end - verify_start);
+                iteration_time = (verify_end - verify_start) + (insert_newt_end - insert_newt_start) + (insert_full_end - insert_full_start) + (all_to_all_end - all_to_all_start) + (local_join_end - local_join_start) + (clique_end - clique_start);
                 running_time = running_time + iteration_time;
 
                 if (rank == 0)
-                    std::cout << " T [" << iteration << "] " << running_time << " " << iteration_time
+                    std::cout << "T [" << iteration << "] " << running_time << " " << iteration_time
+                              << " Clique " <<  (clique_end - clique_start)
+                              << " Local Join " <<  (local_join_end - local_join_start)
+                              << " All to All " <<  (all_to_all_end - all_to_all_start)
+                              << " Insert Full " <<  (insert_full_end - insert_full_start)
+                              << " Insert newt " <<  (insert_newt_end - insert_newt_start)
+                              << " Verify " <<  (verify_end - verify_start)
+                              << std::endl
+                              << std::endl;
+                break;
+            }
+            verify_end = MPI_Wtime();
+            running_verify_time = running_verify_time + (verify_end - verify_start);
+
+            iteration_time = (verify_end - verify_start) + (insert_newt_end - insert_newt_start) + (insert_full_end - insert_full_start) + (all_to_all_end - all_to_all_start) + (local_join_end - local_join_start) + (clique_end - clique_start);
+            running_time = running_time + iteration_time;
+
+            if (rank == 0)
+                std::cout << "F [" << iteration << "] " << running_time << " " << iteration_time
                           << " Clique " <<  (clique_end - clique_start)
                           << " Local Join " <<  (local_join_end - local_join_start)
                           << " All to All " <<  (all_to_all_end - all_to_all_start)
                           << " Insert Full " <<  (insert_full_end - insert_full_start)
-                          << " Insert delta " <<  (insert_delta_end - insert_delta_start)
+                          << " Insert newt " <<  (insert_newt_end - insert_newt_start)
                           << " Verify " <<  (verify_end - verify_start)
                           << std::endl
+                          << std::endl
                           << std::endl;
-                break;
-            }
-            verify_end = MPI_Wtime();
 
-            iteration_time = (verify_end - verify_start) + (insert_delta_end - insert_delta_start) + (insert_full_end - insert_full_start) + (all_to_all_end - all_to_all_start) + (local_join_end - local_join_start) + (clique_end - clique_start);
-            running_time = running_time + iteration_time;
-
-            if (rank == 0)
-                std::cout << " F [" << iteration << "] " << running_time << " " << iteration_time
-                      << " Clique " <<  (clique_end - clique_start)
-                      << " Local Join " <<  (local_join_end - local_join_start)
-                      << " All to All " <<  (all_to_all_end - all_to_all_start)
-                      << " Insert Full " <<  (insert_full_end - insert_full_start)
-                      << " Insert delta " <<  (insert_delta_end - insert_delta_start)
-                      << " Verify " <<  (verify_end - verify_start)
-                      << std::endl
-                      << std::endl
-                      << std::endl;
-
-            xc--;
             iteration++;
         }
+        double end_time = MPI_Wtime();
         delete[] offset;
 
-
-        //for (u32 i = 0; i < RA_count; i++)
-        //    delete clique_output_queue[i];
-        //delete[] clique_output_queue;
-
+        if (rank == 0)
+            std::cout << "Total Time: [" << (end_time - start_time) << " " << running_time << " " << (running_clique_comm_time + running_local_join_time + running_all_to_all_time + running_insert_in_newt_time + running_insert_in_full_time + running_verify_time) << "] " << running_clique_comm_time << " " << running_local_join_time << " " << running_all_to_all_time << " " << running_insert_in_newt_time << running_insert_in_full_time << " " << running_verify_time << " ";
         print_full();
     }
 
