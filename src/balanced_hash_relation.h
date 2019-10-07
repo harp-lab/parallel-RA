@@ -844,12 +844,13 @@ public:
     int insert_delta_in_full()
     {
         int rank = mcomm.get_rank();
-        int buckets = mcomm.get_number_of_buckets();
+        //int buckets = mcomm.get_number_of_buckets();
         u32 insert_success = 0;
         u32 insert_attempts = 0;
 
         u64 t[arity];
-        for (int i = 0; i < buckets; i++)
+        int i = rank;
+        //for (int i = 0; i < buckets; i++)
         {
             if (bucket_map[i] == 1)
             {

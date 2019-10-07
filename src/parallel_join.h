@@ -374,8 +374,9 @@ public:
         u32 input0_buffer_size = 0;
 
 
+        int i = rank;
         //for (int k1 = 0; k1 < input0_buffer_size; k1=k1+input0_arity)
-        for (int i = 0; i < buckets; i++)
+        //for (int i = 0; i < buckets; i++)
         {
             if (bucket_map[i] == 1)
             {
@@ -393,6 +394,56 @@ public:
                         int index = output_sub_bucket_rank[bucket_id][sub_bucket_id];
                         vector_buffer_append(&local_join_output[index], (unsigned char *) val, sizeof(u64) * output_arity);
                         process_size[index] = process_size[index] + output_arity;
+                        input0_buffer_size++;
+                    }
+                }
+            }
+        }
+
+        if (rank == 0)
+        std::cout << "[Local Copy] " << input0_buffer_size << std::endl;
+
+        return;
+    }
+
+    void cumulative_local_copy(relation* input, relation* output, vector_buffer** local_join_output, int** process_size, int* cumulative_process_size, int iteration)
+    {
+        int rank = mcomm.get_rank();
+        u32 output_arity = output->get_arity();
+        u32* output_sub_bucket_count = output->get_sub_bucket_count();
+        u32** output_sub_bucket_rank = output->get_sub_bucket_rank();
+        int buckets = mcomm.get_number_of_buckets();
+        google_relation *delta = input->get_delta();
+        u32* bucket_map = input->get_bucket_map();
+        u64 val[2] = {0, 0};
+
+        u32 input0_buffer_size = 0;
+
+
+        //int cy1 = 0;
+        int i = rank;
+        //for (int k1 = 0; k1 < input0_buffer_size; k1=k1+input0_arity)
+        //for (int i = 0; i < buckets; i++)
+        {
+            if (bucket_map[i] == 1)
+            {
+                for ( auto local_it = delta[i].begin(); local_it!= delta[i].end(); ++local_it )
+                {
+                    Map0* k = local_it->second;
+                    for (auto it2 = k->begin(); it2 != k->end(); it2++)
+                    {
+                        val[0] = it2->first;
+                        val[1] = local_it->first;
+
+                        uint64_t bucket_id = hash_function(val[0]) % buckets;
+                        uint64_t sub_bucket_id = hash_function(val[1]) % output_sub_bucket_count[bucket_id];
+
+                        int index = output_sub_bucket_rank[bucket_id][sub_bucket_id];
+                        vector_buffer_append(&local_join_output[iteration][index], (unsigned char *) val, sizeof(u64) * output_arity);
+                        process_size[iteration][index] = process_size[iteration][index] + output_arity;
+                        cumulative_process_size[index] = cumulative_process_size[index] + output_arity;
+                        //std::cout << "C " << cy1 << std::endl;
+                        //cy1++;
                         input0_buffer_size++;
                     }
                 }
@@ -500,7 +551,8 @@ public:
             {
                 //if (iteration == 1 && rank == 0)
                     //std::cout << "Input " << input0_buffer[k1] << " " << input0_buffer[k1 + 1] << std::endl;
-                for (int i = 0; i < buckets; i++)
+                int i = rank;
+                //for (int i = 0; i < buckets; i++)
                 {
                     auto itd = input1[i].find(input0_buffer[k1]);
                     if( itd != input1[i].end() )
@@ -583,7 +635,8 @@ public:
             {
                 //if (iteration == 1 && rank == 0)
                     //std::cout << "Input " << input0_buffer[k1] << " " << input0_buffer[k1 + 1] << std::endl;
-                for (int i = 0; i < buckets; i++)
+                int i = rank;
+                //for (int i = 0; i < buckets; i++)
                 {
                     auto itd = input1[i].find(input0_buffer[k1]);
                     if( itd != input1[i].end() )
@@ -675,10 +728,231 @@ public:
     }
 
 
+    bool cumulative_local_join(u32 threshhold, int input0_buffer_size, int *offset, int input0_arity, u64 *input0_buffer, google_relation *input1, u32 i1_size, relation* output, vector_buffer** local_join_output, int** process_size, int* cumulative_process_size, int projection_and_rename_b, int projection_and_rename_c, u32* local_join_count, int iteration)
+    {
+        u32 local_join_duplicates = 0;
+        u32 local_join_inserts = 0;
+        google_relation tempT;
+        u32 output_arity = output->get_arity();
+        u32* output_sub_bucket_count = output->get_sub_bucket_count();
+        u32** output_sub_bucket_rank = output->get_sub_bucket_rank();
+        int buckets = mcomm.get_number_of_buckets();
+        u64 val[2] = {0, 0};
+        int elements_accessed = 0;
+        int rank = mcomm.get_rank();
+
+        if (*offset > input0_buffer_size || input0_buffer_size == 0 || i1_size == 0)
+        {
+            if (rank == 0)
+                std::cout  <<"[Join Done] [Local Join] " << i1_size << " " << elements_accessed << " (" << input0_buffer_size << ") " << local_join_inserts << " Duplicates " << local_join_duplicates << " Offset " << *offset << std::endl;
+
+            return true;
+        }
+
+        //int cx1 = 0;
+        if (projection_and_rename_b == 1 && projection_and_rename_c == 0)
+        {
+            for (int k1 = *offset; k1 < input0_buffer_size; k1 = k1 + input0_arity)
+            {
+                int i = rank;
+                //for (int i = 0; i < buckets; i++)
+                {
+                    auto itd = input1[i].find(input0_buffer[k1]);
+                    if( itd != input1[i].end() )
+                    {
+                        Map0* Git = itd->second;
+                        for (auto it2 = Git->begin(); it2 != Git->end(); it2++)
+                        {
+                            auto itx = tempT.find(input0_buffer[k1 + 1]);
+                            if( itx != tempT.end() )
+                            {
+                                auto it2x = (itx->second)->find(it2->first);
+                                if( it2x != (itx->second)->end() )
+                                {
+                                    local_join_duplicates++;
+                                }
+                                else
+                                {
+                                    (itx->second)->insert(std::make_pair(it2->first, 0));
+                                    tempT[input0_buffer[k1 + 1]] = itx->second;
+                                    local_join_inserts++;
+
+                                    val[1] = it2->first;
+                                    val[0] = input0_buffer[k1 + 1];
+                                    //if (iteration == 1)
+                                        //if (iteration == 1 && rank == 0)
+                                        //std::cout << rank << " Matches " << input0_buffer[k1] << " " << input0_buffer[k1 + 1] << " | " << input0_buffer[k1] << " " <<  it2->first << std::endl;
+                                    uint64_t bucket_id = hash_function(val[0]) % buckets;
+                                    uint64_t sub_bucket_id = hash_function(val[1]) % output_sub_bucket_count[bucket_id];
+                                    int index = output_sub_bucket_rank[bucket_id][sub_bucket_id];
+                                    vector_buffer_append(&(local_join_output[iteration][index]), (unsigned char *) val, sizeof(u64) * output_arity);
+                                    //std::cout << cx1 << std::endl;
+                                    //cx1++;
+                                    process_size[iteration][index] = process_size[iteration][index] + output_arity;
+                                    cumulative_process_size[index] = cumulative_process_size[index] + output_arity;
+                                }
+                            }
+                            else
+                            {
+                                Map0* k = new Map0();
+                                k->insert(std::make_pair(it2->first, 0));
+                                tempT[input0_buffer[k1 + 1]] = k;
+                                local_join_inserts++;
+
+                                val[1] = it2->first;
+                                val[0] = input0_buffer[k1 + 1];
+                                //if (iteration == 1)
+                                    //if (iteration == 1 && rank == 0)
+                                    //std::cout << rank << " Matches " << input0_buffer[k1] << " " << input0_buffer[k1 + 1] << " | " << input0_buffer[k1] << " " <<  it2->first << std::endl;
+                                uint64_t bucket_id = hash_function(val[0]) % buckets;
+                                uint64_t sub_bucket_id = hash_function(val[1]) % output_sub_bucket_count[bucket_id];
+                                int index = output_sub_bucket_rank[bucket_id][sub_bucket_id];
+                                vector_buffer_append(&(local_join_output[iteration][index]), (unsigned char *) val, sizeof(u64) * output_arity);
+                                //std::cout << cx1 << std::endl;
+                                //cx1++;
+                                process_size[iteration][index] = process_size[iteration][index] + output_arity;
+                                cumulative_process_size[index] = cumulative_process_size[index] + output_arity;
+                            }
+                        }
+                    }
+                }
+
+                if (local_join_inserts > threshhold)
+                {
+                    //std::cout << "FINAL1 " << input0_buffer[k1] << " " << input0_buffer[k1 + 1] << " " << k1 << " Temp Count " << temp_count << std::endl;
+
+                    if (rank == 0)
+                        std::cout << "[Threshold reached A] [Local Join] " << i1_size << " " << elements_accessed << " (" << input0_buffer_size << ") " << local_join_inserts << " Offset "<< *offset << std::endl;
+
+                    for(google_relation::iterator ix = tempT.begin(); ix != tempT.end(); ix++)
+                        delete (ix->second);
+
+                    *offset = k1 + input0_arity;
+                    *local_join_count = local_join_inserts;
+                    return false;
+                }
+                elements_accessed++;
+
+                //std::cout << "FINAL2 " << input0_buffer[k1] << " " << input0_buffer[k1 + 1] << " " << k1 << " Temp Count " << temp_count << std::endl;
+
+            }
+        }
+        else if (projection_and_rename_b == 0 && projection_and_rename_c == 1)
+        {
+            for (int k1 = *offset; k1 < input0_buffer_size; k1 = k1 + input0_arity)
+            {
+                //if (iteration == 1 && rank == 0)
+                    //std::cout << "Input " << input0_buffer[k1] << " " << input0_buffer[k1 + 1] << std::endl;
+                int i = rank;
+                //for (int i = 0; i < buckets; i++)
+                {
+                    auto itd = input1[i].find(input0_buffer[k1]);
+                    if( itd != input1[i].end() )
+                    {
+                        Map0* Git = itd->second;
+                        for (auto it2 = Git->begin(); it2 != Git->end(); it2++)
+                        {
+                            auto itx = tempT.find(it2->first);
+                            if( itx != tempT.end() )
+                            {
+                                auto it2x = (itx->second)->find(input0_buffer[k1 + 1]);
+                                if( it2x != (itx->second)->end() )
+                                {
+                                    local_join_duplicates++;
+                                }
+                                else
+                                {
+                                    (itx->second)->insert(std::make_pair(input0_buffer[k1 + 1], 0));
+                                    tempT[it2->first] = itx->second;
+                                    local_join_inserts++;
+
+                                    val[0] = it2->first;
+                                    val[1] = input0_buffer[k1 + 1];
+                                    //if (iteration == 1)
+                                        //if (iteration == 1 && rank == 0)
+                                        //std::cout << rank << " Matches " << input0_buffer[k1] << " " << input0_buffer[k1 + 1] << " | " << input0_buffer[k1] << " " <<  it2->first << std::endl;
+                                    uint64_t bucket_id = hash_function(val[0]) % buckets;
+                                    uint64_t sub_bucket_id = hash_function(val[1]) % output_sub_bucket_count[bucket_id];
+                                    int index = output_sub_bucket_rank[bucket_id][sub_bucket_id];
+                                    vector_buffer_append(&(local_join_output[iteration][index]), (unsigned char *) val, sizeof(u64) * output_arity);
+                                    //std::cout << cx1 << std::endl;
+                                    //cx1++;
+                                    process_size[iteration][index] = process_size[iteration][index] + output_arity;
+                                    cumulative_process_size[index] = cumulative_process_size[index] + output_arity;
+                                }
+                            }
+                            else
+                            {
+                                Map0* k = new Map0();
+                                k->insert(std::make_pair(input0_buffer[k1 + 1], 0));
+                                tempT[it2->first] = k;
+                                local_join_inserts++;
+
+                                val[0] = it2->first;
+                                val[1] = input0_buffer[k1 + 1];
+                                //if (iteration == 1)
+                                    //if (iteration == 1 && rank == 0)
+                                    //std::cout << rank << " Matches " << input0_buffer[k1] << " " << input0_buffer[k1 + 1] << " | " << input0_buffer[k1] << " " <<  it2->first << std::endl;
+                                uint64_t bucket_id = hash_function(val[0]) % buckets;
+                                uint64_t sub_bucket_id = hash_function(val[1]) % output_sub_bucket_count[bucket_id];
+                                int index = output_sub_bucket_rank[bucket_id][sub_bucket_id];
+                                vector_buffer_append(&(local_join_output[iteration][index]), (unsigned char *) val, sizeof(u64) * output_arity);
+                                //std::cout << cx1 << std::endl;
+                                //cx1++;
+                                process_size[iteration][index] = process_size[iteration][index] + output_arity;
+                                cumulative_process_size[index] = cumulative_process_size[index] + output_arity;
+                            }
+                        }
+                    }
+                }
+
+                if (local_join_inserts > threshhold)
+                {
+                    //std::cout << "FINAL1 " << input0_buffer[k1] << " " << input0_buffer[k1 + 1] << " " << k1 << " Temp Count " << temp_count << std::endl;
+
+                    if (rank == 0)
+                        std::cout << "[Threshold reached B] [Local Join] " << i1_size << " " << elements_accessed << " (" << input0_buffer_size << ") " << local_join_inserts << " Offset "<< *offset << std::endl;
+
+                    for(google_relation::iterator ix = tempT.begin(); ix != tempT.end(); ix++)
+                        delete (ix->second);
+
+                    *offset = k1 + input0_arity;
+                    *local_join_count = local_join_inserts;
+                    return false;
+                }
+                elements_accessed++;
+
+                //std::cout << "FINAL2 " << input0_buffer[k1] << " " << input0_buffer[k1 + 1] << " " << k1 << " Temp Count " << temp_count << std::endl;
+
+            }
+
+        }
+        if (rank == 0)
+            std::cout  <<"[Join Complete] [Local Join] " << i1_size << " " << elements_accessed << " (" << input0_buffer_size << ") " << local_join_inserts << " Duplicates " << local_join_duplicates << " Offset " << *offset << std::endl;
+
+        for(google_relation::iterator ix = tempT.begin(); ix != tempT.end(); ix++)
+            delete (ix->second);
+
+        *local_join_count = local_join_inserts;
+        //*offset = input0_buffer_size + 1;
+
+        return true;
+    }
+
+
+
+
+
     void all_to_all(vector_buffer* local_join_output, int* process_size, u64 *outer_hash_buffer_size, u64 **outer_hash_data)
     {
         int nprocs = mcomm.get_nprocs();
         //int rank = mcomm.get_rank();
+
+        /* This step prepares for actual data transfer */
+        /* Every process sends to every other process the amount of data it is going to send */
+        int recv_process_size_buffer[nprocs];
+        memset(recv_process_size_buffer, 0, nprocs * sizeof(int));
+        MPI_Alltoall(process_size, 1, MPI_INT, recv_process_size_buffer, 1, MPI_INT, mcomm.get_comm());
 
         int prefix_sum_process_size[nprocs];
         memset(prefix_sum_process_size, 0, nprocs * sizeof(int));
@@ -697,13 +971,6 @@ public:
             memcpy(process_data + prefix_sum_process_size[i], (&local_join_output[i])->buffer, (&local_join_output[i])->size);
             vector_buffer_free(&local_join_output[i]);
         }
-
-        /* This step prepares for actual data transfer */
-        /* Every process sends to every other process the amount of data it is going to send */
-
-        int recv_process_size_buffer[nprocs];
-        memset(recv_process_size_buffer, 0, nprocs * sizeof(int));
-        MPI_Alltoall(process_size, 1, MPI_INT, recv_process_size_buffer, 1, MPI_INT, mcomm.get_comm());
 
         int prefix_sum_recv_process_size_buffer[nprocs];
         memset(prefix_sum_recv_process_size_buffer, 0, nprocs * sizeof(int));
@@ -727,17 +994,20 @@ public:
         return;
     }
 
-    int insert_in_newt(u64 *outer_hash_buffer_size, u64 **outer_hash_data, relation* output)
+
+
+
+    int insert_in_newt(u64 outer_hash_buffer_size, u64 *outer_hash_data, relation* output)
     {
         int rank = mcomm.get_rank();
         u32 arity = output->get_arity();
         u32 successful_insert = 0;
         u64 t[2];
 
-        for (u64 i = 0; i < *outer_hash_buffer_size; i = i + arity)
+        for (u64 i = 0; i < outer_hash_buffer_size; i = i + arity)
         {
-            t[0] = (*outer_hash_data)[i];
-            t[1] = (*outer_hash_data)[i + 1];
+            t[0] = outer_hash_data[i];
+            t[1] = outer_hash_data[i + 1];
 
             if (output->find_in_full(t) == false)
             {
@@ -752,10 +1022,13 @@ public:
             std::cout << "Local Inserts in new " << successful_insert << " (" << new_count << ")" << std::endl;
         }
 
-        delete[] (*outer_hash_data);
 
         return successful_insert;
     }
+
+
+
+
 
 
 };

@@ -78,10 +78,23 @@ int main(int argc, char **argv)
     scc1.push_back(join_1);
     scc1.push_back(join_2);
     scc1.push_back(copy_0);
+
+    scc1.set_threshold(atoi(argv[3]));
+
+    if (atoi(argv[2]) == 1)
+        scc1.enable_comm_compaction();
+    else
+        scc1.disable_comm_compaction();
+
     scc1.execute();
 
     delete T0;
     delete T1;
+
+    delete join_0;
+    delete join_1;
+    delete join_2;
+    delete copy_0;
 
     mcomm.destroy();
 #endif
