@@ -357,9 +357,6 @@ public:
                 counter++;
             }
 
-            if (mcomm.get_rank() == 0)
-                std::cout << "ALWAYS " << std::endl;
-
             delete[] clique_buf_output_size;
             delete[] clique_buf_output;
             return true;
