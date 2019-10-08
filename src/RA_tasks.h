@@ -42,6 +42,7 @@ public:
 
     RAM(mpi_comm mcomm)
     {
+        this->comm_compaction = false;
         this->threshold = 1000000;
         this->mcomm = mcomm;
     }

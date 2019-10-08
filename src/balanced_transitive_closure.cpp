@@ -47,6 +47,7 @@ int main(int argc, char **argv)
 #if 1
     RAM scc1(mcomm);
     scc1.push_back(join_1);
+    scc1.set_threshold(atoi(argv[2]));
     scc1.execute();
 #endif
 
