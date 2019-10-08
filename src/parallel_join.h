@@ -1019,7 +1019,7 @@ public:
         if (rank == 0)
         {
             int new_count = output->get_new_element_count();
-            std::cout << "Local Inserts in new " << successful_insert << " (" << new_count << ")" << std::endl;
+            std::cout << "[A] Local Inserts in new " << successful_insert << " (" << new_count << ")" << std::endl;
         }
 
 

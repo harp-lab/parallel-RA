@@ -756,6 +756,8 @@ public:
 
         double start_time = MPI_Wtime();
 
+        int outer_loop = 0;
+
 
 
         if (comm_compaction== false)
@@ -788,6 +790,9 @@ public:
                 insert_full_end = MPI_Wtime();
                 running_insert_in_full_time = running_insert_in_full_time + (insert_full_end - insert_full_start);
 
+                if (local_join_status == true)
+                    outer_loop++;
+
 
                 //if (rank == 0)
                 //std::cout << "ITERATION [" << iteration <<"] " <<  local_join_count << " " << all_to_all_count << " " << insert_in_full_count << std::endl;
@@ -803,7 +808,7 @@ public:
                     running_time = running_time + iteration_time;
 
                     if (rank == 0)
-                        std::cout << "T NCC [" << iteration << "] " << running_time << " " << iteration_time
+                        std::cout << "T NCC OL " << outer_loop << " [" << iteration << "] " << running_time << " " << iteration_time
                                   << " Clique " <<  (clique_end - clique_start)
                                   << " Local Join " <<  (local_join_end - local_join_start)
                                   << " All to All " <<  (all_to_all_end - all_to_all_start)
@@ -821,7 +826,7 @@ public:
                 running_time = running_time + iteration_time;
 
                 if (rank == 0)
-                    std::cout << "F NCC [" << iteration << "] " << running_time << " " << iteration_time
+                    std::cout << "F NCC OL " << outer_loop << " [" << iteration << "] " << running_time << " " << iteration_time
                               << " Clique " <<  (clique_end - clique_start)
                               << " Local Join " <<  (local_join_end - local_join_start)
                               << " All to All " <<  (all_to_all_end - all_to_all_start)
@@ -867,7 +872,8 @@ public:
                 insert_full_end = MPI_Wtime();
                 running_insert_in_full_time = running_insert_in_full_time + (insert_full_end - insert_full_start);
 
-
+                if (local_join_status == true)
+                    outer_loop++;
 
                 //if (rank == 0)
                 //std::cout << "ITERATION [" << iteration <<"] " <<  local_join_count << " " << all_to_all_count << " " << insert_in_full_count << std::endl;
@@ -883,7 +889,7 @@ public:
                     running_time = running_time + iteration_time;
 
                     if (rank == 0)
-                        std::cout << "T CC [" << iteration << "] " << running_time << " " << iteration_time
+                        std::cout << "T CC OL " << outer_loop << " [" << iteration << "] " << running_time << " " << iteration_time
                                   << " Clique " <<  (clique_end - clique_start)
                                   << " Local Join " <<  (local_join_end - local_join_start)
                                   << " All to All " <<  (all_to_all_end - all_to_all_start)
@@ -901,7 +907,7 @@ public:
                 running_time = running_time + iteration_time;
 
                 if (rank == 0)
-                    std::cout << "F CC [" << iteration << "] " << running_time << " " << iteration_time
+                    std::cout << "F CC OL " << outer_loop << " [" << iteration << "] " << running_time << " " << iteration_time
                               << " Clique " <<  (clique_end - clique_start)
                               << " Local Join " <<  (local_join_end - local_join_start)
                               << " All to All " <<  (all_to_all_end - all_to_all_start)
