@@ -357,6 +357,9 @@ public:
                 counter++;
             }
 
+            if (mcomm.get_rank() == 0)
+                std::cout << "ALWAYS " << std::endl;
+
             delete[] clique_buf_output_size;
             delete[] clique_buf_output;
             return true;
@@ -757,6 +760,7 @@ public:
         double start_time = MPI_Wtime();
 
         int outer_loop = 0;
+        int inner_loop = 0;
 
 
 
@@ -791,7 +795,10 @@ public:
                 running_insert_in_full_time = running_insert_in_full_time + (insert_full_end - insert_full_start);
 
                 if (local_join_status == true)
+                {
+                    inner_loop = 0;
                     outer_loop++;
+                }
 
 
                 //if (rank == 0)
@@ -808,7 +815,7 @@ public:
                     running_time = running_time + iteration_time;
 
                     if (rank == 0)
-                        std::cout << "T NCC OL " << outer_loop << " [" << iteration << "] " << running_time << " " << iteration_time
+                        std::cout << "T NCC OL " << outer_loop << " IL " << inner_loop << " [" << iteration << "] " << running_time << " " << iteration_time
                                   << " Clique " <<  (clique_end - clique_start)
                                   << " Local Join " <<  (local_join_end - local_join_start)
                                   << " All to All " <<  (all_to_all_end - all_to_all_start)
@@ -826,7 +833,7 @@ public:
                 running_time = running_time + iteration_time;
 
                 if (rank == 0)
-                    std::cout << "F NCC OL " << outer_loop << " [" << iteration << "] " << running_time << " " << iteration_time
+                    std::cout << "F NCC OL " << outer_loop << " IL " << inner_loop << " [" << iteration << "] " << running_time << " " << iteration_time
                               << " Clique " <<  (clique_end - clique_start)
                               << " Local Join " <<  (local_join_end - local_join_start)
                               << " All to All " <<  (all_to_all_end - all_to_all_start)
@@ -837,6 +844,7 @@ public:
                               << std::endl
                               << std::endl;
 
+                inner_loop++;
                 iteration++;
             }
         }
@@ -873,7 +881,10 @@ public:
                 running_insert_in_full_time = running_insert_in_full_time + (insert_full_end - insert_full_start);
 
                 if (local_join_status == true)
+                {
+                    inner_loop = 0;
                     outer_loop++;
+                }
 
                 //if (rank == 0)
                 //std::cout << "ITERATION [" << iteration <<"] " <<  local_join_count << " " << all_to_all_count << " " << insert_in_full_count << std::endl;
@@ -889,7 +900,7 @@ public:
                     running_time = running_time + iteration_time;
 
                     if (rank == 0)
-                        std::cout << "T CC OL " << outer_loop << " [" << iteration << "] " << running_time << " " << iteration_time
+                        std::cout << "T CC OL " << outer_loop << " IL " << inner_loop << " [" << iteration << "] " << running_time << " " << iteration_time
                                   << " Clique " <<  (clique_end - clique_start)
                                   << " Local Join " <<  (local_join_end - local_join_start)
                                   << " All to All " <<  (all_to_all_end - all_to_all_start)
@@ -907,7 +918,7 @@ public:
                 running_time = running_time + iteration_time;
 
                 if (rank == 0)
-                    std::cout << "F CC OL " << outer_loop << " [" << iteration << "] " << running_time << " " << iteration_time
+                    std::cout << "F CC OL " << outer_loop << " IL " << inner_loop << " [" << iteration << "] " << running_time << " " << iteration_time
                               << " Clique " <<  (clique_end - clique_start)
                               << " Local Join " <<  (local_join_end - local_join_start)
                               << " All to All " <<  (all_to_all_end - all_to_all_start)
@@ -918,6 +929,7 @@ public:
                               << std::endl
                               << std::endl;
 
+                inner_loop++;
                 iteration++;
             }
 

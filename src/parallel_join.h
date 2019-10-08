@@ -934,7 +934,7 @@ public:
             delete (ix->second);
 
         *local_join_count = local_join_inserts;
-        //*offset = input0_buffer_size + 1;
+        *offset = input0_buffer_size + 1;
 
         return true;
     }
