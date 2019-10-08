@@ -614,7 +614,7 @@ public:
                     //std::cout << "FINAL1 " << input0_buffer[k1] << " " << input0_buffer[k1 + 1] << " " << k1 << " Temp Count " << temp_count << std::endl;
 
                     if (rank == 0)
-                        std::cout << "[Threshold reached A] [Local Join] " << i1_size << " " << elements_accessed << " (" << input0_buffer_size << ") " << local_join_inserts << " Offset "<< *offset << std::endl;
+                        std::cout << "[Threshold reached A] [Local Join] " << i1_size << " " << elements_accessed << " (" << input0_buffer_size << ") " << local_join_inserts << " Offset "<< *offset << " Duplicates " << local_join_duplicates << std::endl;
 
                     for(google_relation::iterator ix = tempT.begin(); ix != tempT.end(); ix++)
                         delete (ix->second);
@@ -699,7 +699,7 @@ public:
                     //std::cout << "FINAL1 " << input0_buffer[k1] << " " << input0_buffer[k1 + 1] << " " << k1 << " Temp Count " << temp_count << std::endl;
 
                     if (rank == 0)
-                        std::cout << "[Threshold reached B] [Local Join] " << i1_size << " " << elements_accessed << " (" << input0_buffer_size << ") " << local_join_inserts << " Offset "<< *offset << std::endl;
+                        std::cout << "[Threshold reached B] [Local Join] " << i1_size << " " << elements_accessed << " (" << input0_buffer_size << ") " << local_join_inserts << " Offset "<< *offset << " Duplicates " << local_join_duplicates << std::endl;
 
                     for(google_relation::iterator ix = tempT.begin(); ix != tempT.end(); ix++)
                         delete (ix->second);
@@ -822,7 +822,7 @@ public:
                     //std::cout << "FINAL1 " << input0_buffer[k1] << " " << input0_buffer[k1 + 1] << " " << k1 << " Temp Count " << temp_count << std::endl;
 
                     if (rank == 0)
-                        std::cout << "[Threshold reached A] [Local Join] " << i1_size << " " << elements_accessed << " (" << input0_buffer_size << ") " << local_join_inserts << " Offset "<< *offset << std::endl;
+                        std::cout << "[Threshold reached A] [Local Join] " << i1_size << " " << elements_accessed << " (" << input0_buffer_size << ") " << local_join_inserts << " Offset "<< *offset << " Duplicates " << local_join_duplicates << std::endl;
 
                     for(google_relation::iterator ix = tempT.begin(); ix != tempT.end(); ix++)
                         delete (ix->second);
@@ -911,7 +911,7 @@ public:
                     //std::cout << "FINAL1 " << input0_buffer[k1] << " " << input0_buffer[k1 + 1] << " " << k1 << " Temp Count " << temp_count << std::endl;
 
                     if (rank == 0)
-                        std::cout << "[Threshold reached B] [Local Join] " << i1_size << " " << elements_accessed << " (" << input0_buffer_size << ") " << local_join_inserts << " Offset "<< *offset << std::endl;
+                        std::cout << "[Threshold reached B] [Local Join] " << i1_size << " " << elements_accessed << " (" << input0_buffer_size << ") " << local_join_inserts << " Offset "<< *offset << " Duplicates " << local_join_duplicates << std::endl;
 
                     for(google_relation::iterator ix = tempT.begin(); ix != tempT.end(); ix++)
                         delete (ix->second);
@@ -928,7 +928,7 @@ public:
 
         }
         if (rank == 0)
-            std::cout  <<"[Join Complete] [Local Join] " << i1_size << " " << elements_accessed << " (" << input0_buffer_size << ") " << local_join_inserts << " Duplicates " << local_join_duplicates << " Offset " << *offset << std::endl;
+            std::cout  <<"[Join Complete] [Local Join] " << i1_size << " " << elements_accessed << " (" << input0_buffer_size << ") " << local_join_inserts << " Duplicates " << local_join_duplicates << " Offset " << *offset << " Duplicates " << local_join_duplicates << std::endl;
 
         for(google_relation::iterator ix = tempT.begin(); ix != tempT.end(); ix++)
             delete (ix->second);
