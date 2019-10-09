@@ -61,6 +61,7 @@ int main(int argc, char **argv)
     join_1->join_output(T0);
     join_1->set_join_projection_index(-1, 0, 1);
 
+
     parallel_RA* join_2 = new parallel_RA(JOIN, mcomm);
     join_2->join_input0(T1, DELTA);
     join_2->join_input1(T0, FULL);

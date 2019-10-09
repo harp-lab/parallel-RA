@@ -82,7 +82,7 @@ public:
 
                 if (rank == 0)
                 {
-                    std::cout << "Output 1 " << s0 << std::endl;
+                    std::cout << "T Size 1 " << s0 << std::endl;
                 }
             }
         }
@@ -804,6 +804,7 @@ public:
 
 
                 verify_start = MPI_Wtime();
+                print_full();
                 if (check_for_fixed_point(local_join_status) == true)
                 {
                     verify_end = MPI_Wtime();
