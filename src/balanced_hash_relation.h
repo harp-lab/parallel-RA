@@ -74,7 +74,6 @@ private:
     u32 *delta_bucket_element_count;   // TODO (implement this carefully)
 
     u32 *sub_bucket_count;          // sub_bucket_count[i] holds the total number of sub-buckets at bucket index i
-    u32 *balanced_sub_bucket_count;
     u32** sub_bucket_rank;
     int** distinct_sub_bucket_rank;
     int* distinct_sub_bucket_rank_count;
@@ -104,6 +103,24 @@ public:
     {
         return distinct_sub_bucket_rank;
     }
+
+
+    u32** get_full_sub_bucket_element_count()
+    {
+        return full_sub_bucket_element_count;
+    }
+
+
+    u32** get_delta_sub_bucket_element_count()
+    {
+        return delta_sub_bucket_element_count;
+    }
+
+    u32** get_new_sub_bucket_element_count()
+    {
+        return newt_sub_bucket_element_count;
+    }
+
 
     u32* get_sub_bucket_count()
     {
@@ -184,9 +201,18 @@ public:
         delete[] delta;
         delta = newt;
         delta_element_count = newt_element_count;
-        int buckets = mcomm.get_number_of_buckets();
+
+        u32 buckets = mcomm.get_number_of_buckets();
+        memcpy(delta_bucket_element_count, newt_bucket_element_count, buckets * sizeof(u32));
+        for (u32 b = 0; b < buckets; b++)
+        {
+            memcpy(delta_sub_bucket_element_count[b], newt_sub_bucket_element_count[b], sub_bucket_count[b] * sizeof(u32));
+            memset(newt_sub_bucket_element_count[b], 0, sub_bucket_count[b] * sizeof(u32));
+        }
+
         newt = new google_relation[buckets];
         newt_element_count = 0;
+        memset(newt_bucket_element_count, 0, buckets * sizeof(u32));
 
         if (rank == 0)
             std::cout << "[Pointer copy from new to delta] " << delta_element_count << std::endl;
@@ -308,7 +334,7 @@ public:
         int rank = mcomm.get_rank();
         int nprocs = mcomm.get_nprocs();
 
-        std::cout << "Initialize " << buckets << std::endl;
+        //std::cout << "Initialize " << buckets << std::endl;
 
 
         full_element_count = 0;
@@ -392,7 +418,7 @@ public:
             initialize_delta(file_io.get_hash_buffer_size(), file_io.get_hash_buffer());
         else if (full_delta == FULL)
         {
-            std::cout << "COL Count " << file_io.get_col_count() << " ROW Count " << file_io.get_hash_buffer_size() << std::endl;
+            //std::cout << "COL Count " << file_io.get_col_count() << " ROW Count " << file_io.get_hash_buffer_size() << std::endl;
             initialize_full(file_io.get_hash_buffer_size(), file_io.get_hash_buffer());
         }
         else if (full_delta == FULL_AND_DELTA)
@@ -575,7 +601,7 @@ public:
 
             insert_in_full(t);
         }
-        std::cout << "Finish Looping " << full_element_count << std::endl;
+        //std::cout << "Finish Looping " << full_element_count << std::endl;
     }
 
 
@@ -744,6 +770,7 @@ public:
     {
         u32 buckets = mcomm.get_number_of_buckets();
         uint64_t bucket_id = hash_function(t[0]) % buckets;
+        u32 sub_bucket_id = hash_function(t[1]) % sub_bucket_count[bucket_id];
         auto it = delta[bucket_id].find(t[0]);
         if( it != delta[bucket_id].end() )
         {
@@ -757,6 +784,7 @@ public:
                 delta[bucket_id].insert(std::make_pair(t[0],it->second));
                 delta_element_count++;
                 delta_bucket_element_count[bucket_id]++;
+                delta_sub_bucket_element_count[bucket_id][sub_bucket_id]++;
                 bucket_map[bucket_id] = 1;
                 return true;
             }
@@ -767,6 +795,7 @@ public:
             delta[bucket_id].insert(std::make_pair(t[0],k));
             delta_element_count++;
             delta_bucket_element_count[bucket_id]++;
+            delta_sub_bucket_element_count[bucket_id][sub_bucket_id]++;
             bucket_map[bucket_id] = 1;
             return true;
         }
@@ -777,6 +806,7 @@ public:
     {
         u32 buckets = mcomm.get_number_of_buckets();
         uint64_t bucket_id = hash_function(t[0]) % buckets;
+        u32 sub_bucket_id = hash_function(t[1]) % sub_bucket_count[bucket_id];
 
         auto it = newt[bucket_id].find(t[0]);
         if( it != newt[bucket_id].end() )
@@ -791,6 +821,7 @@ public:
                 newt[bucket_id].insert(std::make_pair(t[0],it->second));
                 newt_element_count++;
                 newt_bucket_element_count[bucket_id]++;
+                newt_sub_bucket_element_count[bucket_id][sub_bucket_id]++;
                 bucket_map[bucket_id] = 1;
                 return true;
             }
@@ -801,6 +832,7 @@ public:
             newt[bucket_id].insert(std::make_pair(t[0],k));
             newt_element_count++;
             newt_bucket_element_count[bucket_id]++;
+            newt_sub_bucket_element_count[bucket_id][sub_bucket_id]++;
             bucket_map[bucket_id] = 1;
             return true;
         }
@@ -810,8 +842,10 @@ public:
 
     bool insert_in_full(u64* t)
     {
+
         u32 buckets = mcomm.get_number_of_buckets();
         uint64_t bucket_id = hash_function(t[0]) % buckets;
+        u32 sub_bucket_id = hash_function(t[1]) % sub_bucket_count[bucket_id];
         auto it = full[bucket_id].find(t[0]);
         if( it != full[bucket_id].end() )
         {
@@ -825,6 +859,7 @@ public:
                 full[bucket_id].insert(std::make_pair(t[0],it->second));
                 full_element_count++;
                 full_bucket_element_count[bucket_id]++;
+                full_sub_bucket_element_count[bucket_id][sub_bucket_id]++;
                 bucket_map[bucket_id] = 1;
                 return true;
             }
@@ -835,6 +870,7 @@ public:
             full[bucket_id].insert(std::make_pair(t[0],k));
             full_element_count++;
             full_bucket_element_count[bucket_id]++;
+            full_sub_bucket_element_count[bucket_id][sub_bucket_id]++;
             bucket_map[bucket_id] = 1;
             return true;
         }
@@ -844,13 +880,13 @@ public:
     int insert_delta_in_full()
     {
         int rank = mcomm.get_rank();
-        //int buckets = mcomm.get_number_of_buckets();
+        int buckets = mcomm.get_number_of_buckets();
         u32 insert_success = 0;
         u32 insert_attempts = 0;
 
         u64 t[arity];
-        int i = rank;
-        //for (int i = 0; i < buckets; i++)
+        //int i = rank;
+        for (int i = 0; i < buckets; i++)
         {
             if (bucket_map[i] == 1)
             {

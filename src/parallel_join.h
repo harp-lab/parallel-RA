@@ -173,7 +173,18 @@ public:
     u32 full_count(relation* output)
     {
         int sum = 0;
-        int full_element_count = output->get_full_element_count();
+        //int full_element_count = output->get_full_element_count();
+        int full_element_count = 0;
+        int buckets = mcomm.get_number_of_buckets();
+        u32* sub_bucket = output->get_sub_bucket_count();
+        u32** sub_bucket_size = output->get_full_sub_bucket_element_count();
+
+        for (int b = 0; b < buckets; b++)
+        {
+            for (u32 c = 0; c < sub_bucket[b]; c++)
+                full_element_count = full_element_count + sub_bucket_size[b][c];
+        }
+
         MPI_Allreduce(&full_element_count, &sum, 1, MPI_INT, MPI_SUM, mcomm.get_comm());
         return sum;
     }
@@ -182,12 +193,9 @@ public:
 
     void clique_comm(int input_arity, google_relation *full, u32 full_size, int* input_distinct_sub_bucket_rank_count, int** input_distinct_sub_bucket_rank, u32* input_bucket_map, relation* output, u64 *total_buffer_size, u64 **recvbuf)
     {
-#if 0
+#if 1
         u32 buckets = mcomm.get_number_of_buckets();
-        int rank;
-        rank = mcomm.get_rank();
-
-
+        //int rank = mcomm.get_rank();
         //u32 nprocs = mcomm.get_nprocs();
 
         vector_buffer *input_buffer = new vector_buffer[buckets];
@@ -258,8 +266,8 @@ public:
             bucket_offset[i] = *total_buffer_size;
             for (int r = 0; r < input_distinct_sub_bucket_rank_count[i]; r++)
             {
-                if (rank == 0)
-                    std::cout << "meta_buffer_size[i][r] " << meta_buffer_size[i][r] << std::endl;
+                //if (rank == 0)
+                //    std::cout << "meta_buffer_size[i][r] " << meta_buffer_size[i][r] << std::endl;
                 *total_buffer_size = *total_buffer_size + meta_buffer_size[i][r];
             }
 
@@ -267,11 +275,11 @@ public:
             delete[] stat1;
         }
 
+#if 0
         u64 global_send_buffer_size1 = 0;
         u64 global_send_buffer_size2 = 0;
         MPI_Allreduce(&total_send_buffer_size, &global_send_buffer_size1, 1, MPI_UNSIGNED_LONG_LONG, MPI_SUM, MPI_COMM_WORLD);
         MPI_Allreduce(total_buffer_size, &global_send_buffer_size2, 1, MPI_UNSIGNED_LONG_LONG, MPI_SUM, MPI_COMM_WORLD);
-
 
         std::cout << "total_send_buffer_size = " << total_send_buffer_size << std::endl;
         std::cout << "*total_buffer_size = " << *total_buffer_size << std::endl;
@@ -279,6 +287,7 @@ public:
         {
             std::cout << "[VERIFY CLIQUE] " << global_send_buffer_size1 << " " << global_send_buffer_size2 << std::endl;
         }
+#endif
 
         /* Allocate buffer */
         //std::cout << "CLIQUE BUFFER SIZE " << *total_buffer_size << std::endl;
@@ -332,8 +341,7 @@ public:
         delete[] input_buffer_size;
         delete[] bucket_offset;
 #endif
-
-
+#if 0
         *recvbuf = new u64[full_size * 2];
         *total_buffer_size = full_size * 2;
         u32 c = 0;
@@ -356,7 +364,7 @@ public:
         }
         //std::cout << "full_size " << full_size * 2<< std::endl;
         //std::cout << "c " << c<< std::endl;
-
+#endif
         return;
     }
 
@@ -374,9 +382,9 @@ public:
         u32 input0_buffer_size = 0;
 
 
-        int i = rank;
+        //int i = rank;
         //for (int k1 = 0; k1 < input0_buffer_size; k1=k1+input0_arity)
-        //for (int i = 0; i < buckets; i++)
+        for (int i = 0; i < buckets; i++)
         {
             if (bucket_map[i] == 1)
             {
@@ -421,9 +429,9 @@ public:
 
 
         //int cy1 = 0;
-        int i = rank;
+        //int i = rank;
         //for (int k1 = 0; k1 < input0_buffer_size; k1=k1+input0_arity)
-        //for (int i = 0; i < buckets; i++)
+        for (int i = 0; i < buckets; i++)
         {
             if (bucket_map[i] == 1)
             {
@@ -551,8 +559,8 @@ public:
             {
                 //if (iteration == 1 && rank == 0)
                     //std::cout << "Input " << input0_buffer[k1] << " " << input0_buffer[k1 + 1] << std::endl;
-                int i = rank;
-                //for (int i = 0; i < buckets; i++)
+                //int i = rank;
+                for (int i = 0; i < buckets; i++)
                 {
                     auto itd = input1[i].find(input0_buffer[k1]);
                     if( itd != input1[i].end() )
@@ -635,8 +643,8 @@ public:
             {
                 //if (iteration == 1 && rank == 0)
                     //std::cout << "Input " << input0_buffer[k1] << " " << input0_buffer[k1 + 1] << std::endl;
-                int i = rank;
-                //for (int i = 0; i < buckets; i++)
+                //int i = rank;
+                for (int i = 0; i < buckets; i++)
                 {
                     auto itd = input1[i].find(input0_buffer[k1]);
                     if( itd != input1[i].end() )
@@ -754,8 +762,8 @@ public:
         {
             for (int k1 = *offset; k1 < input0_buffer_size; k1 = k1 + input0_arity)
             {
-                int i = rank;
-                //for (int i = 0; i < buckets; i++)
+                //int i = rank;
+                for (int i = 0; i < buckets; i++)
                 {
                     auto itd = input1[i].find(input0_buffer[k1]);
                     if( itd != input1[i].end() )
@@ -843,8 +851,8 @@ public:
             {
                 //if (iteration == 1 && rank == 0)
                     //std::cout << "Input " << input0_buffer[k1] << " " << input0_buffer[k1 + 1] << std::endl;
-                int i = rank;
-                //for (int i = 0; i < buckets; i++)
+                //int i = rank;
+                for (int i = 0; i < buckets; i++)
                 {
                     auto itd = input1[i].find(input0_buffer[k1]);
                     if( itd != input1[i].end() )
@@ -1019,7 +1027,7 @@ public:
         if (rank == 0)
         {
             int new_count = output->get_new_element_count();
-            std::cout << "[A] Local Inserts in new " << successful_insert << " (" << new_count << ")" << std::endl;
+            std::cout << "[A] Local Inserts in new " << successful_insert << " Tried to inset " << outer_hash_buffer_size/2 << " New count (" << new_count << ")" << std::endl;
         }
 
 
