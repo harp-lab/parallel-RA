@@ -876,7 +876,7 @@ public:
                 continue;
 
             if (global_max[i] > global_min * rf * 0.8)
-            //if (global_max[i] > global_min * rf)
+                //if (global_max[i] > global_min * rf)
             {
                 global_new_sub_bucket[i] = global_new_sub_bucket[i] * rf;
                 count++;
@@ -1484,12 +1484,9 @@ public:
         int itx = 10;
         if (comm_compaction== false)
         {
-            while (true)
             //while (itx != 0)
+            while (true)
             {
-
-
-
                 clique_start = MPI_Wtime();
                 clique_comm(local_join_status);
                 clique_end = MPI_Wtime();
@@ -1516,27 +1513,19 @@ public:
                 insert_full_end = MPI_Wtime();
                 running_insert_in_full_time = running_insert_in_full_time + (insert_full_end - insert_full_start);
 
+
+                lb_start = MPI_Wtime();
                 if (refinement_ts != 0)
-                {
-                if (outer_loop % refinement_ts == 0)
-                {
-                    lb_start = MPI_Wtime();
-                    load_balance(local_join_status, refinement_factor);
-                    lb_end = MPI_Wtime();
-                    running_lb = running_lb + (lb_end - lb_start);
-                }
-                }
+                    if (outer_loop % refinement_ts == 0)
+                        load_balance(local_join_status, refinement_factor);
 
                 if (local_join_status == true)
                 {
                     inner_loop = 0;
                     outer_loop++;
                 }
-
-
-                //if (rank == 0)
-                //std::cout << "ITERATION [" << iteration <<"] " <<  local_join_count << " " << all_to_all_count << " " << insert_in_full_count << std::endl;
-                //std::cout << "RUNNING ITERATION [" << iteration <<"] " << running_clique_comm_count << " " << running_local_join_count << " " << running_all_to_all_count << " " << running_insert_in_full_count << " " << running_insert_in_delta << std::endl;
+                lb_end = MPI_Wtime();
+                running_lb = running_lb + (lb_end - lb_start);
 
 
                 verify_start = MPI_Wtime();
@@ -1585,6 +1574,7 @@ public:
                 itx--;
             }
         }
+#if 0
         else
         {
             while (true)
@@ -1669,13 +1659,24 @@ public:
                 inner_loop++;
                 iteration++;
             }
-
         }
+#endif
         double end_time = MPI_Wtime();
         delete[] offset;
 
         if (rank == 0)
-            std::cout << "Threshold " << threshold << " Total Time: [" << (end_time - start_time) << " " << running_time << " " << (running_clique_comm_time + running_local_join_time + running_all_to_all_time + running_insert_in_newt_time + running_insert_in_full_time + running_lb + running_verify_time) << "] Clique " << running_clique_comm_time << " LJ " << running_local_join_time << " A2A " << running_all_to_all_time << " Insert in new " << running_insert_in_newt_time << " Insert in full " << running_insert_in_full_time << " LB " << running_lb << " FPC " << running_verify_time << " ";
+            std::cout << "Threshold " << threshold
+                      << " Total Time: [" << (end_time - start_time)
+                      << " " << running_time
+                      << " "
+                      << (running_clique_comm_time + running_local_join_time + running_all_to_all_time + running_insert_in_newt_time + running_insert_in_full_time + running_lb + running_verify_time)
+                      << "] Clique " << running_clique_comm_time
+                      << " LJ " << running_local_join_time
+                      << " A2A " << running_all_to_all_time
+                      << " Insert in new " << running_insert_in_newt_time
+                      << " Insert in full " << running_insert_in_full_time
+                      << " LB " << running_lb
+                      << " FPC " << running_verify_time << " ";
         print_full();
     }
 
