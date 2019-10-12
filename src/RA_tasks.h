@@ -21,6 +21,10 @@ private:
     bool comm_compaction;
     u32 threshold;
 
+    double refinement_factor;
+
+    u32 refinement_ts;
+
     std::vector<parallel_RA*> RA_list;
 
     u64 *clique_buf_output_size;
@@ -701,7 +705,7 @@ public:
     }
 
 
-    void load_balance(bool local_join_status)
+    void load_balance(bool local_join_status, float r_factor)
     {
         if (local_join_status == false)
             return;
@@ -722,8 +726,8 @@ public:
             if (current_ra->get_RA_type() == JOIN)
             {
                 relation* input1 = current_ra->get_join_input1();
-                if (load_balance_merge_full_and_delta(input1) == false)
-                    load_balance_split_full_and_delta(input1);
+                if (load_balance_merge_full_and_delta(input1, r_factor) == false)
+                    load_balance_split_full_and_delta(input1, r_factor);
                 break;
             }
         }
@@ -785,7 +789,7 @@ public:
 
 
 
-    bool load_balance_split_full_and_delta(relation* rel)
+    bool load_balance_split_full_and_delta(relation* rel, float rf)
     {
         u32 rank = (u32)mcomm.get_rank();
         int nprocs = mcomm.get_nprocs();
@@ -806,13 +810,8 @@ public:
         int *max_sub_bucket_size = new int[buckets];
         memset(max_sub_bucket_size, 0, buckets * sizeof(int));
 
-        /*
-        if (rank == 0)
-            for (int y = 0; y < buckets; y++)
-                std::cout << "11 Y " << y << " " << bucket_map[y] << std::endl;
-                */
 
-#if 1
+#if 0
         u64 T_tuple_count_before = 0;
         u64 T_tuple_count_before_global = 0;
 
@@ -841,12 +840,8 @@ public:
         {
             if (bucket_map[i] == 1)
             {
-                //if (rank == 0)
-                //    std::cout << "XXXX " << std::endl;
                 for (u32 j = 0; j < sub_bucket_count[i]; j++)
                 {
-                    //if (rank == 0)
-                    //    std::cout << "XXXX " << i << " " << j << " " << full_sub_bucket_size[i][j] <<  std::endl;
                     if (full_sub_bucket_size[i][j] != 0)
                     {
                         if ((int)full_sub_bucket_size[i][j] > max_sub_bucket_size[i])
@@ -865,35 +860,49 @@ public:
         int global_min;
         MPI_Allreduce(max_sub_bucket_size, global_max, buckets, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
         MPI_Allreduce(&min_sub_bucket_size, &global_min, 1, MPI_INT, MPI_MIN, MPI_COMM_WORLD);
+        delete[] max_sub_bucket_size;
 
         u32 global_new_sub_bucket[buckets];
         memcpy(global_new_sub_bucket, sub_bucket_count, buckets * sizeof(u32));
 
         int count = 0;
+        int old_total_sub_buckets = 0;
+        int new_total_sub_buckets = 0;
+        int global_global_max = 0;
+        int average_global_max = 0;
         for (int i = 0; i < buckets; i++)
         {
             if (global_new_sub_bucket[i] >= (u32)nprocs)
                 continue;
 
-            //if (rank == 0)
-            //    std::cout << "i " << i << " " << global_max[i] << " " << global_min << std::endl;
-            if (global_max[i] > global_min * 4)
+            if (global_max[i] > global_min * rf * 0.8)
+            //if (global_max[i] > global_min * rf)
             {
-                global_new_sub_bucket[i] = global_new_sub_bucket[i] * 4;
+                global_new_sub_bucket[i] = global_new_sub_bucket[i] * rf;
                 count++;
             }
+
+            average_global_max = average_global_max + global_max[i];
+
+            if (global_global_max < global_max[i])
+                global_global_max = global_max[i];
+
+
+            old_total_sub_buckets = old_total_sub_buckets + sub_bucket_count[i];
+            new_total_sub_buckets = new_total_sub_buckets + global_new_sub_bucket[i];
         }
+        delete[] global_max;
 
         if (count == 0)
         {
             if (rank == 0)
-                std::cout << "[NO] Bucket Split" << std::endl;
+                std::cout << "[NO] RF " << rf << " Bucket Split -- Global Min " << global_min << " Global Max [" << global_global_max << " " << average_global_max/buckets  << "] OLD " << old_total_sub_buckets << " NEW " << new_total_sub_buckets << std::endl;
             return false;
         }
         else if (count != 0)
         {
             if (rank == 0)
-                std::cout << "[YES] Bucket Split" << std::endl;
+                std::cout << "[YES] RF " << rf << " Bucket Split -- Global Min " << global_min << " Global Max [" << global_global_max << " " << average_global_max/buckets  << "] OLD " << old_total_sub_buckets << " NEW " << new_total_sub_buckets << std::endl;
         }
 
 
@@ -945,26 +954,11 @@ public:
             //    std::cout << "GNSB " << b << " " << global_new_sub_bucket[b] << std::endl;
         }
 
-        /*
-        if (rank == 0)
-        {
-            for (int b = 0; b < buckets; b++)
-            {
-                for (u32 y = 0; y < global_new_sub_bucket[b]; y++)
-                    std::cout << "XXXX Bucket " << b << " " << sub_bucket_rank[b][y] << std::endl;
-            }
-        }
-        */
 
         u32* old_sub_bucket_count = new u32[buckets];
         memcpy(old_sub_bucket_count, sub_bucket_count, buckets * sizeof(u32));
         memcpy(sub_bucket_count, global_new_sub_bucket, sizeof(u32) * buckets);
 
-        /*
-        if (rank == 0)
-            for (int y = 0; y < buckets; y++)
-                std::cout << "22 Y " << y << " " << bucket_map[y] << std::endl;
-        */
 
         int process_size[nprocs];
         memset(process_size, 0, nprocs * sizeof(int));
@@ -1065,6 +1059,7 @@ public:
         u64 outer_hash_buffer_size = 0;
         u64* outer_hash_data;
         all_to_all_comm(process_data_vector, process_size, &outer_hash_buffer_size, &outer_hash_data);
+        free(process_data_vector);
 
         //if (rank == 0)
         //    std::cout << "outer_hash_buffer_size " << outer_hash_buffer_size <<std::endl;
@@ -1074,11 +1069,6 @@ public:
         {
             t[0] = outer_hash_data[in];
             t[1] = outer_hash_data[in + 1];
-            //if (rank == 0)
-            //{
-            //    std::cout << "RCVD " << t[0] << " " << t[1] << " rank " << hash_function(t[0]) << " " << hash_function(t[0]) % buckets << std::endl;
-            //}
-            //assert(hash_function(t[0]) % buckets == 0 || hash_function(t[0]) % buckets == 1);
             rel->insert_in_full(t);
         }
 
@@ -1088,7 +1078,7 @@ public:
         u64 dt_outer_hash_buffer_size = 0;
         u64* dt_outer_hash_data;
         all_to_all_comm(process_data_vector_dt1, process_size_dt, &dt_outer_hash_buffer_size, &dt_outer_hash_data);
-
+        free(process_data_vector_dt1);
 
         for (u64 in = 0; in < dt_outer_hash_buffer_size; in = in + 2)
         {
@@ -1097,17 +1087,11 @@ public:
             rel->insert_in_delta(t);
         }
 
-        /*
-        if (rank == 0)
-            for (int y = 0; y < buckets; y++)
-                std::cout << "33 Y " << y << " " << bucket_map[y] << std::endl;
-                */
-
 
         delete[] old_sub_bucket_count;
         delete[] dt_outer_hash_data;
 
-#if 1
+#if 0
         u64 T_tuple_count_after = 0;
         u64 T_tuple_count_after_global = 0;
         for (int bk = 0; bk < buckets; bk++)
@@ -1138,7 +1122,7 @@ public:
     }
 
 
-    bool load_balance_merge_full_and_delta(relation* rel)
+    bool load_balance_merge_full_and_delta(relation* rel, float rf)
     {
         u32 rank = (u32)mcomm.get_rank();
         int nprocs = mcomm.get_nprocs();
@@ -1159,31 +1143,37 @@ public:
         memcpy(global_new_sub_bucket, sub_bucket_count, buckets * sizeof(u32));
 
         int mcount = 0;
+        u32 new_sub_bucket_count = 0;
+        u32 total_old_sub_bucket_count = 0;
         for (int i = 0; i < buckets; i++)
-            if (sub_bucket_count[i] > 4)
+        {
+            total_old_sub_bucket_count = total_old_sub_bucket_count + sub_bucket_count[i];
+            if (sub_bucket_count[i] >= rf)
                 mcount++;
+        }
+
 
         if (mcount > 0.6* buckets)
         {
             for (int i = 0; i < buckets; i++)
             {
-                global_new_sub_bucket[i] = global_new_sub_bucket[i] / 4;
+                global_new_sub_bucket[i] = global_new_sub_bucket[i] / rf;
                 if (global_new_sub_bucket[i] == 0)
                     global_new_sub_bucket[i] = 1;
+
+                new_sub_bucket_count = new_sub_bucket_count + global_new_sub_bucket[i];
             }
             if (rank == 0)
-                std::cout << "[YES] Bucket Consolidation [" << mcount << " " << 0.6 * buckets << "]" << std::endl;
+                std::cout << "[YES] Bucket Consolidation [" << mcount << " " << 0.6 * buckets << "] Old Sub Bucket count " << total_old_sub_bucket_count << " New Sub Bucket count " << new_sub_bucket_count << std::endl;
         }
         else
         {
             if (rank == 0)
-                std::cout << "[NO] Bucket Consolidation " << std::endl;
+                std::cout << "[NO] Bucket Consolidation [" << mcount << " " << 0.6 * buckets << "] Old Sub Bucket count " << total_old_sub_bucket_count << std::endl;
             return false;
         }
 
-
-
-#if 1
+#if 0
         u64 T_tuple_count_before = 0;
         u64 T_tuple_count_before_global = 0;
 
@@ -1208,55 +1198,9 @@ public:
         //    std::cout << "[T] Before Load balancing " << T_tuple_count_before_global << std::endl;
 #endif
 
-
-
-
         int rcount = sub_bucket_rank[buckets-1][sub_bucket_count[buckets-1] - 1] + 1;
-
         for (int b = 0; b < buckets; b++)
         {
-#if 0
-            if (sub_bucket_count[b] < global_new_sub_bucket[b])
-            {
-                bucket_map[b] = 0;
-
-                std::unordered_set<int> distinct_t_ranks;
-                u32* temp = new u32[sub_bucket_count[b]];
-                memcpy(temp, sub_bucket_rank[b], sizeof(int) * sub_bucket_count[b]);
-
-                delete[] sub_bucket_rank[b];
-                sub_bucket_rank[b] = new u32[global_new_sub_bucket[b]];
-
-                memcpy(sub_bucket_rank[b], temp, sizeof(int) * sub_bucket_count[b]);
-                delete[] temp;
-
-                for (u64 x = 0; x < global_new_sub_bucket[b]; x++)
-                {
-                    if (x >= sub_bucket_count[b])
-                    {
-                        sub_bucket_rank[b][x] = rcount % nprocs;
-                        rcount++;
-                    }
-
-                    if (sub_bucket_rank[b][x] == rank)
-                        bucket_map[b] = 1;
-
-                    distinct_t_ranks.insert(sub_bucket_rank[b][x]);
-
-                }
-
-                delete[] distinct_sub_bucket_rank[b];
-                distinct_sub_bucket_rank[b] = new int[distinct_t_ranks.size()];
-                u32 x = 0;
-                for ( auto it = distinct_t_ranks.begin(); it != distinct_t_ranks.end(); ++it )
-                {
-                    distinct_sub_bucket_rank[b][x] = *it;
-                    x++;
-                }
-                distinct_sub_bucket_rank_count[b] = x;
-            }
-#endif
-
             if (sub_bucket_count[b] > global_new_sub_bucket[b])
             {
                 bucket_map[b] = 0;
@@ -1295,26 +1239,11 @@ public:
             //    std::cout << "GNSB " << b << " " << global_new_sub_bucket[b] << std::endl;
         }
 
-        /*
-        if (rank == 0)
-        {
-            for (int b = 0; b < buckets; b++)
-            {
-                for (u32 y = 0; y < global_new_sub_bucket[b]; y++)
-                    std::cout << "XXXX Bucket " << b << " " << sub_bucket_rank[b][y] << std::endl;
-            }
-        }
-        */
 
         u32* old_sub_bucket_count = new u32[buckets];
         memcpy(old_sub_bucket_count, sub_bucket_count, buckets * sizeof(u32));
         memcpy(sub_bucket_count, global_new_sub_bucket, sizeof(u32) * buckets);
 
-        /*
-        if (rank == 0)
-            for (int y = 0; y < buckets; y++)
-                std::cout << "22 Y " << y << " " << bucket_map[y] << std::endl;
-        */
 
         int process_size[nprocs];
         memset(process_size, 0, nprocs * sizeof(int));
@@ -1416,6 +1345,8 @@ public:
         u64* outer_hash_data;
         all_to_all_comm(process_data_vector, process_size, &outer_hash_buffer_size, &outer_hash_data);
 
+        free (process_data_vector);
+
         //if (rank == 0)
         //    std::cout << "outer_hash_buffer_size " << outer_hash_buffer_size <<std::endl;
 
@@ -1424,21 +1355,15 @@ public:
         {
             t[0] = outer_hash_data[in];
             t[1] = outer_hash_data[in + 1];
-            //if (rank == 0)
-            //{
-            //    std::cout << "RCVD " << t[0] << " " << t[1] << " rank " << hash_function(t[0]) << " " << hash_function(t[0]) % buckets << std::endl;
-            //}
-            //assert(hash_function(t[0]) % buckets == 0 || hash_function(t[0]) % buckets == 1);
             rel->insert_in_full(t);
         }
-
         delete[] outer_hash_data;
-
 
         u64 dt_outer_hash_buffer_size = 0;
         u64* dt_outer_hash_data;
         all_to_all_comm(process_data_vector_dt1, process_size_dt, &dt_outer_hash_buffer_size, &dt_outer_hash_data);
 
+        free (process_data_vector_dt1);
 
         for (u64 in = 0; in < dt_outer_hash_buffer_size; in = in + 2)
         {
@@ -1447,17 +1372,10 @@ public:
             rel->insert_in_delta(t);
         }
 
-        /*
-        if (rank == 0)
-            for (int y = 0; y < buckets; y++)
-                std::cout << "33 Y " << y << " " << bucket_map[y] << std::endl;
-                */
-
-
         delete[] old_sub_bucket_count;
         delete[] dt_outer_hash_data;
 
-#if 1
+#if 0
         u64 T_tuple_count_after = 0;
         u64 T_tuple_count_after_global = 0;
         for (int bk = 0; bk < buckets; bk++)
@@ -1483,215 +1401,18 @@ public:
         //    std::cout << "[dT] After Load balancing " << dT_tuple_count_before_global << " " << dT_tuple_count_after_global << std::endl;
         assert(dT_tuple_count_before_global == dT_tuple_count_after_global);
 #endif
-
         return true;
     }
 
-
-#if 0
-    void load_balance_merge_full_and_delta(relation* rel)
+    void set_refinement_factor(double rf)
     {
-        u32 rank = (u32)mcomm.get_rank();
-        int nprocs = mcomm.get_nprocs();
-        int buckets = mcomm.get_number_of_buckets();
-        u32* bucket_map = rel->get_bucket_map();
-        u32* sub_bucket_count = rel->get_sub_bucket_count();
-        google_relation* full = rel->get_full();
-        google_relation* delta = rel->get_delta();
-        u32** full_sub_bucket_size = rel->get_full_sub_bucket_element_count();
-        u32** delta_sub_bucket_size = rel->get_delta_sub_bucket_element_count();
-        u32** sub_bucket_rank = rel->get_sub_bucket_rank();
-        int** distinct_sub_bucket_rank = rel->get_distinct_sub_bucket_rank();
-        int* distinct_sub_bucket_rank_count = rel->get_distinct_sub_bucket_rank_count();
-        int arity = rel->get_arity();
-
-        u32 min_sub_bucket_size = INT_MAX;
-        u32 *max_sub_bucket_size = new u32[buckets];
-        memset(max_sub_bucket_size, 0, buckets * sizeof(u32));
-
-        int count = 0;
-        for (int i = 0; i < buckets; i++)
-            if (sub_bucket_count[i] > 64)
-                count++;
-
-
-        u32 *global_max = new u32[buckets];
-        memset(global_max, 0, buckets * sizeof(u32));
-
-        int global_min;
-        MPI_Allreduce(max_sub_bucket_size, global_max, buckets, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
-        MPI_Allreduce(&min_sub_bucket_size, &global_min, 1, MPI_INT, MPI_MIN, MPI_COMM_WORLD);
-
-        u32 global_new_sub_bucket[buckets];
-        memcpy(global_new_sub_bucket, sub_bucket_count, buckets * sizeof(u32));
-
-        if (count > 0.6* buckets)
-        {
-            for (int i = 0; i < buckets; i++)
-                global_new_sub_bucket[i] = ceil(global_new_sub_bucket[i] / 4);
-        }
-
-
-        int rcount = sub_bucket_rank[buckets-1][sub_bucket_count[buckets-1] - 1] + 1;
-
-        for (int b = 0; b < buckets; b++)
-        {
-            if (sub_bucket_count[b] > global_new_sub_bucket[b])
-            {
-                std::unordered_set<int> distinct_t_ranks;
-                int* temp = new int[sub_bucket_count[b]];
-                memcpy(temp, sub_bucket_rank[b], sizeof(int) * sub_bucket_count[b]);
-
-                delete[] sub_bucket_rank[b];
-                sub_bucket_rank[b] = new u32[global_new_sub_bucket[b]];
-
-                memcpy(sub_bucket_rank[b], temp, sizeof(int) * global_new_sub_bucket[b]);
-                delete[] temp;
-
-                for (u64 x = 0; x < global_new_sub_bucket[b]; x++)
-                {
-                    if (sub_bucket_rank[b][x] == rank)
-                        bucket_map[b] = 1;
-
-                    distinct_t_ranks.insert(sub_bucket_rank[b][x]);
-                    rcount++;
-                }
-
-                delete[] distinct_sub_bucket_rank[b];
-                distinct_sub_bucket_rank[b] = new int[distinct_t_ranks.size()];
-                u32 x = 0;
-                for ( auto it = distinct_t_ranks.begin(); it != distinct_t_ranks.end(); ++it )
-                {
-                    distinct_sub_bucket_rank[b][x] = *it;
-                    x++;
-                }
-                distinct_sub_bucket_rank_count[b] = x;
-            }
-        }
-
-        u32* old_sub_bucket_count = new u32[buckets];
-        memcpy(old_sub_bucket_count, sub_bucket_count, buckets * sizeof(buckets));
-        memcpy(sub_bucket_count, global_new_sub_bucket, sizeof(u32) * buckets);
-
-
-        int process_size[nprocs];
-        memset(process_size, 0, nprocs * sizeof(int));
-
-        vector_buffer* process_data_vector = (vector_buffer*)malloc(sizeof(vector_buffer) * nprocs);
-        for (int i = 0; i < nprocs; ++i) {
-            process_data_vector[i] = vector_buffer_create_empty();
-        }
-
-        int prefix_sum_process_size[nprocs];
-        memset(prefix_sum_process_size, 0, nprocs * sizeof(int));
-
-        int recv_process_size_buffer[nprocs];
-        memset(recv_process_size_buffer, 0, nprocs * sizeof(int));
-
-        int process_size_dt[nprocs];
-        memset(process_size_dt, 0, nprocs * sizeof(int));
-
-        vector_buffer* process_data_vector_dt1 = (vector_buffer*)malloc(sizeof(vector_buffer) * nprocs);
-        for (int i = 0; i < nprocs; ++i) {
-            process_data_vector_dt1[i] = vector_buffer_create_empty();
-        }
-
-        int prefix_sum_process_size_dt[nprocs];
-        memset(prefix_sum_process_size_dt, 0, nprocs * sizeof(int));
-
-        int recv_process_size_buffer_dt[nprocs];
-        memset(recv_process_size_buffer_dt, 0, nprocs * sizeof(int));
-
-        u64 val[2] = {0, 0};
-        for (int bk = 0; bk < buckets; bk++)
-        {
-            if (old_sub_bucket_count[bk] != global_new_sub_bucket[bk])
-            {
-                delete[] full_sub_bucket_size[bk];
-                full_sub_bucket_size[bk] = new u32[global_new_sub_bucket[bk]];
-                memset(full_sub_bucket_size[bk], 0, sizeof(u32) * global_new_sub_bucket[bk]);
-
-                delete[] delta_sub_bucket_size[bk];
-                delta_sub_bucket_size[bk] = new u32[global_new_sub_bucket[bk]];
-                memset(delta_sub_bucket_size[bk], 0, sizeof(u32) * global_new_sub_bucket[bk]);
-
-                for (auto it = full[bk].begin(); it != full[bk].end(); it++)
-                {
-                    Map0* it2 = it->second;
-                    for (auto dit2 = it2->begin(); dit2 != it2->end(); dit2++)
-                    {
-                        uint64_t bucket_id = hash_function(dit2->first) % buckets;
-                        uint64_t sub_bucket_id = hash_function(it->first) % global_new_sub_bucket[bucket_id];
-
-                        int index = sub_bucket_rank[bucket_id][sub_bucket_id];
-                        process_size[index] = process_size[index] + arity;
-
-                        val[0] = it->first;
-                        val[1] = dit2->first;
-                        vector_buffer_append(&process_data_vector[index],(unsigned char *) val, sizeof(u64)*2);
-                    }
-                }
-
-                for(google_relation::iterator iy2 = full[bk].begin(); iy2 != full[bk].end(); iy2++)
-                    delete (iy2->second);
-
-                full[bk].clear();
-
-                for (auto it = delta[bk].begin(); it != delta[bk].end(); it++)
-                {
-                    Map0* it2 = it->second;
-                    for (auto dit2 = it2->begin(); dit2 != it2->end(); dit2++)
-                    {
-                        uint64_t bucket_id = hash_function(dit2->first) % buckets;
-                        uint64_t sub_bucket_id = hash_function(it->first) % global_new_sub_bucket[bucket_id];
-
-                        int index = sub_bucket_rank[bucket_id][sub_bucket_id];
-                        process_size_dt[index] = process_size_dt[index] + arity;
-
-                        val[0] = it->first;
-                        val[1] = dit2->first;
-                        vector_buffer_append(&process_data_vector_dt1[index],(unsigned char *) val, sizeof(u64)*arity);
-                    }
-                }
-
-                for(google_relation::iterator iy2 = delta[bk].begin(); iy2 != delta[bk].end(); iy2++)
-                    delete (iy2->second);
-
-                delta[bk].clear();
-            }
-        }
-
-        u64 outer_hash_buffer_size = 0;
-        u64* outer_hash_data;
-        all_to_all_comm(process_data_vector, process_size, &outer_hash_buffer_size, &outer_hash_data);
-
-        u64 t[2];
-        for (u64 in = 0; in < outer_hash_buffer_size; in = in + 2)
-        {
-            t[0] = outer_hash_data[in];
-            t[1] = outer_hash_data[in + 1];
-            rel->insert_in_full(t);
-        }
-
-        delete[] outer_hash_data;
-
-
-        u64 dt_outer_hash_buffer_size = 0;
-        u64* dt_outer_hash_data;
-        all_to_all_comm(process_data_vector_dt1, process_size_dt, &dt_outer_hash_buffer_size, &dt_outer_hash_data);
-
-
-        for (u64 in = 0; in < dt_outer_hash_buffer_size; in = in + 2)
-        {
-            t[0] = dt_outer_hash_data[in];
-            t[1] = dt_outer_hash_data[in + 1];
-            rel->insert_in_delta(t);
-        }
-
-        delete[] old_sub_bucket_count;
-        delete[] dt_outer_hash_data;
+        refinement_factor = rf;
     }
-#endif
+
+    void set_refinement_interval(int ri)
+    {
+        refinement_ts = ri;
+    }
 
 
     void set_threshold(int thold)
@@ -1731,6 +1452,7 @@ public:
         double running_insert_in_full_time = 0;
         double running_insert_in_newt_time = 0;
         double running_verify_time = 0;
+        double running_lb = 0;
 
         double clique_start = 0, clique_end = 0;
         double local_join_start = 0, local_join_end = 0;
@@ -1738,6 +1460,7 @@ public:
         double insert_full_start = 0, insert_full_end = 0;
         double insert_newt_start = 0, insert_newt_end = 0;
         double verify_start = 0, verify_end = 0;
+        double lb_start = 0, lb_end = 0;
 
         double iteration_time = 0;
         double running_time = 0;
@@ -1793,7 +1516,13 @@ public:
                 insert_full_end = MPI_Wtime();
                 running_insert_in_full_time = running_insert_in_full_time + (insert_full_end - insert_full_start);
 
-                load_balance(local_join_status);
+                if (outer_loop % refinement_ts == 0)
+                {
+                    lb_start = MPI_Wtime();
+                    load_balance(local_join_status, refinement_factor);
+                    lb_end = MPI_Wtime();
+                    running_lb = running_lb + (lb_end - lb_start);
+                }
 
                 if (local_join_status == true)
                 {
@@ -1813,16 +1542,17 @@ public:
                 {
                     verify_end = MPI_Wtime();
                     running_verify_time = running_verify_time + (verify_end - verify_start);
-                    iteration_time = (verify_end - verify_start) + (insert_newt_end - insert_newt_start) + (insert_full_end - insert_full_start) + (all_to_all_end - all_to_all_start) + (local_join_end - local_join_start) + (clique_end - clique_start);
+                    iteration_time = (verify_end - verify_start) + (lb_end - lb_start) + (insert_newt_end - insert_newt_start) + (insert_full_end - insert_full_start) + (all_to_all_end - all_to_all_start) + (local_join_end - local_join_start) + (clique_end - clique_start);
                     running_time = running_time + iteration_time;
 
                     if (rank == 0)
-                        std::cout << "T NCC OL " << outer_loop << " IL " << inner_loop << " [" << iteration << "] " << running_time << " " << iteration_time
+                        std::cout << "T NCC OL " << outer_loop << " IL " << inner_loop << " [" << iteration << "] TH " << threshold << " RF " << refinement_factor << " RI " << refinement_ts << " " << running_time << " " << iteration_time
                                   << " Clique " <<  (clique_end - clique_start)
                                   << " Local Join " <<  (local_join_end - local_join_start)
-                                  << " All to All " <<  (all_to_all_end - all_to_all_start)
+                                  << " A2A " <<  (all_to_all_end - all_to_all_start)
                                   << " Insert Full " <<  (insert_full_end - insert_full_start)
                                   << " Insert newt " <<  (insert_newt_end - insert_newt_start)
+                                  << " LB " <<  (lb_end - lb_start)
                                   << " Verify " <<  (verify_end - verify_start)
                                   << std::endl
                                   << std::endl;
@@ -1831,16 +1561,17 @@ public:
                 verify_end = MPI_Wtime();
                 running_verify_time = running_verify_time + (verify_end - verify_start);
 
-                iteration_time = (verify_end - verify_start) + (insert_newt_end - insert_newt_start) + (insert_full_end - insert_full_start) + (all_to_all_end - all_to_all_start) + (local_join_end - local_join_start) + (clique_end - clique_start);
+                iteration_time = (verify_end - verify_start) + (lb_end - lb_start) + (insert_newt_end - insert_newt_start) + (insert_full_end - insert_full_start) + (all_to_all_end - all_to_all_start) + (local_join_end - local_join_start) + (clique_end - clique_start);
                 running_time = running_time + iteration_time;
 
                 if (rank == 0)
-                    std::cout << "F NCC OL " << outer_loop << " IL " << inner_loop << " [" << iteration << "] " << running_time << " " << iteration_time
+                    std::cout << "F NCC OL " << outer_loop << " IL " << inner_loop << " [" << iteration << "] TH " << threshold << " RF " << refinement_factor << " RI " << refinement_ts << " " << running_time << " " << iteration_time
                               << " Clique " <<  (clique_end - clique_start)
                               << " Local Join " <<  (local_join_end - local_join_start)
-                              << " All to All " <<  (all_to_all_end - all_to_all_start)
+                              << " A2A " <<  (all_to_all_end - all_to_all_start)
                               << " Insert Full " <<  (insert_full_end - insert_full_start)
                               << " Insert newt " <<  (insert_newt_end - insert_newt_start)
+                              << " LB " <<  (lb_end - lb_start)
                               << " Verify " <<  (verify_end - verify_start)
                               << std::endl
                               << std::endl
@@ -1905,7 +1636,7 @@ public:
                     if (rank == 0)
                         std::cout << "T CC OL " << outer_loop << " IL " << inner_loop << " [" << iteration << "] " << running_time << " " << iteration_time
                                   << " Clique " <<  (clique_end - clique_start)
-                                  << " Local Join " <<  (local_join_end - local_join_start)
+                                  << " LJ " <<  (local_join_end - local_join_start)
                                   << " All to All " <<  (all_to_all_end - all_to_all_start)
                                   << " Insert Full " <<  (insert_full_end - insert_full_start)
                                   << " Insert newt " <<  (insert_newt_end - insert_newt_start)
@@ -1923,7 +1654,7 @@ public:
                 if (rank == 0)
                     std::cout << "F CC OL " << outer_loop << " IL " << inner_loop << " [" << iteration << "] " << running_time << " " << iteration_time
                               << " Clique " <<  (clique_end - clique_start)
-                              << " Local Join " <<  (local_join_end - local_join_start)
+                              << " LJ " <<  (local_join_end - local_join_start)
                               << " All to All " <<  (all_to_all_end - all_to_all_start)
                               << " Insert Full " <<  (insert_full_end - insert_full_start)
                               << " Insert newt " <<  (insert_newt_end - insert_newt_start)
@@ -1941,7 +1672,7 @@ public:
         delete[] offset;
 
         if (rank == 0)
-            std::cout << "Threshold " << threshold << " Total Time: [" << (end_time - start_time) << " " << running_time << " " << (running_clique_comm_time + running_local_join_time + running_all_to_all_time + running_insert_in_newt_time + running_insert_in_full_time + running_verify_time) << "] Clique " << running_clique_comm_time << " Local Join " << running_local_join_time << " All to All " << running_all_to_all_time << " Insert in new " << running_insert_in_newt_time << " Insert in full " << running_insert_in_full_time << " Fixed point check " << running_verify_time << " ";
+            std::cout << "Threshold " << threshold << " Total Time: [" << (end_time - start_time) << " " << running_time << " " << (running_clique_comm_time + running_local_join_time + running_all_to_all_time + running_insert_in_newt_time + running_insert_in_full_time + running_verify_time) << "] Clique " << running_clique_comm_time << " LJ " << running_local_join_time << " A2A " << running_all_to_all_time << " Insert in new " << running_insert_in_newt_time << " Insert in full " << running_insert_in_full_time << " FPC " << running_verify_time << " ";
         print_full();
     }
 
