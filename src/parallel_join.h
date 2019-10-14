@@ -559,8 +559,8 @@ public:
             {
                 //if (iteration == 1 && rank == 0)
                     //std::cout << "Input " << input0_buffer[k1] << " " << input0_buffer[k1 + 1] << std::endl;
-                //int i = rank;
-                for (int i = 0; i < buckets; i++)
+                int i = hash_function(input0_buffer[k1]) % buckets;
+                //for (int i = 0; i < buckets; i++)
                 {
                     auto itd = input1[i].find(input0_buffer[k1]);
                     if( itd != input1[i].end() )
@@ -644,7 +644,8 @@ public:
                 //if (iteration == 1 && rank == 0)
                     //std::cout << "Input " << input0_buffer[k1] << " " << input0_buffer[k1 + 1] << std::endl;
                 //int i = rank;
-                for (int i = 0; i < buckets; i++)
+                //for (int i = 0; i < buckets; i++)
+                int i = hash_function(input0_buffer[k1]) % buckets;
                 {
                     auto itd = input1[i].find(input0_buffer[k1]);
                     if( itd != input1[i].end() )
