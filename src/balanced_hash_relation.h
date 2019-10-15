@@ -73,6 +73,7 @@ private:
     u32 **delta_sub_bucket_element_count;
     u32 *delta_bucket_element_count;   // TODO (implement this carefully)
 
+    u32 *total_sub_bucket_count;
     u32 *sub_bucket_count;          // sub_bucket_count[i] holds the total number of sub-buckets at bucket index i
     u32** sub_bucket_rank;
     int** distinct_sub_bucket_rank;
