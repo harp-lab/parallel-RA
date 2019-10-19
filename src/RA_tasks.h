@@ -2103,11 +2103,14 @@ public:
         int itx = 100;
         if (comm_compaction== false)
         {
+            if (refinement_ts != 0)
+            {
             if (rank == 0)
                 std::cout << "Initial Load balancing " << std::endl;
             initial_load_balance(refinement_factor);
             if (rank == 0)
                 std::cout << std::endl << std::endl;
+            }
 
             //while (itx != 0)
             while (true)
