@@ -73,6 +73,7 @@ private:
     u32 **delta_sub_bucket_element_count;
     u32 *delta_bucket_element_count;   // TODO (implement this carefully)
 
+    int last_rank;
     u32 *total_sub_bucket_count;
     u32 *sub_bucket_count;          // sub_bucket_count[i] holds the total number of sub-buckets at bucket index i
     u32** sub_bucket_rank;
@@ -88,6 +89,16 @@ public:
     ~relation()
     {
         destroy();
+    }
+
+    int get_last_rank()
+    {
+        return last_rank;
+    }
+
+    void set_last_rank(int lr)
+    {
+        last_rank = lr;
     }
 
     u32* get_bucket_map()
@@ -494,6 +505,7 @@ public:
                     bucket_map[b] = 1;
 
                 distinct_ranks.insert(sub_bucket_rank[b][x]);
+                last_rank = rcount;
                 rcount++;
             }
 
