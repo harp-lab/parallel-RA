@@ -2350,8 +2350,12 @@ public:
         double end_time = MPI_Wtime();
         delete[] offset;
 
-        if (rank == 0)
-            std::cout << "Threshold " << threshold
+        double total_time = end_time - start_time;
+        double max_time = 0;
+        MPI_Allreduce(&total_time, &max_time, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
+
+        if (total_time == max_time)
+            std::cout << "Rank " << rank
                       << " Total Time: [" << (end_time - start_time)
                       << " " << running_time
                       << " "
@@ -2362,7 +2366,7 @@ public:
                       << " Insert in new " << running_insert_in_newt_time
                       << " Insert in full " << running_insert_in_full_time
                       << " LB " << running_lb
-                      << " FPC " << running_verify_time << " ";
+                      << " FPC " << running_verify_time << std::endl;
         print_full();
     }
 
