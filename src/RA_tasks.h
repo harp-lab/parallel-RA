@@ -940,20 +940,20 @@ public:
             {
                 for (u32 j = 0; j < sub_bucket_count[i]; j++)
                 {
-                    /*
                     if (full_sub_bucket_size[i][j] != 0)
                     {
                         if ((int)full_sub_bucket_size[i][j] > max_sub_bucket_size[i])
                             max_sub_bucket_size[i] = full_sub_bucket_size[i][j];
                         total_sub_bucket_size = total_sub_bucket_size + full_sub_bucket_size[i][j];
                     }
-                    */
+                    /*
                     if (delta_sub_bucket_size[i][j] != 0)
                     {
                         if ((int)delta_sub_bucket_size[i][j] > max_sub_bucket_size[i])
                             max_sub_bucket_size[i] = delta_sub_bucket_size[i][j];
                         total_sub_bucket_size = total_sub_bucket_size + delta_sub_bucket_size[i][j];
                     }
+                    */
                 }
             }
         }
@@ -2151,7 +2151,7 @@ public:
                 //if (outer_loop > 100)
                 //{
                     if (refinement_ts != 0)
-                        if (outer_loop % refinement_ts == 1)
+                        if (outer_loop % refinement_ts == 0)
                             load_balance(local_join_status, refinement_factor);
                 //}
                 //else
