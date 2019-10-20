@@ -170,11 +170,11 @@ public:
     }
 
 
-    u32 full_count(relation* output)
+    u64 full_count(relation* output)
     {
-        int sum = 0;
+        u64 sum = 0;
         //int full_element_count = output->get_full_element_count();
-        int full_element_count = 0;
+        u64 full_element_count = 0;
         int buckets = mcomm.get_number_of_buckets();
         u32* sub_bucket = output->get_sub_bucket_count();
         u32** sub_bucket_size = output->get_full_sub_bucket_element_count();
@@ -185,7 +185,7 @@ public:
                 full_element_count = full_element_count + sub_bucket_size[b][c];
         }
 
-        MPI_Allreduce(&full_element_count, &sum, 1, MPI_INT, MPI_SUM, mcomm.get_comm());
+        MPI_Allreduce(&full_element_count, &sum, 1, MPI_UNSIGNED_LONG_LONG, MPI_SUM, mcomm.get_comm());
         return sum;
     }
 

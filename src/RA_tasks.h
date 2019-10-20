@@ -72,8 +72,8 @@ public:
             {
                 relation* input = current_ra->get_copy_input();
                 relation* output = current_ra->get_copy_output();
-                u32 s0 = current_ra->full_count(input);
-                u32 s1 = current_ra->full_count(output);
+                u64 s0 = current_ra->full_count(input);
+                u64 s1 = current_ra->full_count(output);
 
                 if (rank == 0)
                 {
