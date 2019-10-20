@@ -1529,16 +1529,8 @@ public:
 
         if (mcount > 0.8* buckets)
         {
-            for (int i = 0; i < buckets; i++)
-            {
-                global_new_sub_bucket[i] = global_new_sub_bucket[i] / rf;
-                if (global_new_sub_bucket[i] == 0)
-                    global_new_sub_bucket[i] = 1;
-
-                new_sub_bucket_count = new_sub_bucket_count + global_new_sub_bucket[i];
-            }
             if (rank == 0)
-                std::cout << "[YES] Bucket Consolidation [" << mcount << " " << 0.8 * buckets << "] Old Sub Bucket count " << total_old_sub_bucket_count << " New Sub Bucket count " << new_sub_bucket_count << std::endl;
+                std::cout << "[YES] Bucket Consolidation [" << mcount << " " << 0.8 * buckets << "] Old Sub Bucket count " << total_old_sub_bucket_count << std::endl;
         }
         else
         {
@@ -1606,9 +1598,15 @@ public:
 
         //int rcount =  rel->get_last_rank();// sub_bucket_rank[buckets-1][sub_bucket_count[buckets-1] - 1] + 1;
         for (int b = 0; b < buckets; b++)
-        {
-            if (global_max[b] > average_sub_bucket_size * 2)
+        {   
+            if (global_max[b] > average_sub_bucket_size)
                 continue;
+
+            global_new_sub_bucket[b] = global_new_sub_bucket[b] / rf;
+            if (global_new_sub_bucket[b] == 0)
+                global_new_sub_bucket[b] = 1;
+            new_sub_bucket_count = new_sub_bucket_count + global_new_sub_bucket[b];
+
             if (sub_bucket_count[b] > global_new_sub_bucket[b])
             {
                 //check if the max sub bucket is twice the average sub bucket then skip this
@@ -1858,16 +1856,8 @@ public:
 
         if (mcount > 0.8* buckets)
         {
-            for (int i = 0; i < buckets; i++)
-            {
-                global_new_sub_bucket[i] = global_new_sub_bucket[i] / rf;
-                if (global_new_sub_bucket[i] == 0)
-                    global_new_sub_bucket[i] = 1;
-
-                new_sub_bucket_count = new_sub_bucket_count + global_new_sub_bucket[i];
-            }
             if (rank == 0)
-                std::cout << "[YES] Bucket Consolidation [" << mcount << " " << 0.8 * buckets << "] Old Sub Bucket count " << total_old_sub_bucket_count << " New Sub Bucket count " << new_sub_bucket_count << std::endl;
+                std::cout << "[YES] Bucket Consolidation [" << mcount << " " << 0.8 * buckets << "] Old Sub Bucket count " << total_old_sub_bucket_count << std::endl;
         }
         else
         {
@@ -1911,8 +1901,13 @@ public:
         //int rcount =  rel->get_last_rank();// sub_bucket_rank[buckets-1][sub_bucket_count[buckets-1] - 1] + 1;
         for (int b = 0; b < buckets; b++)
         {
-            if (global_max[b] > average_sub_bucket_size * 2)
+            if (global_max[b] > average_sub_bucket_size)
                 continue;
+
+            global_new_sub_bucket[b] = global_new_sub_bucket[b] / rf;
+            if (global_new_sub_bucket[b] == 0)
+                global_new_sub_bucket[b] = 1;
+            new_sub_bucket_count = new_sub_bucket_count + global_new_sub_bucket[b];
 
             if (sub_bucket_count[b] > global_new_sub_bucket[b])
             {
