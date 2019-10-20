@@ -21,6 +21,7 @@ private:
     bool comm_compaction;
     u32 threshold;
 
+    int refinement_chooser;
     double refinement_factor;
 
     u32 refinement_ts;
@@ -705,7 +706,7 @@ public:
     }
 
 
-    void load_balance(bool local_join_status, float r_factor)
+    void load_balance(bool local_join_status, float r_factor, int rc)
     {
         if (local_join_status == false)
             return;
@@ -727,7 +728,7 @@ public:
             {
                 relation* input1 = current_ra->get_join_input1();
                 if (load_balance_merge_full_and_delta(input1, r_factor) == false)
-                    load_balance_split_full_and_delta(input1, r_factor);
+                    load_balance_split_full_and_delta(input1, r_factor, rc);
 
                 relation* input0 = current_ra->get_join_input0();
                 if (load_balance_merge_full(input0, r_factor) == false)
@@ -776,19 +777,19 @@ public:
                 {
                     if (min_full_element_count != 0 && min_delta_element_count != 0)
                         std::cout << "[LOAD BALANCING] Full (" << max_full_element_count << ", " << min_full_element_count << ", " << sum_full_element_count/mcomm.get_nprocs() << ") "
-                              << (float) max_full_element_count/min_full_element_count << " "
-                              << "Delta (" << max_delta_element_count << ", " << min_delta_element_count << ", " << sum_delta_element_count/mcomm.get_nprocs() << ") "
-                              << (float) max_delta_element_count/min_delta_element_count << " "
-                              << std::endl;
+                                  << (float) max_full_element_count/min_full_element_count << " "
+                                  << "Delta (" << max_delta_element_count << ", " << min_delta_element_count << ", " << sum_delta_element_count/mcomm.get_nprocs() << ") "
+                                  << (float) max_delta_element_count/min_delta_element_count << " "
+                                  << std::endl;
                     else if (min_full_element_count != 0 && min_delta_element_count == 0)
                         std::cout << "[LOAD BALANCING] Full (" << max_full_element_count << ", " << min_full_element_count << ", " << sum_full_element_count/mcomm.get_nprocs() << ") "
-                              << (float) max_full_element_count/min_full_element_count << " "
-                              << "Delta (" << max_delta_element_count << ", " << min_delta_element_count << ", " << sum_delta_element_count/mcomm.get_nprocs() << ") "
-                              << std::endl;
+                                  << (float) max_full_element_count/min_full_element_count << " "
+                                  << "Delta (" << max_delta_element_count << ", " << min_delta_element_count << ", " << sum_delta_element_count/mcomm.get_nprocs() << ") "
+                                  << std::endl;
                     else
                         std::cout << "[LOAD BALANCING] Full (" << max_full_element_count << ", " << min_full_element_count << ", " << sum_full_element_count/mcomm.get_nprocs() << ") "
-                              << "Delta (" << max_delta_element_count << ", " << min_delta_element_count << ", " << sum_delta_element_count/mcomm.get_nprocs() << ") "
-                              << std::endl;
+                                  << "Delta (" << max_delta_element_count << ", " << min_delta_element_count << ", " << sum_delta_element_count/mcomm.get_nprocs() << ") "
+                                  << std::endl;
                 }
 
 
@@ -885,7 +886,7 @@ public:
         return;
     }
 
-    bool load_balance_split_full_and_delta(relation* rel, float rf)
+    bool load_balance_split_full_and_delta(relation* rel, float rf, int rc)
     {
         u32 rank = (u32)mcomm.get_rank();
         int nprocs = mcomm.get_nprocs();
@@ -933,29 +934,45 @@ public:
         u32 global_total_sub_bucket_size = 0;
         u32 total_sub_bucket_size = 0;
         u32 total_sub_bucket_count = 0;
-        for (int i = 0; i < buckets; i++)
+
+        if (rc == 0)
         {
-            total_sub_bucket_count = total_sub_bucket_count + sub_bucket_count[i];
-            if (bucket_map[i] == 1)
+            for (int i = 0; i < buckets; i++)
             {
-                for (u32 j = 0; j < sub_bucket_count[i]; j++)
+                total_sub_bucket_count = total_sub_bucket_count + sub_bucket_count[i];
+                if (bucket_map[i] == 1)
                 {
-                    if (full_sub_bucket_size[i][j] != 0)
+                    for (u32 j = 0; j < sub_bucket_count[i]; j++)
                     {
-                        if ((int)full_sub_bucket_size[i][j] > max_sub_bucket_size[i])
-                            max_sub_bucket_size[i] = full_sub_bucket_size[i][j];
-                        total_sub_bucket_size = total_sub_bucket_size + full_sub_bucket_size[i][j];
+                        if (full_sub_bucket_size[i][j] != 0)
+                        {
+                            if ((int)full_sub_bucket_size[i][j] > max_sub_bucket_size[i])
+                                max_sub_bucket_size[i] = full_sub_bucket_size[i][j];
+                            total_sub_bucket_size = total_sub_bucket_size + full_sub_bucket_size[i][j];
+                        }
                     }
-                    /*
-                    if (delta_sub_bucket_size[i][j] != 0)
-                    {
-                        if ((int)delta_sub_bucket_size[i][j] > max_sub_bucket_size[i])
-                            max_sub_bucket_size[i] = delta_sub_bucket_size[i][j];
-                        total_sub_bucket_size = total_sub_bucket_size + delta_sub_bucket_size[i][j];
-                    }
-                    */
                 }
             }
+        }
+        else
+        {
+            for (int i = 0; i < buckets; i++)
+            {
+                total_sub_bucket_count = total_sub_bucket_count + sub_bucket_count[i];
+                if (bucket_map[i] == 1)
+                {
+                    for (u32 j = 0; j < sub_bucket_count[i]; j++)
+                    {
+                        if (delta_sub_bucket_size[i][j] != 0)
+                        {
+                            if ((int)delta_sub_bucket_size[i][j] > max_sub_bucket_size[i])
+                                max_sub_bucket_size[i] = delta_sub_bucket_size[i][j];
+                            total_sub_bucket_size = total_sub_bucket_size + delta_sub_bucket_size[i][j];
+                        }
+                    }
+                }
+            }
+
         }
 
         int *global_max = new int[buckets];
@@ -2033,6 +2050,10 @@ public:
         return true;
     }
 
+    void set_refinement_chooser(int rc)
+    {
+        refinement_chooser = rc;
+    }
 
     void set_refinement_factor(double rf)
     {
@@ -2150,9 +2171,9 @@ public:
                 lb_start = MPI_Wtime();
                 //if (outer_loop > 100)
                 //{
-                    if (refinement_ts != 0)
-                        if (outer_loop % refinement_ts == 0)
-                            load_balance(local_join_status, refinement_factor);
+                if (refinement_ts != 0)
+                    if (outer_loop % refinement_ts == 0)
+                        load_balance(local_join_status, refinement_factor, refinement_chooser);
                 //}
                 //else
                 //{
@@ -2178,7 +2199,9 @@ public:
                         running_time = running_time + iteration_time;
 
                         if (rank == 0)
-                            std::cout << "T NCC OL " << outer_loop << " IL " << inner_loop << " [" << iteration << "] TH " << threshold << " RF " << refinement_factor << " RI " << refinement_ts << " " << running_time << " " << iteration_time
+                        {
+                            if (refinement_chooser == 0)
+                                std::cout << "T FULL NCC OL " << outer_loop << " IL " << inner_loop << " [" << iteration << "] TH " << threshold << " RF " << refinement_factor << " RI " << refinement_ts << " " << running_time << " " << iteration_time
                                       << " Clique " <<  (clique_end - clique_start)
                                       << " Local Join " <<  (local_join_end - local_join_start)
                                       << " A2A " <<  (all_to_all_end - all_to_all_start)
@@ -2188,6 +2211,18 @@ public:
                                       << " Verify " <<  (verify_end - verify_start)
                                       << std::endl
                                       << std::endl;
+                            else
+                                std::cout << "T DELTA NCC OL " << outer_loop << " IL " << inner_loop << " [" << iteration << "] TH " << threshold << " RF " << refinement_factor << " RI " << refinement_ts << " " << running_time << " " << iteration_time
+                                      << " Clique " <<  (clique_end - clique_start)
+                                      << " Local Join " <<  (local_join_end - local_join_start)
+                                      << " A2A " <<  (all_to_all_end - all_to_all_start)
+                                      << " Insert Full " <<  (insert_full_end - insert_full_start)
+                                      << " Insert newt " <<  (insert_newt_end - insert_newt_start)
+                                      << " LB " <<  (lb_end - lb_start)
+                                      << " Verify " <<  (verify_end - verify_start)
+                                      << std::endl
+                                      << std::endl;
+                        }
                         break;
                     }
                 }
@@ -2198,7 +2233,9 @@ public:
                 running_time = running_time + iteration_time;
 
                 if (rank == 0)
-                    std::cout << "F NCC OL " << outer_loop << " IL " << inner_loop << " [" << iteration << "] TH " << threshold << " RF " << refinement_factor << " RI " << refinement_ts << " " << running_time << " " << iteration_time
+                {
+                    if (refinement_chooser == 0)
+                        std::cout << "F FULL NCC OL " << outer_loop << " IL " << inner_loop << " [" << iteration << "] TH " << threshold << " RF " << refinement_factor << " RI " << refinement_ts << " " << running_time << " " << iteration_time
                               << " Clique " <<  (clique_end - clique_start)
                               << " Local Join " <<  (local_join_end - local_join_start)
                               << " A2A " <<  (all_to_all_end - all_to_all_start)
@@ -2209,6 +2246,19 @@ public:
                               << std::endl
                               << std::endl
                               << std::endl;
+                    else
+                        std::cout << "F DELTA NCC OL " << outer_loop << " IL " << inner_loop << " [" << iteration << "] TH " << threshold << " RF " << refinement_factor << " RI " << refinement_ts << " " << running_time << " " << iteration_time
+                              << " Clique " <<  (clique_end - clique_start)
+                              << " Local Join " <<  (local_join_end - local_join_start)
+                              << " A2A " <<  (all_to_all_end - all_to_all_start)
+                              << " Insert Full " <<  (insert_full_end - insert_full_start)
+                              << " Insert newt " <<  (insert_newt_end - insert_newt_start)
+                              << " LB " <<  (lb_end - lb_start)
+                              << " Verify " <<  (verify_end - verify_start)
+                              << std::endl
+                              << std::endl
+                              << std::endl;
+                }
 
                 inner_loop++;
                 iteration++;

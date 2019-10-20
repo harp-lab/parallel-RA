@@ -50,6 +50,7 @@ int main(int argc, char **argv)
     scc1.set_threshold(atoi(argv[2]));
     scc1.set_refinement_interval(atoi(argv[3]));
     scc1.set_refinement_factor(atof(argv[4]));
+    scc1.set_refinement_chooser(atoi(argv[5]));
     scc1.execute();
 #endif
 
