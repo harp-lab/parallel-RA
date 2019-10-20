@@ -729,6 +729,10 @@ public:
                 if (load_balance_merge_full_and_delta(input1, r_factor) == false)
                     load_balance_split_full_and_delta(input1, r_factor);
 
+                relation* input0 = current_ra->get_join_input0();
+                if (load_balance_merge_full(input0, r_factor) == false)
+                    load_balance_split_full(input0, r_factor);
+
 
                 u64 max_full_element_count = 0;
                 u64 min_full_element_count = 0;
@@ -936,15 +940,19 @@ public:
             {
                 for (u32 j = 0; j < sub_bucket_count[i]; j++)
                 {
+                    /*
                     if (full_sub_bucket_size[i][j] != 0)
                     {
                         if ((int)full_sub_bucket_size[i][j] > max_sub_bucket_size[i])
                             max_sub_bucket_size[i] = full_sub_bucket_size[i][j];
-
-                        //if ((int)full_sub_bucket_size[i][j] < min_sub_bucket_size)
-                        //    min_sub_bucket_size = full_sub_bucket_size[i][j];
-
                         total_sub_bucket_size = total_sub_bucket_size + full_sub_bucket_size[i][j];
+                    }
+                    */
+                    if (delta_sub_bucket_size[i][j] != 0)
+                    {
+                        if ((int)delta_sub_bucket_size[i][j] > max_sub_bucket_size[i])
+                            max_sub_bucket_size[i] = delta_sub_bucket_size[i][j];
+                        total_sub_bucket_size = total_sub_bucket_size + delta_sub_bucket_size[i][j];
                     }
                 }
             }
@@ -2103,14 +2111,6 @@ public:
         int itx = 100;
         if (comm_compaction== false)
         {
-            if (refinement_ts != 0)
-            {
-            if (rank == 0)
-                std::cout << "Initial Load balancing " << std::endl;
-            initial_load_balance(refinement_factor);
-            if (rank == 0)
-                std::cout << std::endl << std::endl;
-            }
 
             //while (itx != 0)
             while (true)
@@ -2148,18 +2148,18 @@ public:
 
 
                 lb_start = MPI_Wtime();
-                if (outer_loop > 100)
-                {
+                //if (outer_loop > 100)
+                //{
                     if (refinement_ts != 0)
-                        if (outer_loop % refinement_ts == 0)
+                        if (outer_loop % refinement_ts == 1)
                             load_balance(local_join_status, refinement_factor);
-                }
-                else
-                {
-                    if (refinement_ts != 0)
-                        if (outer_loop % 10 == 0)
-                            load_balance(local_join_status, refinement_factor);
-                }
+                //}
+                //else
+                //{
+                //    if (refinement_ts != 0)
+                //        if (outer_loop % 10 == 1)
+                //            load_balance(local_join_status, refinement_factor);
+                //}
 
 
                 lb_end = MPI_Wtime();
