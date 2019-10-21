@@ -84,7 +84,7 @@ public:
             else if (current_ra->get_RA_type() == JOIN)
             {
                 relation* output = current_ra->get_join_output();
-                int s0 = current_ra->full_count(output);
+                u64 s0 = current_ra->full_count(output);
 
                 if (rank == 0)
                 {

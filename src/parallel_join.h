@@ -182,7 +182,7 @@ public:
         for (int b = 0; b < buckets; b++)
         {
             for (u32 c = 0; c < sub_bucket[b]; c++)
-                full_element_count = full_element_count + sub_bucket_size[b][c];
+                full_element_count = full_element_count + (u64)sub_bucket_size[b][c];
         }
 
         MPI_Allreduce(&full_element_count, &sum, 1, MPI_UNSIGNED_LONG_LONG, MPI_SUM, mcomm.get_comm());
