@@ -621,8 +621,6 @@ public:
                 {
                     //std::cout << "FINAL1 " << input0_buffer[k1] << " " << input0_buffer[k1 + 1] << " " << k1 << " Temp Count " << temp_count << std::endl;
 
-                    if (k1 < 0.95 * input0_buffer_size)
-                    {
                     if (rank == 0)
                         std::cout << "[Threshold reached A] [Local Join] " << i1_size << " " << elements_accessed << " (" << input0_buffer_size << ") " << local_join_inserts << " Offset "<< *offset << " Duplicates " << local_join_duplicates << std::endl;
 
@@ -632,11 +630,7 @@ public:
                     *offset = k1 + input0_arity;
                     *local_join_count = local_join_inserts;
                     return false;
-                    }
-                    else
-                    {
-                        std::cout << "Rank " << rank << " will slow things down" << std::endl;
-                    }
+
                 }
                 elements_accessed++;
 
@@ -712,8 +706,6 @@ public:
 
                 if (local_join_inserts > threshhold)
                 {
-                    if (k1 < 0.95 * input0_buffer_size)
-                    {
                     //std::cout << "FINAL1 " << input0_buffer[k1] << " " << input0_buffer[k1 + 1] << " " << k1 << " Temp Count " << temp_count << std::endl;
 
                     if (rank == 0)
@@ -725,12 +717,6 @@ public:
                     *offset = k1 + input0_arity;
                     *local_join_count = local_join_inserts;
                     return false;
-                    }
-                    else
-                    {
-                        std::cout << "Rank " << rank << " will slow things down" << std::endl;
-                    }
-
                 }
                 elements_accessed++;
 
