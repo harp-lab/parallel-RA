@@ -617,7 +617,7 @@ public:
                     }
                 }
 
-                if (local_join_inserts > threshhold && k1 < 0.5 * input0_buffer_size)
+                if (local_join_inserts > threshhold && k1 < 0.95 * input0_buffer_size)
                 {
                     //std::cout << "FINAL1 " << input0_buffer[k1] << " " << input0_buffer[k1 + 1] << " " << k1 << " Temp Count " << temp_count << std::endl;
 
@@ -703,7 +703,7 @@ public:
                     }
                 }
 
-                if (local_join_inserts > threshhold && k1 < 0.5 * input0_buffer_size)
+                if (local_join_inserts > threshhold && k1 < 0.95 * input0_buffer_size)
                 {
                     //std::cout << "FINAL1 " << input0_buffer[k1] << " " << input0_buffer[k1 + 1] << " " << k1 << " Temp Count " << temp_count << std::endl;
 
