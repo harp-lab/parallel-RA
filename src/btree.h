@@ -9,6 +9,7 @@
 #include <queue>
 #include "compat.h"
 
+#include "google_btree_relation.h"
 #define DEDUPLICATE
 
 

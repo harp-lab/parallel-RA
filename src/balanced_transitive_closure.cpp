@@ -41,6 +41,7 @@ int main(int argc, char **argv)
     join_1->join_input0(G, FULL);
     join_1->join_input1(T, DELTA);
     join_1->join_output(T);
+    join_1->set_RA_typex(1);
 
     join_1->set_join_projection_index(-1, 0, 1);
 

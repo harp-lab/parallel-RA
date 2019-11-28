@@ -13,6 +13,7 @@
 #include <chrono>
 #include "btree.h"
 #include "btree_relation.h"
+#include "google_btree_relation.h"
 #include "relation.h"
 #include <assert.h>
 #include <stdio.h>
@@ -83,9 +84,21 @@ void testBtree(u64 * tup, u64 rc)
 
 void testGoogleBtree(u64 * tup, u64 rc)
 {
-    typedef btree::btree_map<u64, u64> Relation0Map;
-    typedef btree::btree_map<u64, btree::btree_map<u64, u64>* > Relation1Map;
 
+    typedef btree::btree_map<u64, u64> Relation0Map;
+
+    typedef btree::btree_map<u64, Relation0Map* > Relation1Map;
+    //typedef btree::btree_map<u64, Relation1Map* > Relation2Map;
+    //typedef btree::btree_map<u64, Relation2Map* > Relation3Map;
+
+    /*
+    int arity = 5;
+    for (u32 i = 0; i < arity; i++)
+    {
+        
+    }
+    */
+    
 
     Relation1Map *map1 = new Relation1Map;
 

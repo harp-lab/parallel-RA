@@ -1,16 +1,14 @@
 #ifndef __GOOGLE_RELATION__
 #define __GOOGLE_RELATION__
 
-
 #include "compat.h"
 #include "tuple.h"
 #include "btree/btree_map.h"
 
-
-
 //typedef btree::btree_map<u64, u64> Map0;
 //typedef btree::btree_map<u64, Map0* > Map1;
 
+#if 0
 class google_relation
 {
     typedef google_relation subrelation;
@@ -53,7 +51,6 @@ public:
         typename btree::const_iterator btit;
         typename subrelation::iter srit;
 
-
     public:
 
         iter(const google_relation& r, const s64* sel)
@@ -74,7 +71,6 @@ public:
               srit(it.srit)
         {
         }
-
 
         void advance()
         {
@@ -97,19 +93,15 @@ public:
             return srit.more();
         }
 
-
         u64* operator *()
         {
             return 0;
             //return tuple(btit->first, *srit);
         }
 
-
         void operator =(google_relation::iter it)
         {
         }
-
-
     };
 
     iter select(const s64* sel)
@@ -124,6 +116,7 @@ public:
     }
 
 };
+#endif
 
 #if 0
 template<unsigned arity>

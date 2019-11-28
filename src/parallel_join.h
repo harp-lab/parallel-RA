@@ -15,6 +15,7 @@ class parallel_RA
 {
 private:
     u32 RA_type;
+    int RA_typex;
     //int projection_index[3];
     int projection_index_a;
     int projection_index_b;
@@ -145,6 +146,9 @@ public:
     }
 
     u32 get_RA_type() {return RA_type;}
+
+    int get_RA_typex() {return RA_typex;}
+    void set_RA_typex(int x) {RA_typex = x;}
 
 
 
@@ -368,48 +372,134 @@ public:
         return;
     }
 
-    void local_copy(relation* input, relation* output, vector_buffer* local_join_output, int* process_size)
+    void local_copy(relation* input, relation* output, vector_buffer* local_join_output, int* process_size, int full_delta, int copy_a, int copy_b)
     {
-        int rank = mcomm.get_rank();
+        //int rank = mcomm.get_rank();
         u32 output_arity = output->get_arity();
         u32* output_sub_bucket_count = output->get_sub_bucket_count();
         u32** output_sub_bucket_rank = output->get_sub_bucket_rank();
         int buckets = mcomm.get_number_of_buckets();
         google_relation *delta = input->get_delta();
+        google_relation *full = input->get_full();
         u32* bucket_map = input->get_bucket_map();
         u64 val[2] = {0, 0};
-
         u32 input0_buffer_size = 0;
 
 
-        //int i = rank;
-        //for (int k1 = 0; k1 < input0_buffer_size; k1=k1+input0_arity)
-        for (int i = 0; i < buckets; i++)
+        if (copy_a == 1 && copy_b == 0)
         {
-            if (bucket_map[i] == 1)
+            if (full_delta == DELTA)
             {
-                for ( auto local_it = delta[i].begin(); local_it!= delta[i].end(); ++local_it )
+                for (int i = 0; i < buckets; i++)
                 {
-                    Map0* k = local_it->second;
-                    for (auto it2 = k->begin(); it2 != k->end(); it2++)
+                    if (bucket_map[i] == 1)
                     {
-                        val[0] = it2->first;
-                        val[1] = local_it->first;
+                        for ( auto local_it = delta[i].begin(); local_it!= delta[i].end(); ++local_it )
+                        {
+                            Map0* k = local_it->second;
+                            for (auto it2 = k->begin(); it2 != k->end(); it2++)
+                            {
+                                val[0] = it2->first;
+                                val[1] = local_it->first;
 
-                        uint64_t bucket_id = hash_function(val[0]) % buckets;
-                        uint64_t sub_bucket_id = hash_function(val[1]) % output_sub_bucket_count[bucket_id];
+                                uint64_t bucket_id = hash_function(val[0]) % buckets;
+                                uint64_t sub_bucket_id = hash_function(val[1]) % output_sub_bucket_count[bucket_id];
 
-                        int index = output_sub_bucket_rank[bucket_id][sub_bucket_id];
-                        vector_buffer_append(&local_join_output[index], (unsigned char *) val, sizeof(u64) * output_arity);
-                        process_size[index] = process_size[index] + output_arity;
-                        input0_buffer_size++;
+                                int index = output_sub_bucket_rank[bucket_id][sub_bucket_id];
+                                vector_buffer_append(&local_join_output[index], (unsigned char *) val, sizeof(u64) * output_arity);
+                                process_size[index] = process_size[index] + output_arity;
+                                input0_buffer_size++;
+                            }
+                        }
+                    }
+                }
+            }
+            else if (full_delta == FULL)
+            {
+                for (int i = 0; i < buckets; i++)
+                {
+                    if (bucket_map[i] == 1)
+                    {
+                        for ( auto local_it = full[i].begin(); local_it!= full[i].end(); ++local_it )
+                        {
+                            Map0* k = local_it->second;
+                            for (auto it2 = k->begin(); it2 != k->end(); it2++)
+                            {
+                                val[0] = it2->first;
+                                val[1] = local_it->first;
+
+                                uint64_t bucket_id = hash_function(val[0]) % buckets;
+                                uint64_t sub_bucket_id = hash_function(val[1]) % output_sub_bucket_count[bucket_id];
+
+                                int index = output_sub_bucket_rank[bucket_id][sub_bucket_id];
+                                vector_buffer_append(&local_join_output[index], (unsigned char *) val, sizeof(u64) * output_arity);
+                                process_size[index] = process_size[index] + output_arity;
+                                input0_buffer_size++;
+                            }
+                        }
                     }
                 }
             }
         }
+        else
+        {
+            if (full_delta == DELTA)
+            {
+                for (int i = 0; i < buckets; i++)
+                {
+                    if (bucket_map[i] == 1)
+                    {
+                        for ( auto local_it = delta[i].begin(); local_it!= delta[i].end(); ++local_it )
+                        {
+                            Map0* k = local_it->second;
+                            for (auto it2 = k->begin(); it2 != k->end(); it2++)
+                            {
+                                val[1] = it2->first;
+                                val[0] = local_it->first;
 
-        if (rank == 0)
-        std::cout << "[Local Copy] " << input0_buffer_size << std::endl;
+                                uint64_t bucket_id = hash_function(val[0]) % buckets;
+                                uint64_t sub_bucket_id = hash_function(val[1]) % output_sub_bucket_count[bucket_id];
+
+                                int index = output_sub_bucket_rank[bucket_id][sub_bucket_id];
+                                vector_buffer_append(&local_join_output[index], (unsigned char *) val, sizeof(u64) * output_arity);
+                                process_size[index] = process_size[index] + output_arity;
+                                input0_buffer_size++;
+                            }
+                        }
+                    }
+                }
+            }
+            else if (full_delta == FULL)
+            {
+                for (int i = 0; i < buckets; i++)
+                {
+                    if (bucket_map[i] == 1)
+                    {
+                        for ( auto local_it = full[i].begin(); local_it!= full[i].end(); ++local_it )
+                        {
+                            Map0* k = local_it->second;
+                            for (auto it2 = k->begin(); it2 != k->end(); it2++)
+                            {
+                                val[1] = it2->first;
+                                val[0] = local_it->first;
+
+                                uint64_t bucket_id = hash_function(val[0]) % buckets;
+                                uint64_t sub_bucket_id = hash_function(val[1]) % output_sub_bucket_count[bucket_id];
+
+                                int index = output_sub_bucket_rank[bucket_id][sub_bucket_id];
+                                vector_buffer_append(&local_join_output[index], (unsigned char *) val, sizeof(u64) * output_arity);
+                                process_size[index] = process_size[index] + output_arity;
+                                input0_buffer_size++;
+                            }
+                        }
+                    }
+                }
+            }
+
+        }
+
+        //if (rank == 0)
+        //    std::cout << "XXXX [Local Copy] " << input0_buffer_size << std::endl;
 
         return;
     }
@@ -459,7 +549,7 @@ public:
         }
 
         if (rank == 0)
-        std::cout << "[Local Copy] " << input0_buffer_size << std::endl;
+            std::cout << "[Local Copy] " << input0_buffer_size << std::endl;
 
         return;
     }
@@ -518,8 +608,8 @@ public:
 
         if (*offset > input0_buffer_size || input0_buffer_size == 0 || i1_size == 0)
         {
-            if (rank == 0)
-                std::cout  <<"[Join Done] [Local Join] " << i1_size << " " << elements_accessed << " (" << input0_buffer_size << ") " << local_join_inserts << " Duplicates " << local_join_duplicates << " Offset " << *offset << std::endl;
+            //if (rank == 0)
+            //    std::cout  <<"[Join Done] [Local Join] " << i1_size << " " << elements_accessed << " (" << input0_buffer_size << ") " << local_join_inserts << " Duplicates " << local_join_duplicates << " Offset " << *offset << std::endl;
 
             return true;
         }
@@ -558,7 +648,7 @@ public:
             for (int k1 = *offset; k1 < input0_buffer_size; k1 = k1 + input0_arity)
             {
                 //if (iteration == 1 && rank == 0)
-                    //std::cout << "Input " << input0_buffer[k1] << " " << input0_buffer[k1 + 1] << std::endl;
+                //std::cout << "Input " << input0_buffer[k1] << " " << input0_buffer[k1 + 1] << std::endl;
                 int i = hash_function(input0_buffer[k1]) % buckets;
                 //for (int i = 0; i < buckets; i++)
                 {
@@ -585,8 +675,8 @@ public:
                                     val[1] = it2->first;
                                     val[0] = input0_buffer[k1 + 1];
                                     //if (iteration == 1)
-                                        //if (iteration == 1 && rank == 0)
-                                        //std::cout << rank << " Matches " << input0_buffer[k1] << " " << input0_buffer[k1 + 1] << " | " << input0_buffer[k1] << " " <<  it2->first << std::endl;
+                                    //if (iteration == 1 && rank == 0)
+                                    //std::cout << rank << " Matches " << input0_buffer[k1] << " " << input0_buffer[k1 + 1] << " | " << input0_buffer[k1] << " " <<  it2->first << std::endl;
                                     uint64_t bucket_id = hash_function(val[0]) % buckets;
                                     uint64_t sub_bucket_id = hash_function(val[1]) % output_sub_bucket_count[bucket_id];
                                     int index = output_sub_bucket_rank[bucket_id][sub_bucket_id];
@@ -604,8 +694,8 @@ public:
                                 val[1] = it2->first;
                                 val[0] = input0_buffer[k1 + 1];
                                 //if (iteration == 1)
-                                    //if (iteration == 1 && rank == 0)
-                                    //std::cout << rank << " Matches " << input0_buffer[k1] << " " << input0_buffer[k1 + 1] << " | " << input0_buffer[k1] << " " <<  it2->first << std::endl;
+                                //if (iteration == 1 && rank == 0)
+                                //std::cout << rank << " Matches " << input0_buffer[k1] << " " << input0_buffer[k1 + 1] << " | " << input0_buffer[k1] << " " <<  it2->first << std::endl;
                                 uint64_t bucket_id = hash_function(val[0]) % buckets;
                                 uint64_t sub_bucket_id = hash_function(val[1]) % output_sub_bucket_count[bucket_id];
                                 int index = output_sub_bucket_rank[bucket_id][sub_bucket_id];
@@ -643,7 +733,7 @@ public:
             for (int k1 = *offset; k1 < input0_buffer_size; k1 = k1 + input0_arity)
             {
                 //if (iteration == 1 && rank == 0)
-                    //std::cout << "Input " << input0_buffer[k1] << " " << input0_buffer[k1 + 1] << std::endl;
+                //std::cout << "Input " << input0_buffer[k1] << " " << input0_buffer[k1 + 1] << std::endl;
                 //int i = rank;
                 //for (int i = 0; i < buckets; i++)
                 int i = hash_function(input0_buffer[k1]) % buckets;
@@ -671,8 +761,8 @@ public:
                                     val[0] = it2->first;
                                     val[1] = input0_buffer[k1 + 1];
                                     //if (iteration == 1)
-                                        //if (iteration == 1 && rank == 0)
-                                        //std::cout << rank << " Matches " << input0_buffer[k1] << " " << input0_buffer[k1 + 1] << " | " << input0_buffer[k1] << " " <<  it2->first << std::endl;
+                                    //if (iteration == 1 && rank == 0)
+                                    //std::cout << rank << " Matches " << input0_buffer[k1] << " " << input0_buffer[k1 + 1] << " | " << input0_buffer[k1] << " " <<  it2->first << std::endl;
                                     uint64_t bucket_id = hash_function(val[0]) % buckets;
                                     uint64_t sub_bucket_id = hash_function(val[1]) % output_sub_bucket_count[bucket_id];
                                     int index = output_sub_bucket_rank[bucket_id][sub_bucket_id];
@@ -691,14 +781,13 @@ public:
                                 val[0] = it2->first;
                                 val[1] = input0_buffer[k1 + 1];
                                 //if (iteration == 1)
-                                    //if (iteration == 1 && rank == 0)
-                                    //std::cout << rank << " Matches " << input0_buffer[k1] << " " << input0_buffer[k1 + 1] << " | " << input0_buffer[k1] << " " <<  it2->first << std::endl;
+                                //if (iteration == 1 && rank == 0)
+                                //std::cout << rank << " Matches " << input0_buffer[k1] << " " << input0_buffer[k1 + 1] << " | " << input0_buffer[k1] << " " <<  it2->first << std::endl;
                                 uint64_t bucket_id = hash_function(val[0]) % buckets;
                                 uint64_t sub_bucket_id = hash_function(val[1]) % output_sub_bucket_count[bucket_id];
                                 int index = output_sub_bucket_rank[bucket_id][sub_bucket_id];
                                 vector_buffer_append(&(local_join_output[index]), (unsigned char *) val, sizeof(u64) * output_arity);
                                 process_size[index] = process_size[index] + output_arity;
-
                             }
                         }
                     }
@@ -725,8 +814,8 @@ public:
             }
 
         }
-        if (rank == 0)
-            std::cout  <<"[Join Complete] [Local Join] " << i1_size << " " << elements_accessed << " (" << input0_buffer_size << ") " << local_join_inserts << " Duplicates " << local_join_duplicates << " Offset " << *offset << std::endl;
+        //if (rank == 0)
+        //    std::cout  <<"[Join Complete] [Local Join] " << i1_size << " " << elements_accessed << " (" << input0_buffer_size << ") " << local_join_inserts << " Duplicates " << local_join_duplicates << " Offset " << *offset << std::endl;
 
         for(google_relation::iterator ix = tempT.begin(); ix != tempT.end(); ix++)
             delete (ix->second);
@@ -790,8 +879,8 @@ public:
                                     val[1] = it2->first;
                                     val[0] = input0_buffer[k1 + 1];
                                     //if (iteration == 1)
-                                        //if (iteration == 1 && rank == 0)
-                                        //std::cout << rank << " Matches " << input0_buffer[k1] << " " << input0_buffer[k1 + 1] << " | " << input0_buffer[k1] << " " <<  it2->first << std::endl;
+                                    //if (iteration == 1 && rank == 0)
+                                    //std::cout << rank << " Matches " << input0_buffer[k1] << " " << input0_buffer[k1 + 1] << " | " << input0_buffer[k1] << " " <<  it2->first << std::endl;
                                     uint64_t bucket_id = hash_function(val[0]) % buckets;
                                     uint64_t sub_bucket_id = hash_function(val[1]) % output_sub_bucket_count[bucket_id];
                                     int index = output_sub_bucket_rank[bucket_id][sub_bucket_id];
@@ -812,8 +901,8 @@ public:
                                 val[1] = it2->first;
                                 val[0] = input0_buffer[k1 + 1];
                                 //if (iteration == 1)
-                                    //if (iteration == 1 && rank == 0)
-                                    //std::cout << rank << " Matches " << input0_buffer[k1] << " " << input0_buffer[k1 + 1] << " | " << input0_buffer[k1] << " " <<  it2->first << std::endl;
+                                //if (iteration == 1 && rank == 0)
+                                //std::cout << rank << " Matches " << input0_buffer[k1] << " " << input0_buffer[k1 + 1] << " | " << input0_buffer[k1] << " " <<  it2->first << std::endl;
                                 uint64_t bucket_id = hash_function(val[0]) % buckets;
                                 uint64_t sub_bucket_id = hash_function(val[1]) % output_sub_bucket_count[bucket_id];
                                 int index = output_sub_bucket_rank[bucket_id][sub_bucket_id];
@@ -852,7 +941,7 @@ public:
             for (int k1 = *offset; k1 < input0_buffer_size; k1 = k1 + input0_arity)
             {
                 //if (iteration == 1 && rank == 0)
-                    //std::cout << "Input " << input0_buffer[k1] << " " << input0_buffer[k1 + 1] << std::endl;
+                //std::cout << "Input " << input0_buffer[k1] << " " << input0_buffer[k1 + 1] << std::endl;
                 //int i = rank;
                 for (int i = 0; i < buckets; i++)
                 {
@@ -879,8 +968,8 @@ public:
                                     val[0] = it2->first;
                                     val[1] = input0_buffer[k1 + 1];
                                     //if (iteration == 1)
-                                        //if (iteration == 1 && rank == 0)
-                                        //std::cout << rank << " Matches " << input0_buffer[k1] << " " << input0_buffer[k1 + 1] << " | " << input0_buffer[k1] << " " <<  it2->first << std::endl;
+                                    //if (iteration == 1 && rank == 0)
+                                    //std::cout << rank << " Matches " << input0_buffer[k1] << " " << input0_buffer[k1 + 1] << " | " << input0_buffer[k1] << " " <<  it2->first << std::endl;
                                     uint64_t bucket_id = hash_function(val[0]) % buckets;
                                     uint64_t sub_bucket_id = hash_function(val[1]) % output_sub_bucket_count[bucket_id];
                                     int index = output_sub_bucket_rank[bucket_id][sub_bucket_id];
@@ -901,8 +990,8 @@ public:
                                 val[0] = it2->first;
                                 val[1] = input0_buffer[k1 + 1];
                                 //if (iteration == 1)
-                                    //if (iteration == 1 && rank == 0)
-                                    //std::cout << rank << " Matches " << input0_buffer[k1] << " " << input0_buffer[k1 + 1] << " | " << input0_buffer[k1] << " " <<  it2->first << std::endl;
+                                //if (iteration == 1 && rank == 0)
+                                //std::cout << rank << " Matches " << input0_buffer[k1] << " " << input0_buffer[k1 + 1] << " | " << input0_buffer[k1] << " " <<  it2->first << std::endl;
                                 uint64_t bucket_id = hash_function(val[0]) % buckets;
                                 uint64_t sub_bucket_id = hash_function(val[1]) % output_sub_bucket_count[bucket_id];
                                 int index = output_sub_bucket_rank[bucket_id][sub_bucket_id];
@@ -1009,7 +1098,7 @@ public:
 
     int insert_in_newt(u64 outer_hash_buffer_size, u64 *outer_hash_data, relation* output)
     {
-        int rank = mcomm.get_rank();
+        //int rank = mcomm.get_rank();
         u32 arity = output->get_arity();
         u32 successful_insert = 0;
         u64 t[2];
@@ -1026,11 +1115,11 @@ public:
             }
         }
 
-        if (rank == 0)
-        {
-            int new_count = output->get_new_element_count();
-            std::cout << "[A] Local Inserts in new " << successful_insert << " Tried to inset " << outer_hash_buffer_size/2 << " New count (" << new_count << ")" << std::endl;
-        }
+        //if (rank == 0)
+        //{
+        //    int new_count = output->get_new_element_count();
+        //    std::cout << "[A] Local Inserts in new " << successful_insert << " Tried to inset " << outer_hash_buffer_size/2 << " New count (" << new_count << ")" << std::endl;
+        //}
 
 
         return successful_insert;

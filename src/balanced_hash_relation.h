@@ -209,7 +209,7 @@ public:
 
     void local_insert_in_delta()
     {
-        int rank = mcomm.get_rank();
+        //int rank = mcomm.get_rank();
         delete[] delta;
         delta = newt;
         delta_element_count = newt_element_count;
@@ -226,8 +226,8 @@ public:
         newt_element_count = 0;
         memset(newt_bucket_element_count, 0, buckets * sizeof(u32));
 
-        if (rank == 0)
-            std::cout << "[Pointer copy from new to delta] " << delta_element_count << std::endl;
+        //if (rank == 0)
+        //    std::cout << "[Pointer copy from new to delta] " << delta_element_count << std::endl;
 
         return;
     }
@@ -333,6 +333,190 @@ public:
         }
     }
 
+    void print()
+    {
+        int buckets = mcomm.get_number_of_buckets();
+        //int arity = output->get_arity();
+        //u32* bucket_map = output->get_bucket_map();
+        //google_relation *delta = output->get_delta();
+        //google_relation *full = output->get_full();
+
+        u64 t[arity];
+        std::cout << "Delta" << std::endl;
+        for (int i = 0; i < buckets; i++)
+        {
+            if (bucket_map[i] == 1)
+            {
+                for ( auto local_it = delta[i].begin(); local_it!= delta[i].end(); ++local_it )
+                {
+                    Map0* k = local_it->second;
+                    for (auto it2 = k->begin(); it2 != k->end(); it2++)
+                    {
+                        t[0] = local_it->first;
+                        t[1] = it2->first;
+
+                        std::cout << t[0] << "\t" << t[1] << std::endl;
+                    }
+                }
+            }
+        }
+
+        std::cout << "Full" << std::endl;
+        for (int i = 0; i < buckets; i++)
+        {
+            if (bucket_map[i] == 1)
+            {
+                for ( auto local_it = full[i].begin(); local_it!= full[i].end(); ++local_it )
+                {
+                    Map0* k = local_it->second;
+                    for (auto it2 = k->begin(); it2 != k->end(); it2++)
+                    {
+                        t[0] = local_it->first;
+                        t[1] = it2->first;
+
+                        std::cout << t[0] << "\t" << t[1] << std::endl;
+                    }
+                }
+            }
+        }
+
+    }
+
+
+    void print_inverse()
+    {
+        int buckets = mcomm.get_number_of_buckets();
+        //int arity = output->get_arity();
+        //u32* bucket_map = output->get_bucket_map();
+        //google_relation *delta = output->get_delta();
+        //google_relation *full = output->get_full();
+
+        u64 t[arity];
+        std::cout << "Delta" << std::endl;
+        for (int i = 0; i < buckets; i++)
+        {
+            if (bucket_map[i] == 1)
+            {
+                for ( auto local_it = delta[i].begin(); local_it!= delta[i].end(); ++local_it )
+                {
+                    Map0* k = local_it->second;
+                    for (auto it2 = k->begin(); it2 != k->end(); it2++)
+                    {
+                        t[0] = local_it->first;
+                        t[1] = it2->first;
+
+                        std::cout << t[1] << "\t" << t[0] << std::endl;
+                    }
+                }
+            }
+        }
+
+        std::cout << "Full" << std::endl;
+        for (int i = 0; i < buckets; i++)
+        {
+            if (bucket_map[i] == 1)
+            {
+                for ( auto local_it = full[i].begin(); local_it!= full[i].end(); ++local_it )
+                {
+                    Map0* k = local_it->second;
+                    for (auto it2 = k->begin(); it2 != k->end(); it2++)
+                    {
+                        t[0] = local_it->first;
+                        t[1] = it2->first;
+
+                        std::cout << t[1] << "\t" << t[0] << std::endl;
+                    }
+                }
+            }
+        }
+
+    }
+
+    void initialize_empty(u32 arity, u32 join_column_count, u32 sbc, mpi_comm& mcomm)
+    {
+        assert(arity == 2);
+        this->arity = arity;
+        this->join_column_count = join_column_count;
+        this->mcomm = mcomm;
+
+        u32 buckets = mcomm.get_number_of_buckets();
+        int rank = mcomm.get_rank();
+        int nprocs = mcomm.get_nprocs();
+
+        //std::cout << "Initialize " << buckets << std::endl;
+
+
+        full_element_count = 0;
+        delta_element_count = 0;
+        delta = new google_relation[buckets];
+        full = new google_relation[buckets];
+        newt = new google_relation[buckets];
+        /*
+        for (u32 i = 0; i < buckets; i++)
+            full->setArity(arity);
+        */
+
+        sub_bucket_count = new u32[buckets];
+        for (u64 b = 0; b < buckets; b++)
+            sub_bucket_count[b] = sbc;
+
+        sub_bucket_rank = new u32*[buckets];
+        distinct_sub_bucket_rank = new int*[buckets];
+        distinct_sub_bucket_rank_count = new int[buckets];
+
+        bucket_map = new u32[buckets];
+        memset(bucket_map, 0, sizeof(u32) * buckets);
+
+        full_sub_bucket_element_count = new u32*[buckets];
+        memset(full_sub_bucket_element_count, 0, sizeof(u32*) * buckets);
+
+        delta_sub_bucket_element_count = new u32*[buckets];
+        memset(delta_sub_bucket_element_count, 0, sizeof(u32*) * buckets);
+
+        newt_sub_bucket_element_count = new u32*[buckets];
+        memset(newt_sub_bucket_element_count, 0, sizeof(u32*) * buckets);
+
+        full_bucket_element_count = new u32[buckets];
+        memset(full_bucket_element_count, 0, sizeof(u32) * buckets);
+
+        delta_bucket_element_count = new u32[buckets];
+        memset(delta_bucket_element_count, 0, sizeof(u32) * buckets);
+
+        newt_bucket_element_count = new u32[buckets];
+        memset(newt_bucket_element_count, 0, sizeof(u32) * buckets);
+
+        int rcount = 0;
+        for (u64 b = 0; b < buckets; b++)
+        {
+            sub_bucket_rank[b] = new u32[sub_bucket_count[b]];
+            std::unordered_set<int> distinct_ranks;
+            for (u64 x = 0; x < sub_bucket_count[b]; x++)
+            {
+                sub_bucket_rank[b][x] = rcount % nprocs;
+
+                if (sub_bucket_rank[b][x] == (u32)rank)
+                    bucket_map[b] = 1;
+
+                distinct_ranks.insert(sub_bucket_rank[b][x]);
+                rcount++;
+            }
+
+            distinct_sub_bucket_rank_count[b] = distinct_ranks.size();
+            distinct_sub_bucket_rank[b] = new int[distinct_sub_bucket_rank_count[b]];
+            u32 x  = 0;
+            for ( auto it = distinct_ranks.begin(); it != distinct_ranks.end(); ++it, x++ )
+                distinct_sub_bucket_rank[b][x] = *it;
+
+            full_sub_bucket_element_count[b] = new u32[sub_bucket_count[b]];
+            memset(full_sub_bucket_element_count[b], 0, sizeof(u32) * sub_bucket_count[b]);
+
+            delta_sub_bucket_element_count[b] = new u32[sub_bucket_count[b]];
+            memset(delta_sub_bucket_element_count[b], 0, sizeof(u32) * sub_bucket_count[b]);
+
+            newt_sub_bucket_element_count[b] = new u32[sub_bucket_count[b]];
+            memset(newt_sub_bucket_element_count[b], 0, sizeof(u32) * sub_bucket_count[b]);
+        }
+    }
 
     void initialize(u32 arity, u32 join_column_count, bool is_static, u32 sbc, const char *fname, int full_delta, mpi_comm& mcomm, int col_index)
     {
@@ -530,11 +714,127 @@ public:
         file_io.buffer_data_to_hash_buffer_col(mcomm.get_nprocs(), mcomm.get_comm(), buckets, sub_bucket_rank, sub_bucket_count, col_index);
         file_io.delete_raw_buffers();
 
-        //std::cout << "[INIIIIIIIII] Process " << rank << " " << file_io.get_hash_buffer_size() << std::endl;
-
         /* Copy data from buffer to relation */
-        if (full_delta == DELTA)
-            initialize_delta_with_rename_and_project(file_io.get_hash_buffer_size(), file_io.get_hash_buffer(), rename_and_project_copy);
+        initialize_relation_with_rename_and_project(file_io.get_hash_buffer_size(), file_io.get_hash_buffer(), rename_and_project_copy, full_delta);
+
+#if 0
+        else if (full_delta == FULL)
+            initialize_full_with_rename_and_project(file_io.get_col_count() * file_io.get_row_count(), file_io.get_hash_buffer(), rename_and_project_copy);
+        else if (full_delta == FULL_AND_DELTA)
+            initialize_full_and_delta_with_rename_and_project(file_io.get_col_count() * file_io.get_row_count(), file_io.get_hash_buffer(), rename_and_project_copy);
+#endif
+        /* load balance the relation */
+        //load_balance(load_balance_factor);
+
+        //std::cout << "XXXXXXXXXXXXXXX " << get_delta_element_count() << std::endl;
+
+        file_io.delete_hash_buffers();
+    }
+
+
+    void initialize_delta_with_relation(u32 arity, u32 join_column_count, u32 sbc, mpi_comm mcomm, relation* T)
+    {
+        assert(arity == 2);
+        this->arity = arity;
+        this->join_column_count = join_column_count;
+        this->mcomm = mcomm;
+
+        u32 buckets = mcomm.get_number_of_buckets();
+        int rank = mcomm.get_rank();
+        int nprocs = mcomm.get_nprocs();
+
+        //std::cout << "buckets buckets" << buckets << "buckets" << std::endl;
+
+        full_element_count = 0;
+        delta_element_count = 0;
+        delta = new google_relation[buckets];
+        full = new google_relation[buckets];
+        newt = new google_relation[buckets];
+
+        sub_bucket_count = new u32[buckets];
+        for (u64 b = 0; b < buckets; b++)
+            sub_bucket_count[b] = sbc;
+
+        sub_bucket_rank = new u32*[buckets];
+        distinct_sub_bucket_rank = new int*[buckets];
+        distinct_sub_bucket_rank_count = new int[buckets];
+
+        bucket_map = new u32[buckets];
+        memset(bucket_map, 0, sizeof(u32) * buckets);
+
+        full_sub_bucket_element_count = new u32*[buckets];
+        memset(full_sub_bucket_element_count, 0, sizeof(u32*) * buckets);
+
+        delta_sub_bucket_element_count = new u32*[buckets];
+        memset(delta_sub_bucket_element_count, 0, sizeof(u32*) * buckets);
+
+        newt_sub_bucket_element_count = new u32*[buckets];
+        memset(newt_sub_bucket_element_count, 0, sizeof(u32*) * buckets);
+
+        full_bucket_element_count = new u32[buckets];
+        memset(full_bucket_element_count, 0, sizeof(u32) * buckets);
+
+        delta_bucket_element_count = new u32[buckets];
+        memset(delta_bucket_element_count, 0, sizeof(u32) * buckets);
+
+        newt_bucket_element_count = new u32[buckets];
+        memset(newt_bucket_element_count, 0, sizeof(u32) * buckets);
+
+        int rcount = 0;
+        for (u64 b = 0; b < buckets; b++)
+        {
+            sub_bucket_rank[b] = new u32[sub_bucket_count[b]];
+            std::unordered_set<int> distinct_ranks;
+            for (u64 x = 0; x < sub_bucket_count[b]; x++)
+            {
+                sub_bucket_rank[b][x] = rcount % nprocs;
+
+                if (sub_bucket_rank[b][x] == (u32)rank)
+                    bucket_map[b] = 1;
+
+                distinct_ranks.insert(sub_bucket_rank[b][x]);
+                last_rank = rcount;
+                rcount++;
+            }
+
+            distinct_sub_bucket_rank_count[b] = distinct_ranks.size();
+            distinct_sub_bucket_rank[b] = new int[distinct_sub_bucket_rank_count[b]];
+            u32 x  = 0;
+            for ( auto it = distinct_ranks.begin(); it != distinct_ranks.end(); ++it, x++ )
+                distinct_sub_bucket_rank[b][x] = *it;
+
+            full_sub_bucket_element_count[b] = new u32[sub_bucket_count[b]];
+            memset(full_sub_bucket_element_count[b], 0, sizeof(u32) * sub_bucket_count[b]);
+
+            delta_sub_bucket_element_count[b] = new u32[sub_bucket_count[b]];
+            memset(delta_sub_bucket_element_count[b], 0, sizeof(u32) * sub_bucket_count[b]);
+
+            newt_sub_bucket_element_count[b] = new u32[sub_bucket_count[b]];
+            memset(newt_sub_bucket_element_count[b], 0, sizeof(u32) * sub_bucket_count[b]);
+        }
+
+
+        u64 t[arity];
+        u32* bm = T->get_bucket_map();
+        google_relation *full1 = T->get_full();
+        for (u32 i = 0; i < buckets; i++)
+        {
+            if (bm[i] == 1)
+            {
+                for ( auto local_it = full1[i].begin(); local_it!= full1[i].end(); ++local_it )
+                {
+                    Map0* k = local_it->second;
+                    for (auto it2 = k->begin(); it2 != k->end(); it2++)
+                    {
+                        t[0] = local_it->first;
+                        t[1] = it2->first;
+                        insert_in_delta(t);
+
+                        //std::cout << t[0] << "\t" << t[1] << std::endl;
+                    }
+                }
+            }
+        }
 
 #if 0
         else if (full_delta == FULL)
@@ -659,55 +959,51 @@ public:
     }
 
 
-    void initialize_delta_with_rename_and_project (u32 buffer_size, u64* buffer, int* rename_and_project_copy)
+    void initialize_relation_with_rename_and_project (u32 buffer_size, u64* buffer, int* rename_and_project_copy, int full_delta)
     {
         u64 t[arity];
-        //u32 buckets = mcomm.get_number_of_buckets();
-        //assert(rename_and_project_copy[0] == 1 && rename_and_project_copy[1] == 0);
-        //assert(arity == 2);
-
-        //int rank = mcomm.get_rank();
-        if(rename_and_project_copy[0] == 1 && rename_and_project_copy[1] == 0)
+        if (full_delta == DELTA)
         {
-            for (u32 i = 0; i < buffer_size; i = i + arity)
+            if(rename_and_project_copy[0] == 1 && rename_and_project_copy[1] == 0)
             {
-                //uint64_t bucket_id = hash_function(buffer[i + 1]) % buckets;
-                //uint64_t sub_bucket_id = hash_function(buffer[i]) % sub_bucket_count[bucket_id];
-
-
-                t[0] = buffer[i + 1];
-                t[1] = buffer[i];
-
-                //if (rank == 0)
-                //    std::cout << i << " Inserts: " << t[0] << " " << t[1] << std::endl;
-                insert_in_delta(t);
-
-                //delta_element_count++;
-                //delta_bucket_element_count[bucket_id]++;
-                //delta_sub_bucket_element_count[bucket_id][sub_bucket_id]++;
+                for (u32 i = 0; i < buffer_size; i = i + arity)
+                {
+                    t[0] = buffer[i + 1];
+                    t[1] = buffer[i];
+                    insert_in_delta(t);
+                }
+            }
+            else
+            {
+                for (u32 i = 0; i < buffer_size; i = i + arity)
+                {
+                    t[0] = buffer[i];
+                    t[1] = buffer[i + 1];
+                    insert_in_delta(t) == true;
+                }
             }
         }
-        else
+        else if (full_delta == FULL)
         {
-            for (u32 i = 0; i < buffer_size; i = i + arity)
+            if(rename_and_project_copy[0] == 1 && rename_and_project_copy[1] == 0)
             {
-                //uint64_t bucket_id = hash_function(buffer[i]) % buckets;
-                //uint64_t sub_bucket_id = hash_function(buffer[i + 1]) % sub_bucket_count[bucket_id];
-
-                t[0] = buffer[i];
-                t[1] = buffer[i + 1];
-                insert_in_delta(t) == true;
-
-                //if (insert_tuple(&(delta[bucket_id]), t) == true)
-                //{
-                //    delta_element_count++;
-                //    delta_bucket_element_count[bucket_id]++;
-                //    delta_sub_bucket_element_count[bucket_id][sub_bucket_id]++;
-                //}
+                for (u32 i = 0; i < buffer_size; i = i + arity)
+                {
+                    t[0] = buffer[i + 1];
+                    t[1] = buffer[i];
+                    insert_in_full(t);
+                }
+            }
+            else
+            {
+                for (u32 i = 0; i < buffer_size; i = i + arity)
+                {
+                    t[0] = buffer[i];
+                    t[1] = buffer[i + 1];
+                    insert_in_full(t) == true;
+                }
             }
         }
-
-        //std::cout << "[INITIALIZE] Elements inserted in delta " << delta_element_count << std::endl << std::endl;
     }
 
 
@@ -892,7 +1188,7 @@ public:
 
     int insert_delta_in_full()
     {
-        int rank = mcomm.get_rank();
+        //int rank = mcomm.get_rank();
         int buckets = mcomm.get_number_of_buckets();
         u32 insert_success = 0;
         u32 insert_attempts = 0;
@@ -923,8 +1219,8 @@ public:
         set_delta_element_count(0);
         set_full_inserts_element_count(insert_success);
 
-        if (rank == 0)
-            std::cout << "[Full Inserts] Attemps " << insert_attempts << " Successful inserts " << insert_success << std::endl;
+        //if (rank == 0)
+        //    std::cout << "[Full Inserts] Attemps " << insert_attempts << " Successful inserts " << insert_success << std::endl;
 
         return insert_success;
     }

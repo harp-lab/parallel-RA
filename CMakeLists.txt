@@ -22,6 +22,7 @@ file (GLOB source_files_tc "${source_dir}/transitive_closure.cpp")
 file (GLOB source_files_mpitc "${source_dir}/mpi_transitive_closure.cpp")
 file (GLOB source_files_btc "${source_dir}/balanced_transitive_closure.cpp")
 file (GLOB source_files_btc_tjt "${source_dir}/balanced_transitive_closure_t_join_t.cpp")
+file (GLOB source_files_btc_data_parallel "${source_dir}/balanced_transitive_closure_data_parallel.cpp")
 file (GLOB source_files_copy "${source_dir}/balanced_copy.cpp")
 file (GLOB source_files_union "${source_dir}/union.cpp")
 file (GLOB source_files_aggregated_union "${source_dir}/aggregated_union.cpp")
@@ -62,6 +63,10 @@ TARGET_LINK_LIBRARIES(b_copy ${MPI_LIBRARIES})
 add_executable(bTC_tjt ${source_files_btc_tjt})
 INCLUDE_DIRECTORIES(${MPI_INCLUDE_PATH})
 TARGET_LINK_LIBRARIES(bTC_tjt ${MPI_LIBRARIES})
+
+add_executable(bTC_dp ${source_files_btc_data_parallel})
+INCLUDE_DIRECTORIES(${MPI_INCLUDE_PATH})
+TARGET_LINK_LIBRARIES(bTC_dp ${MPI_LIBRARIES})
 
 
 add_executable(union ${source_files_union})

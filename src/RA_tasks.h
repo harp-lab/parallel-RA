@@ -70,16 +70,16 @@ public:
             parallel_RA* current_ra = *it;
             if (current_ra->get_RA_type() == COPY)
             {
-                relation* input = current_ra->get_copy_input();
-                relation* output = current_ra->get_copy_output();
-                u64 s0 = current_ra->full_count(input);
-                u64 s1 = current_ra->full_count(output);
+                //relation* input = current_ra->get_copy_input();
+                //relation* output = current_ra->get_copy_output();
+                //u64 s0 = current_ra->full_count(input);
+                //u64 s1 = current_ra->full_count(output);
 
-                if (rank == 0)
-                {
-                    std::cout << "Input 0 " << s0 << std::endl;
-                    std::cout << "Input 1 " << s1 << std::endl;
-                }
+                //if (rank == 0)
+                //{
+                    //std::cout << "Input 0 " << s0 << std::endl;
+                    //std::cout << "Input 1 " << s1 << std::endl;
+                //}
             }
             else if (current_ra->get_RA_type() == JOIN)
             {
@@ -88,7 +88,7 @@ public:
 
                 if (rank == 0)
                 {
-                    std::cout << "T Size 1 " << s0 << std::endl;
+                    std::cout << "T Size  " << s0;
                 }
             }
         }
@@ -120,6 +120,7 @@ public:
                 fixed_point = fixed_point & current_ra->fixed_point_check(input0)
                         & current_ra->fixed_point_check(input1)
                         & current_ra->fixed_point_check(output);
+                break;
             }
             counter++;
         }
@@ -159,21 +160,35 @@ public:
                     current_ra->clique_comm(input->get_arity(), input->get_delta(), input->get_delta_element_count(), input->get_distinct_sub_bucket_rank_count(), input->get_distinct_sub_bucket_rank(), input->get_bucket_map(), output, &clique_buf_output_size[counter], &clique_buf_output[counter]);
                     total_data_moved = total_data_moved + clique_buf_output_size[counter];
                 }
+
                 else if (current_ra->get_join_input0_graph_type() == DELTA && current_ra->get_join_input1_graph_type() == FULL)
                 {
                     relation* input = current_ra->get_join_input0();
                     relation* output = current_ra->get_join_input1();
+                    //input->print();
+                    //output->print();
 
                     current_ra->clique_comm(input->get_arity(), input->get_delta(), input->get_delta_element_count(), input->get_distinct_sub_bucket_rank_count(), input->get_distinct_sub_bucket_rank(), input->get_bucket_map(), output, &clique_buf_output_size[counter], &clique_buf_output[counter]);
                     total_data_moved = total_data_moved + clique_buf_output_size[counter];
 
                 }
+
                 else if (current_ra->get_join_input0_graph_type() == FULL && current_ra->get_join_input1_graph_type() == DELTA)
                 {
                     relation* input = current_ra->get_join_input1();
                     relation* output = current_ra->get_join_input0();
 
                     current_ra->clique_comm(input->get_arity(), input->get_delta(), input->get_delta_element_count(), input->get_distinct_sub_bucket_rank_count(), input->get_distinct_sub_bucket_rank(), input->get_bucket_map(), output, &clique_buf_output_size[counter], &clique_buf_output[counter]);
+                    total_data_moved = total_data_moved + clique_buf_output_size[counter];
+                }
+
+                else if (current_ra->get_join_input0_graph_type() == FULL && current_ra->get_join_input1_graph_type() == FULL)
+                {
+                    relation* input = current_ra->get_join_input1();
+                    relation* output = current_ra->get_join_input0();
+                    //output->print();
+
+                    current_ra->clique_comm(input->get_arity(), input->get_full(), input->get_full_element_count(), input->get_distinct_sub_bucket_rank_count(), input->get_distinct_sub_bucket_rank(), input->get_bucket_map(), output, &clique_buf_output_size[counter], &clique_buf_output[counter]);
                     total_data_moved = total_data_moved + clique_buf_output_size[counter];
                 }
             }
@@ -215,7 +230,9 @@ public:
             {
                 relation* output = current_ra->get_copy_output();
                 relation* input = current_ra->get_copy_input();
-                current_ra->local_copy(input, output, local_join_output[counter], local_join_output_size[counter]);
+                int copy_a, copy_b;
+                current_ra->get_copy_projection_index(&copy_a, &copy_b);
+                current_ra->local_copy(input, output, local_join_output[counter], local_join_output_size[counter], current_ra->get_copy_input0_graph_type(), copy_a, copy_b);
             }
             else if (current_ra->get_RA_type() == JOIN)
             {
@@ -231,8 +248,10 @@ public:
                 {
                     relation* input1 = current_ra->get_join_input1();
                     relation* output = current_ra->get_join_output();
+                    int p_a, p_b, p_c;
+                    current_ra->get_join_projection_index(&p_a, &p_b, &p_c);
 
-                    join_completed = join_completed & current_ra->local_join(threshold, clique_buf_output_size[counter], &(offset[counter]), 2, clique_buf_output[counter], input1->get_full(), input1->get_full_element_count(), output, local_join_output[counter], local_join_output_size[counter], 1, 0, &join_tuples, iteration);
+                    join_completed = join_completed & current_ra->local_join(threshold, clique_buf_output_size[counter], &(offset[counter]), 2, clique_buf_output[counter], input1->get_full(), input1->get_full_element_count(), output, local_join_output[counter], local_join_output_size[counter], p_b, p_c, &join_tuples, iteration);
                     total_join_tuples = total_join_tuples + join_tuples;
                 }
                 else if (current_ra->get_join_input0_graph_type() == FULL && current_ra->get_join_input1_graph_type() == DELTA)
@@ -241,6 +260,17 @@ public:
                     relation* output = current_ra->get_join_output();
 
                     join_completed = join_completed & current_ra->local_join(threshold, clique_buf_output_size[counter], &(offset[counter]), 2, clique_buf_output[counter], input0->get_full(), input0->get_full_element_count(), output, local_join_output[counter], local_join_output_size[counter], 0, 1, &join_tuples, iteration);
+                    total_join_tuples = total_join_tuples + join_tuples;
+                }
+                else if (current_ra->get_join_input0_graph_type() == FULL && current_ra->get_join_input1_graph_type() == FULL)
+                {
+                    relation* input0 = current_ra->get_join_input0();
+                    relation* output = current_ra->get_join_output();
+
+                    int p_a, p_b, p_c;
+                    current_ra->get_join_projection_index(&p_a, &p_b, &p_c);
+
+                    join_completed = join_completed & current_ra->local_join(threshold, clique_buf_output_size[counter], &(offset[counter]), 2, clique_buf_output[counter], input0->get_full(), input0->get_full_element_count(), output, local_join_output[counter], local_join_output_size[counter], p_b, p_c, &join_tuples, iteration);
                     total_join_tuples = total_join_tuples + join_tuples;
                 }
             }
@@ -684,12 +714,21 @@ public:
 
                 local_insert = local_insert + output->insert_delta_in_full();
                 output->local_insert_in_delta();
+                break;
 
             }
             if (current_ra->get_RA_type() == JOIN)
             {
                 relation* input0 = current_ra->get_join_input0();
                 relation* input1 = current_ra->get_join_input1();
+
+                if (current_ra->get_RA_typex() == 0)
+                {
+                    relation* output = current_ra->get_join_output();
+                    local_insert = local_insert + output->insert_delta_in_full();
+                    output->local_insert_in_delta();
+                }
+
 
                 local_insert = local_insert + input0->insert_delta_in_full();
                 input0->local_insert_in_delta();
@@ -906,6 +945,9 @@ public:
         int *max_sub_bucket_size = new int[buckets];
         memset(max_sub_bucket_size, 0, buckets * sizeof(int));
 
+        int *min_sub_bucket_size = new int[buckets];
+        memset(min_sub_bucket_size, 0, buckets * sizeof(int));
+
 #if 0
         u64 T_tuple_count_before = 0;
         u64 T_tuple_count_before_global = 0;
@@ -948,6 +990,10 @@ public:
                         {
                             if ((int)full_sub_bucket_size[i][j] > max_sub_bucket_size[i])
                                 max_sub_bucket_size[i] = full_sub_bucket_size[i][j];
+
+                            if ((int)full_sub_bucket_size[i][j] < min_sub_bucket_size[i])
+                                min_sub_bucket_size[i] = full_sub_bucket_size[i][j];
+
                             total_sub_bucket_size = total_sub_bucket_size + full_sub_bucket_size[i][j];
                         }
                     }
@@ -967,6 +1013,10 @@ public:
                         {
                             if ((int)delta_sub_bucket_size[i][j] > max_sub_bucket_size[i])
                                 max_sub_bucket_size[i] = delta_sub_bucket_size[i][j];
+
+                            if ((int)full_sub_bucket_size[i][j] < min_sub_bucket_size[i])
+                                min_sub_bucket_size[i] = full_sub_bucket_size[i][j];
+
                             total_sub_bucket_size = total_sub_bucket_size + delta_sub_bucket_size[i][j];
                         }
                     }
@@ -978,10 +1028,15 @@ public:
         int *global_max = new int[buckets];
         memset(global_max, 0, buckets * sizeof(int));
 
+        int *global_min = new int[buckets];
+        memset(global_min, 0, buckets * sizeof(int));
+
         int average_sub_bucket_size;
         MPI_Allreduce(max_sub_bucket_size, global_max, buckets, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
+        MPI_Allreduce(min_sub_bucket_size, global_min, buckets, MPI_INT, MPI_MIN, MPI_COMM_WORLD);
         MPI_Allreduce(&total_sub_bucket_size, &global_total_sub_bucket_size, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
         delete[] max_sub_bucket_size;
+        delete[] min_sub_bucket_size;
 
         average_sub_bucket_size = global_total_sub_bucket_size / total_sub_bucket_count;
 
@@ -992,6 +1047,7 @@ public:
         int old_total_sub_buckets = 0;
         int new_total_sub_buckets = 0;
         int global_global_max = 0;
+        int global_global_min = 0;
         int average_global_max = 0;
 
         for (int i = 0; i < buckets; i++)
@@ -1011,22 +1067,26 @@ public:
             if (global_global_max < global_max[i])
                 global_global_max = global_max[i];
 
+            if (global_global_min > global_min[i])
+                global_global_min = global_min[i];
+
 
             old_total_sub_buckets = old_total_sub_buckets + sub_bucket_count[i];
             new_total_sub_buckets = new_total_sub_buckets + global_new_sub_bucket[i];
         }
         delete[] global_max;
+        delete[] global_min;
 
         if (count == 0)
         {
             if (rank == 0)
-                std::cout << "[NO] RF " << rf << " Bucket Split -- " << " Average bucket size " << average_sub_bucket_size << " Global Max [" << global_global_max << " " << average_global_max/buckets  << "] OLD " << old_total_sub_buckets << " NEW " << new_total_sub_buckets << std::endl;
+                std::cout << "[NO] T RF " << rf << " Bucket Split -- " << " Average bucket size " << average_sub_bucket_size << " Global Max Min [" << global_global_max << " " << global_global_min << " " << average_global_max/buckets  << "] OLD " << old_total_sub_buckets << " NEW " << new_total_sub_buckets << std::endl;
             return false;
         }
         else if (count != 0)
         {
             if (rank == 0)
-                std::cout << "[YES] RF " << rf << " Bucket Split -- " << " Average bucket size " << average_sub_bucket_size << " Global Max [" << global_global_max << " " << average_global_max/buckets  << "] OLD " << old_total_sub_buckets << " NEW " << new_total_sub_buckets << std::endl;
+                std::cout << "[YES] T RF " << rf << " Bucket Split -- " << " Average bucket size " << average_sub_bucket_size << " Global Max Min [" << global_global_max << " " << global_global_min << " " << average_global_max/buckets  << "] OLD " << old_total_sub_buckets << " NEW " << new_total_sub_buckets << std::endl;
         }
 
         int rcount =  rel->get_last_rank();// sub_bucket_rank[buckets-1][sub_bucket_count[buckets-1] - 1] + 1;
@@ -1347,13 +1407,13 @@ public:
         if (count == 0)
         {
             if (rank == 0)
-                std::cout << "[NO] RF " << rf << " Bucket Split -- Global Min " << global_min << " Average bucket size " << average_sub_bucket_size << " Global Max [" << global_global_max << " " << average_global_max/buckets  << "] OLD " << old_total_sub_buckets << " NEW " << new_total_sub_buckets << std::endl;
+                std::cout << "[NO] G RF " << rf << " Bucket Split -- Global Min " << global_min << " Average bucket size " << average_sub_bucket_size << " Global Max [" << global_global_max << " " << average_global_max/buckets  << "] OLD " << old_total_sub_buckets << " NEW " << new_total_sub_buckets << std::endl;
             return false;
         }
         else if (count != 0)
         {
             if (rank == 0)
-                std::cout << "[YES] RF " << rf << " Bucket Split -- Global Min " << global_min << " Average bucket size " << average_sub_bucket_size << " Global Max [" << global_global_max << " " << average_global_max/buckets  << "] OLD " << old_total_sub_buckets << " NEW " << new_total_sub_buckets << std::endl;
+                std::cout << "[YES] G RF " << rf << " Bucket Split -- Global Min " << global_min << " Average bucket size " << average_sub_bucket_size << " Global Max [" << global_global_max << " " << average_global_max/buckets  << "] OLD " << old_total_sub_buckets << " NEW " << new_total_sub_buckets << std::endl;
         }
 
 
@@ -2125,12 +2185,19 @@ public:
         int outer_loop = 0;
         int inner_loop = 0;
         int itx = 100;
+
+        if (rank == 0)
+            std::cout <<  "Threshold " << threshold << " RF " << refinement_factor << " RI " << refinement_ts << std::endl;
+
+        if (refinement_ts != 0)
+            if (outer_loop % refinement_ts == 0)
+                load_balance(local_join_status, refinement_factor, refinement_chooser);
+
         if (comm_compaction== false)
         {
-
             //while (itx != 0)
             while (true)
-            {
+            {                  
                 clique_start = MPI_Wtime();
                 clique_comm(local_join_status);
                 clique_end = MPI_Wtime();
@@ -2183,7 +2250,7 @@ public:
 
 
                 verify_start = MPI_Wtime();
-                if (outer_loop % 10 == 0)
+                //if (outer_loop % 10 == 0)
                 {
                     print_full();
                     if (check_for_fixed_point(local_join_status) == true)
@@ -2230,7 +2297,7 @@ public:
                 if (rank == 0)
                 {
                     if (refinement_chooser == 0)
-                        std::cout << "F FULL NCC OL " << outer_loop << " IL " << inner_loop << " [" << iteration << "] TH " << threshold << " RF " << refinement_factor << " RI " << refinement_ts << " " << running_time << " " << iteration_time
+                        std::cout << " F OL " << outer_loop << " IL " << inner_loop << " [" << iteration << "] " << running_time << " " << iteration_time
                               << " Clique " <<  (clique_end - clique_start)
                               << " Local Join " <<  (local_join_end - local_join_start)
                               << " A2A " <<  (all_to_all_end - all_to_all_start)
@@ -2238,11 +2305,9 @@ public:
                               << " Insert newt " <<  (insert_newt_end - insert_newt_start)
                               << " LB " <<  (lb_end - lb_start)
                               << " Verify " <<  (verify_end - verify_start)
-                              << std::endl
-                              << std::endl
                               << std::endl;
                     else
-                        std::cout << "F DELTA NCC OL " << outer_loop << " IL " << inner_loop << " [" << iteration << "] TH " << threshold << " RF " << refinement_factor << " RI " << refinement_ts << " " << running_time << " " << iteration_time
+                        std::cout << " F OL " << outer_loop << " IL " << inner_loop << " [" << iteration << "] "  << running_time << " " << iteration_time
                               << " Clique " <<  (clique_end - clique_start)
                               << " Local Join " <<  (local_join_end - local_join_start)
                               << " A2A " <<  (all_to_all_end - all_to_all_start)
@@ -2250,8 +2315,6 @@ public:
                               << " Insert newt " <<  (insert_newt_end - insert_newt_start)
                               << " LB " <<  (lb_end - lb_start)
                               << " Verify " <<  (verify_end - verify_start)
-                              << std::endl
-                              << std::endl
                               << std::endl;
                 }
 

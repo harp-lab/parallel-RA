@@ -7,6 +7,51 @@
 #include "compat.h"
 
 
+#if 0
+class relation
+{
+    typedef btree::btree_map<u64, relation* > RelationMap;
+
+private:
+    u32 arity;
+    RelationMap tree;
+
+public:
+    relation()
+    {
+    }
+
+    relation(u32 arity)
+    {
+    }
+
+    bool insert(const tuple& t, u32 arity)
+    {
+        relation* sr = tree.search(t[0]);
+        bool modified = false;
+        if (sr == NULL)
+        {
+            modified = true;
+            sr = new relation(arity - 1);
+            tree.insert(t[0], sr);
+        }
+
+        return sr->insert(t.tail()) || modified;
+    }
+
+    void initialize(u32 buffer_size, u64* buffer)
+    {
+        for (u32 i = 0; i < buffer_size; i = i + arity)
+        {
+            tuple<arity> t;
+            for (unsigned j = 0; j < arity; j++)
+                t[j] = buffer[i + j];
+            insert(t);
+        }
+    }
+};
+#endif
+
 template<unsigned arity>
 class relation
 {
