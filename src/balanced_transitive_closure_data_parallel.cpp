@@ -8,135 +8,133 @@ int main(int argc, char **argv)
 {
     mpi_comm mcomm;
     mcomm.create(argc, argv);
-    mcomm.set_number_of_buckets(1);
-
-    int arity = 2;
-    u32 sub_buckets_per_bucket_G = 1;
-    u32 sub_buckets_per_bucket_T = 1;
-
-    u32 join_column_count = 1;
 
     relation* G0 = new relation();
     relation* G1 = new relation();
-    relation* W = new relation();
     relation* T = new relation();
+    relation* W = new relation();
 
-    relation* Tnew = new relation();
+    G0->initialize_relation(2, mcomm);
+    G1->initialize_relation(2, mcomm);
+    T->initialize_relation(2, mcomm);
+    W->initialize_relation(2, mcomm);
 
-    double t1 = MPI_Wtime();
-    int rename_and_project_copy[2] = {1,0};
-    G0->initialize(arity, join_column_count, STATIC, sub_buckets_per_bucket_G, argv[1], FULL, mcomm, 0);
-    W->initialize_empty(2, join_column_count, sub_buckets_per_bucket_G, mcomm);
-    T->initialize_empty(2, join_column_count, sub_buckets_per_bucket_G, mcomm);
-    G1->initialize_with_rename_and_projection(arity, join_column_count, DYNAMIC, sub_buckets_per_bucket_T, argv[1], FULL, rename_and_project_copy, mcomm, 1);
-    double t2 = MPI_Wtime();
+    G0->read_from_file(argv[1], FULL);
+
+
+
+    parallel_copy* copy_1 = new parallel_copy();
+    copy_1->set_comm(mcomm);
+    copy_1->set_copy_input(G0, FULL);
+    copy_1->set_copy_output(G1);
+    int rename_index_array_copy1[2] = {1, 0};
+    int rename_index_array_size_copy1 = 2;
+    copy_1->set_copy_rename_index(rename_index_array_copy1, rename_index_array_size_copy1);
+
+    RAM scc0;
+    scc0.push_relation(G0);
+    scc0.push_relation(G1);
+    scc0.set_comm(mcomm);
+    scc0.push_back(copy_1);
+    scc0.execute();
 
     if (mcomm.get_rank() == 0)
-        std::cout << "----------------- [1] Time " << t2 - t1 << std::endl;
-
-    //G0->print();
-    //G1->print();
+        std::cout << "-----------------------" << std::endl << std::endl;
 
 
-    double t3 = MPI_Wtime();
-    parallel_RA* join_1 = new parallel_RA(JOIN, mcomm);
-    join_1->set_RA_typex(0);
-    join_1->join_input0(G0, FULL);
-    join_1->join_input1(G1, FULL);
-    join_1->join_output(W);
-    join_1->set_join_projection_index(-1, 0, 1);
+    G1->read_from_relation(G1, DELTA);
+    G1->flush_full();
+    parallel_join* join_1 = new parallel_join();
+    join_1->set_comm(mcomm);
+    join_1->set_join_input0(G0, FULL);
+    join_1->set_join_input1(G1, DELTA);
+    join_1->set_join_output(W);
+    int project_and_rename_index_array_join1[3] = {-1, 0, 1};
+    int project_and_rename_index_array_size_join1 = 3;
+    join_1->set_join_projection_index(project_and_rename_index_array_join1, project_and_rename_index_array_size_join1);
+    join_1->set_join_column_count(1);
 
-    RAM scc1(mcomm);
+
+    RAM scc1;
+    scc1.push_relation(G0);
+    scc1.push_relation(G1);
+    scc1.push_relation(W);
+    scc1.set_comm(mcomm);
     scc1.push_back(join_1);
-    scc1.set_threshold(atoi(argv[2]));
-    scc1.set_refinement_interval(atoi(argv[3]));
-    scc1.set_refinement_factor(atof(argv[4]));
-    scc1.set_refinement_chooser(atoi(argv[5]));
     scc1.execute();
-    double t4 = MPI_Wtime();
 
     if (mcomm.get_rank() == 0)
-        std::cout << "----------------- [2] Time " << t4 - t3 << std::endl;
-
-    //W->print();
+        std::cout << "-----------------------" << std::endl << std::endl;
 
 
+    parallel_copy* copy_2 = new parallel_copy();
+    copy_2->set_comm(mcomm);
+    copy_2->set_copy_input(G0, FULL);
+    copy_2->set_copy_output(T);
+    int rename_index_array_copy2[2] = {0, 1};
+    int rename_index_array_size_copy2 = 2;
+    copy_2->set_copy_rename_index(rename_index_array_copy2, rename_index_array_size_copy2);
 
-    double t5 = MPI_Wtime();
-    /////// SCC 2
-    parallel_RA* copy_1 = new parallel_RA(COPY, mcomm);
-    copy_1->copy_input(G0, FULL);
-    copy_1->copy_output(T);
-    copy_1->set_copy_projection_index(0, 1);
-    RAM scc2(mcomm);
-    scc2.push_back(copy_1);
-    scc2.set_threshold(atoi(argv[2]));
-    scc2.set_refinement_interval(atoi(argv[3]));
-    scc2.set_refinement_factor(atof(argv[4]));
-    scc2.set_refinement_chooser(atoi(argv[5]));
+    RAM scc2;
+    scc2.push_relation(G0);
+    scc2.push_relation(T);
+    scc2.set_comm(mcomm);
+    scc2.push_back(copy_2);
     scc2.execute();
-    double t6 = MPI_Wtime();
 
     if (mcomm.get_rank() == 0)
-        std::cout << "----------------- [3] Time " << t6 - t5 << std::endl;
+        std::cout << "-----------------------" << std::endl << std::endl;
 
-    //T->print();
+    parallel_copy* copy_3 = new parallel_copy();
+    copy_3->set_comm(mcomm);
+    copy_3->set_copy_input(W, FULL);
+    copy_3->set_copy_output(T);
+    int rename_index_array_copy3[2] = {1, 0};
+    int rename_index_array_size_copy3 = 2;
+    copy_3->set_copy_rename_index(rename_index_array_copy3, rename_index_array_size_copy3);
 
-
-
-    double t7 = MPI_Wtime();
-    /////// SCC 3
-    parallel_RA* copy_2 = new parallel_RA(COPY, mcomm);
-    copy_2->copy_input(W, FULL);
-    copy_2->copy_output(T);
-    copy_2->set_copy_projection_index(1, 0);
-    RAM scc3(mcomm);
-    scc3.push_back(copy_2);
-    scc3.set_threshold(atoi(argv[2]));
-    scc3.set_refinement_interval(atoi(argv[3]));
-    scc3.set_refinement_factor(atof(argv[4]));
-    scc3.set_refinement_chooser(atoi(argv[5]));
+    RAM scc3;
+    scc3.push_relation(W);
+    scc3.push_relation(T);
+    scc3.set_comm(mcomm);
+    scc3.push_back(copy_3);
     scc3.execute();
-    double t8 = MPI_Wtime();
-
-    Tnew->initialize_delta_with_relation(arity, join_column_count, sub_buckets_per_bucket_G, mcomm, T);
-
-    //Tnew->print();
-    //W->print();
 
     if (mcomm.get_rank() == 0)
-        std::cout << "----------------- [4] Time " << t8 - t7 << std::endl;
+        std::cout << "-----------------------" << std::endl << std::endl;
 
 
-    double t9 = MPI_Wtime();
-    /////// SCC 4
-    parallel_RA* join_2 = new parallel_RA(JOIN, mcomm);
-    join_2->set_RA_typex(1);
-    join_2->join_input0(Tnew, DELTA);
-    join_2->join_output(Tnew);
-    join_2->join_input1(W, FULL);
-    join_2->set_join_projection_index(-1, 0, 1);
-    RAM scc4(mcomm);
+    T->read_from_relation(T, DELTA);
+    T->flush_full();
+    parallel_join* join_2 = new parallel_join();
+    join_2->set_comm(mcomm);
+    join_2->set_join_input0(T, DELTA);
+    join_2->set_join_input1(W, FULL);
+    join_2->set_join_output(T);
+    int project_and_rename_index_array_join2[3] = {-1, 0, 1};
+    int project_and_rename_index_array_size_join2 = 3;
+    join_2->set_join_projection_index(project_and_rename_index_array_join2, project_and_rename_index_array_size_join2);
+    join_2->set_join_column_count(1);
+
+
+    RAM scc4;
+    scc4.push_relation(T);
+    scc4.push_relation(W);
+    scc4.set_comm(mcomm);
     scc4.push_back(join_2);
-    scc4.set_threshold(atoi(argv[2]));
-    scc4.set_refinement_interval(atoi(argv[3]));
-    scc4.set_refinement_factor(atof(argv[4]));
-    scc4.set_refinement_chooser(atoi(argv[5]));
     scc4.execute();
-    double t10 = MPI_Wtime();
 
     if (mcomm.get_rank() == 0)
-        std::cout << "----------------- [5] Time " << t10 - t9 << std::endl;
+        std::cout << "-----------------------" << std::endl << std::endl;
 
-    //Tnew->print();
 
     delete copy_1;
     delete copy_2;
+    delete copy_3;
     delete join_1;
     delete join_2;
 
 
-    delete Tnew;
     delete G0;
     delete G1;
     delete W;

@@ -1,39 +1,19 @@
 #ifndef BALANCED_PARALLEL_H
 #define BALANCED_PARALLEL_H
 
-#include "compat.h"
-#include "vector.h"
+#include "vector_buffer.h"
 #include <mpi.h>
 
-inline u64 tunedhash(const u8* bp, const u32 len)
-{
-    u64 h0 = 0xb97a19cb491c291d;
-    u64 h1 = 0xc18292e6c9371a17;
-    const u8* const ep = bp+len;
-    while (bp < ep)
-    {
-        h1 ^= *bp;
-        h1 *= 31;
-        h0 ^= (((u64)*bp) << 17) ^ *bp;
-        h0 *= 0x100000001b3;
-        h0 = (h0 >> 7) | (h0 << 57);
-        ++bp;
-    }
-    return h0 ^ h1;
-}
-
-
-
-u64 hash_function(const u64 val)
-{
-    return tunedhash((u8*)(&val),sizeof(u64));
-}
 
 
 class parallel_io
 {
 
 private:
+
+    int rank;
+    int nprocs;
+    MPI_Comm world_comm;
 
     /// filename of the data
     const char *file_name;
@@ -57,34 +37,29 @@ public:
         return hash_buffer;
     }
 
-
-
     u64 get_col_count()
     {
         return col_count;
     }
-
-
 
     u64 get_row_count()
     {
         return entry_count;
     }
 
-
     u64 get_hash_buffer_size()
     {
         return hash_buffer_size;
     }
 
-
-
-    void parallel_read_input_relation_from_file_to_local_buffer(const char *fname, int rank, int nprocs)
+    void parallel_read_input_relation_from_file_to_local_buffer(const char *fname, MPI_Comm comm)
     {
+        MPI_Comm_rank(comm, &rank);
+        MPI_Comm_size(comm, &nprocs);
+        world_comm = comm;
         file_name = fname;
 
         u32 global_row_count;
-
 
         /* Read the metadata file containing the total number of rows and columns */
         if (rank == 0)
@@ -98,14 +73,14 @@ public:
             if (fscanf (fp_in, "(row count)\n%d\n(col count)\n%d", &global_row_count, &col_count) != 2)
             {
                 printf("Wrong input format (Meta Data)\n");
-                MPI_Abort(MPI_COMM_WORLD, -1);
+                MPI_Abort(comm, -1);
             }
             fclose(fp_in);
         }
 
         /* Broadcast the total number of rows and column to all processes */
-        MPI_Bcast(&global_row_count, 1, MPI_INT, 0, MPI_COMM_WORLD);
-        MPI_Bcast(&col_count, 1, MPI_INT, 0, MPI_COMM_WORLD);
+        MPI_Bcast(&global_row_count, 1, MPI_INT, 0, comm);
+        MPI_Bcast(&col_count, 1, MPI_INT, 0, comm);
 
 
         /* Read all data in parallel */
@@ -135,7 +110,7 @@ public:
         if (rb_size != entry_count * col_count * sizeof(u64))
         {
             std::cout << "Wrong IO: rank: " << rank << " " << rb_size << " " <<  entry_count << " " << col_count << std::endl;
-            MPI_Abort(MPI_COMM_WORLD, -1);
+            MPI_Abort(comm, -1);
         }
         close(fp);
 
@@ -161,7 +136,7 @@ public:
     /// Hashing based on the first and the second column
     /// The first column decises the bucket id
     /// The second column decides the sub-bucket id
-    void buffer_data_to_hash_buffer_col(u32 nprocs, MPI_Comm comm, u32 buckets, u32** sub_bucket_rank, u32* sub_bucket_count, int col_index)
+    void buffer_data_to_hash_buffer_col(u32 buckets, u32** sub_bucket_rank, u32* sub_bucket_count)
     {
         /* process_size[i] stores the number of samples to be sent to process with rank i */
         int* process_size = new int[nprocs];
@@ -169,53 +144,28 @@ public:
 
         /* process_data_vector[i] contains the data that needs to be sent to process i */
         vector_buffer* process_data_vector = (vector_buffer*)malloc(sizeof(vector_buffer) * nprocs);
-        for (u32 i = 0; i < nprocs; ++i)
+        for (u32 i = 0; i < (u32)nprocs; ++i)
             process_data_vector[i] = vector_buffer_create_empty();
 
         /* Hashing and buffering data for all to all comm */
         u64 val[col_count];
-
-        u32 count = 0;
-        if (col_index == 0)
+        for (u32 i = 0; i < entry_count * col_count; i=i+col_count)
         {
-            for (u32 i = 0; i < entry_count * col_count; i=i+col_count)
-            {
-                uint64_t bucket_id = hash_function(input_buffer[i]) % buckets;
-                uint64_t sub_bucket_id = hash_function(input_buffer[i+1]) % sub_bucket_count[bucket_id];
+            uint64_t bucket_id = hash_function(input_buffer[i]) % buckets;
+            uint64_t sub_bucket_id = hash_function(input_buffer[i+1]) % sub_bucket_count[bucket_id];
 
-                int index = sub_bucket_rank[bucket_id][sub_bucket_id];
-                process_size[index] = process_size[index] + col_count;
+            int index = sub_bucket_rank[bucket_id][sub_bucket_id];
+            process_size[index] = process_size[index] + col_count;
 
-                for (u32 j = 0; j < col_count; j++)
-                    val[j] = input_buffer[i + j];
+            for (u32 j = 0; j < col_count; j++)
+                val[j] = input_buffer[i + j];
 
-                vector_buffer_append(&process_data_vector[index],(unsigned char *) val, sizeof(u64)*col_count);
-            }
+            vector_buffer_append(&process_data_vector[index],(unsigned char *) val, sizeof(u64)*col_count);
         }
-        else
-        {
-            for (u32 i = 0; i < entry_count * col_count; i=i+col_count)
-            {
-                uint64_t bucket_id = hash_function(input_buffer[i + 1]) % buckets;
-                uint64_t sub_bucket_id = hash_function(input_buffer[i]) % sub_bucket_count[bucket_id];
 
-                int index = sub_bucket_rank[bucket_id][sub_bucket_id];
-                process_size[index] = process_size[index] + col_count;
-
-                //for (u32 j = 0; j < col_count; j++)
-                //val[j] = input_buffer[i + j];
-                val[0] = input_buffer[i];
-                val[1] = input_buffer[i + 1];
-                count++;
-
-
-                vector_buffer_append(&process_data_vector[index],(unsigned char *) val, sizeof(u64)*col_count);
-            }
-            //std::cout << "DDDDDDDDDD " << count << std::endl;
-        }
 
         /* Transmit the packaged data process_data_vector to all processes */
-        all_to_all_comm(process_data_vector, process_size, comm);
+        all_to_all_comm(process_data_vector, process_size);
 
         /* Free the data buffer after all to all */
         free (process_data_vector);
@@ -231,13 +181,8 @@ public:
     /// All to all communication
     /// process_data_vector has packaged all the data that needs to be sent out
     /// process_size collects the size of the buffer that needs to be sent
-    void all_to_all_comm(vector_buffer* process_data_vector, int* process_size, MPI_Comm comm)
+    void all_to_all_comm(vector_buffer* process_data_vector, int* process_size)
     {
-        int nprocs;
-        int rank;
-        MPI_Comm_size(comm, &nprocs);
-        MPI_Comm_rank(comm, &rank);
-
         /* prefix sum on the send side (required for all to all communication) */
         int prefix_sum_process_size[nprocs];
         memset(prefix_sum_process_size, 0, nprocs * sizeof(int));
@@ -261,7 +206,7 @@ public:
         /* Every process sends to every other process the amount of data it is going to send */
         int recv_process_size_buffer[nprocs];
         memset(recv_process_size_buffer, 0, nprocs * sizeof(int));
-        MPI_Alltoall(process_size, 1, MPI_INT, recv_process_size_buffer, 1, MPI_INT, comm);
+        MPI_Alltoall(process_size, 1, MPI_INT, recv_process_size_buffer, 1, MPI_INT, world_comm);
 
 
         /* Prefix sum on the receive side (required for all to all communication) */
@@ -277,13 +222,7 @@ public:
         hash_buffer = new u64[hash_buffer_size];
 
         /* All to all communication */
-        MPI_Alltoallv(process_data, process_size, prefix_sum_process_size, MPI_UNSIGNED_LONG_LONG, hash_buffer, recv_process_size_buffer, prefix_sum_recv_process_size_buffer, MPI_UNSIGNED_LONG_LONG, comm);
-
-        //if (rank == 0)
-        //{
-        //    for (u32 x = 0; x < hash_buffer_size; x=x+2)
-        //        std::cout << hash_buffer_size << "BSSSSSSSSS " << hash_buffer[x] << " " << hash_buffer[x+1] << std::endl;
-        //}
+        MPI_Alltoallv(process_data, process_size, prefix_sum_process_size, MPI_UNSIGNED_LONG_LONG, hash_buffer, recv_process_size_buffer, prefix_sum_recv_process_size_buffer, MPI_UNSIGNED_LONG_LONG, world_comm);
 
         /* Delete the send buffer */
         delete[] process_data;

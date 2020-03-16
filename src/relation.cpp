@@ -84,10 +84,8 @@ void testBtree(u64 * tup, u64 rc)
 
 void testGoogleBtree(u64 * tup, u64 rc)
 {
-
-    typedef btree::btree_map<u64, u64> Relation0Map;
-
-    typedef btree::btree_map<u64, Relation0Map* > Relation1Map;
+    //typedef btree::btree_map<u64, u64> Relation0Map;
+    //typedef btree::btree_map<u64, Relation0Map* > Relation1Map;
     //typedef btree::btree_map<u64, Relation1Map* > Relation2Map;
     //typedef btree::btree_map<u64, Relation2Map* > Relation3Map;
 
@@ -98,8 +96,79 @@ void testGoogleBtree(u64 * tup, u64 rc)
         
     }
     */
-    
+    u64 count = 0;
+    u64 tuple1[3];
+    //u64 tuple2[3];
+    google_relation* rel = new google_relation();
+    for (u64 i = 0; i < rc * 2; i=i+2)
+    {
+        tuple1[0] = tup[i];
+        tuple1[1] = tup[i + 1];
+        tuple1[2] = i;
+        if (rel->insert_tuple_from_array(tuple1, 3) == true)
+            count++;
 
+        tuple1[2] = i + 1;
+        if (rel->insert_tuple_from_array(tuple1, 3) == true)
+            count++;
+
+        tuple1[2] = i + 2;
+        if (rel->insert_tuple_from_array(tuple1, 3) == true)
+            count++;
+
+        tuple1[2] = i + 3;
+        if (rel->insert_tuple_from_array(tuple1, 3) == true)
+            count++;
+
+
+        tuple1[0] = tup[i];
+        tuple1[1] = tup[i + 1];
+        tuple1[2] = i;
+        if (rel->insert_tuple_from_array(tuple1, 3) == true)
+            count++;
+
+        tuple1[2] = i + 1;
+        if (rel->insert_tuple_from_array(tuple1, 3) == true)
+            count++;
+
+        tuple1[2] = i + 2;
+        if (rel->insert_tuple_from_array(tuple1, 3) == true)
+            count++;
+
+        tuple1[2] = i + 3;
+        if (rel->insert_tuple_from_array(tuple1, 3) == true)
+            count++;
+
+        /*
+        tuple2[0] = tup[rc * 2 - 2 - i];
+        tuple2[1] = tup[rc * 2 - 1 - i];
+        tuple1[2] = i;
+
+        if (rel->insert_tuple_from_array(tuple2, 3) == true)
+            count++;
+
+        tuple1[2] = i + 1;
+        if (rel->insert_tuple_from_array(tuple2, 3) == true)
+            count++;
+
+        tuple1[2] = i + 2;
+        if (rel->insert_tuple_from_array(tuple2, 3) == true)
+            count++;
+
+        tuple1[2] = i + 3;
+        if (rel->insert_tuple_from_array(tuple2, 3) == true)
+            count++;
+        */
+    }
+    if (count != rc)
+        std::cout << "Error !!!!" << count << " " << rc << std::endl;
+
+    //std::vector<std::vector<u64>> result = rel->as_vector();
+    //std::cout << "Size of data " << result.size();
+
+    //std::cout << " Count " << count << std::endl;
+
+#if 0
     Relation1Map *map1 = new Relation1Map;
 
     u64 row_count = 0;
@@ -138,6 +207,7 @@ void testGoogleBtree(u64 * tup, u64 rc)
         delete (i1->second);
 
     delete map1;
+#endif
 }
 
 
@@ -180,6 +250,7 @@ void check(u32 index, u64 rc, u64* read_buffer)
 
 
 
+    /*
     auto map_start = std::chrono::high_resolution_clock::now();
     for (u32 i = 0; i < iteration_count; i++)
     {
@@ -193,6 +264,7 @@ void check(u32 index, u64 rc, u64* read_buffer)
     std::chrono::duration<double> map_elapsed = map_finish - map_start;
     //std::cout << "[" << rc << "] Map " << map_elapsed.count() / iteration_count << std::endl;
     std::cout << rc << "\t" << "Table" << "\t" << map_elapsed.count() / iteration_count << std::endl;
+    */
 
 
 
@@ -207,7 +279,7 @@ void check(u32 index, u64 rc, u64* read_buffer)
 int main()
 {
 
-    u64 rowC = 40451631;
+    u64 rowC = 640010;
     int fp = open("data.raw", O_RDONLY);
     u64 * read_buffer = new u64[rowC * 2];
     u32 rb_size = pread(fp, read_buffer, rowC * 2 * sizeof(u64), 0);
@@ -217,13 +289,13 @@ int main()
 
     //check(0, rowC, read_buffer);
 
-    u32 c = 0;
-    for (u64 rc = 0; rc <= rowC; rc = rc +  400000)
-    {
-        check(c, rc, read_buffer);
-        c++;
-    }
-    check(c,136024430 , read_buffer);
+    //u32 c = 0;
+    //for (u64 rc = 0; rc <= rowC; rc = rc +  400000)
+    //{
+    //    check(c, rc, read_buffer);
+    //    c++;
+    //}
+    check(0, 640010, read_buffer);
 
     delete[] read_buffer;
 

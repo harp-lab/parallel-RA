@@ -1,3 +1,4 @@
+#if 0
 #include "vector.h"
 
 vector_buffer vector_buffer_create_empty()
@@ -37,3 +38,4 @@ void vector_buffer_resize(vector_buffer *b, const uint64_t size)
     }
     b->size = size;
 }
+#endif

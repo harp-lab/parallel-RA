@@ -1,63 +1,86 @@
-#include "balanced_hash_relation.h"
+//#include "balanced_hash_relation.h"
 #include "comm.h"
-#include "parallel_join.h"
+//#include "parallel_join.h"
 #include "RA_tasks.h"
 
+
+/// Logical_Inferencing_Engine
+///     SCC graphs (vector of set of SCC)
+///     SCC
+
+/// 
 
 int main(int argc, char **argv)
 {
     mpi_comm mcomm;
     mcomm.create(argc, argv);
-    mcomm.set_number_of_buckets(1);
 
-    int arity = 2;
-    u32 sub_buckets_per_bucket_G = 1;
-    u32 sub_buckets_per_bucket_T = 1;
 
-    u32 join_column_count = 1;
 
     relation* G = new relation();
     relation* T = new relation();
-    G->initialize(arity, join_column_count, STATIC, sub_buckets_per_bucket_G, argv[1], FULL, mcomm, 0);
 
-    int rename_and_project_copy[2] = {1,0};
-    T->initialize_with_rename_and_projection(arity, join_column_count, DYNAMIC, sub_buckets_per_bucket_T, argv[1], DELTA, rename_and_project_copy, mcomm, 1);
+    // Initialize a relation with arity 2
+    // mcomm encapsulates all MPI
+    G->initialize_relation(2, mcomm);
+
+    // Read data from file argv[1] and populates FULL
+    G->read_from_file(argv[1], FULL);
+
+    //G->print();
+
+    // Initialize a relation with arity 2
+    // mcomm encapsulates all MPI
+    T->initialize_relation(2, mcomm);
+    //T->set_filename("D_T");
 
 
-    /*
-    parallel_RA copy_1(COPY, mcomm);
-    copy_1.copy_input(G, FULL);
-    copy_1.copy_output(T);
-    copy_1.set_projection_index(rename_and_project_copy);
+    parallel_copy* copy_1 = new parallel_copy();
+    copy_1->set_comm(mcomm);
+    copy_1->set_copy_input(G, FULL);
+    copy_1->set_copy_output(T);
+    int rename_index_array[2] = {1, 0};
+    int rename_index_array_size = 2;
+    copy_1->set_copy_rename_index(rename_index_array, rename_index_array_size);
 
-    RAM scc0(mcomm);
+    RAM scc0;
+    scc0.push_relation(G);
+    scc0.push_relation(T);
+    scc0.set_comm(mcomm);
     scc0.push_back(copy_1);
     scc0.execute();
-    */
 
-    /////// SCC 1 (exchanged)
-    //int rename_and_project_join[3] = {-1,0,1};
-    parallel_RA* join_1 = new parallel_RA(JOIN, mcomm);
-    join_1->join_input0(G, FULL);
-    join_1->join_input1(T, DELTA);
-    join_1->join_output(T);
-    join_1->set_RA_typex(1);
-
-    join_1->set_join_projection_index(-1, 0, 1);
+    //T->print();
 
 #if 1
-    RAM scc1(mcomm);
+    T->read_from_relation(T, DELTA);
+    T->flush_full();
+
+    parallel_join* join_1 = new parallel_join();
+    join_1->set_comm(mcomm);
+    join_1->set_join_input0(G, FULL);
+    join_1->set_join_input1(T, DELTA);
+    join_1->set_join_output(T);
+    int project_and_rename_index_array[3] = {-1, 0, 1};
+    int project_and_rename_index_array_size = 3;
+    join_1->set_join_projection_index(project_and_rename_index_array, project_and_rename_index_array_size);
+    join_1->set_join_column_count(1);
+
+
+    RAM scc1;
+    scc1.push_relation(G);
+    scc1.push_relation(T);
+    scc1.set_comm(mcomm);
     scc1.push_back(join_1);
-    scc1.set_threshold(atoi(argv[2]));
-    scc1.set_refinement_interval(atoi(argv[3]));
-    scc1.set_refinement_factor(atof(argv[4]));
-    scc1.set_refinement_chooser(atoi(argv[5]));
     scc1.execute();
+
+    delete join_1;
+    delete copy_1;
 #endif
 
     delete G;
     delete T;
-    delete join_1;
+
 
     mcomm.destroy();
 
