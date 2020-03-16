@@ -479,11 +479,14 @@ public:
         //std::cout << "input0_buffer_size " << input0_buffer_size << std::endl;
 
         //assert(reorder_map_array_size == input1_buffer_width + input0_buffer_width - join_colun_count);
-        u64 reordered_cur_path[input1_buffer_width + input0_buffer_width - join_colun_count];
+        //u64 reordered_cur_path[input1_buffer_width + input0_buffer_width - join_colun_count];
         u64 projected_path[input1_buffer_width];
 
+        double t1, t2, t3, sum1=0, sum2=0;
+        u64 sumc=0;
         for (int k1 = *offset; k1 < input0_buffer_size; k1 = k1 + input0_buffer_width)
         {
+            t1 = MPI_Wtime();
             u64 bucket_id = hash_function(input0_buffer[k1]) % buckets;
             std::vector<u64> prefix;
             for (int jc=0; jc < join_colun_count; jc++)
@@ -491,23 +494,15 @@ public:
 
             vector_buffer temp_buffer = vector_buffer_create_empty();
             input1[bucket_id].as_vector_buffer(&temp_buffer, prefix, 1);
-
-            //if (mcomm.get_rank() == 1)
-            //    std::cout << "Delta " << input0_buffer[k1] << " " << input0_buffer[k1 + 1] << std::endl;
+            sumc = sumc + temp_buffer.size / sizeof(u64);
+            t2 = MPI_Wtime();
 
 
             for (u32 s = 0; s < temp_buffer.size / sizeof(u64); s = s + input1_buffer_width)
             {
-                //if (mcomm.get_rank() == 1)
-                //    std::cout << "Join: ";
-                for (int i =0; i < input1_buffer_width; i++)
-                {
+                /*
+                for (int i = 0; i < input1_buffer_width; i++)
                     memcpy(reordered_cur_path + i, temp_buffer.buffer + (s + i)*sizeof(u64), sizeof(u64));
-                    //if (mcomm.get_rank() == 1)
-                    //    std::cout << reordered_cur_path[i] << " ";
-                }
-                //if (mcomm.get_rank() == 1)
-                //    std::cout << std::endl;
 
                 for (int i = join_colun_count; i < input1_buffer_width; i++)
                     reordered_cur_path[input1_buffer_width + (i - join_colun_count)] = input0_buffer[k1 + i];
@@ -516,16 +511,14 @@ public:
                 {
                     if (reorder_map_array[i] == -1)
                         continue;
-
                     projected_path[reorder_map_array[i]] = reordered_cur_path[i];
                 }
-
+                */
+                memcpy(projected_path, temp_buffer.buffer + (s+1)*sizeof(u64), sizeof(u64));
+                projected_path[1] = input0_buffer[k1 + 1];
 
                 if (deduplicate.insert_tuple_from_array(projected_path, input1_buffer_width) == true)
                 {
-                    //if (mcomm.get_rank() == 1)
-                    //    std::cout<<"Successful join " << projected_path[0] << " " << projected_path[1] << std::endl;
-
                     uint64_t bucket_id = hash_function(projected_path[0]) % buckets;
                     uint64_t sub_bucket_id = hash_function(projected_path[1]) % output_sub_bucket_count[bucket_id];
                     int index = output_sub_bucket_rank[bucket_id][sub_bucket_id];
@@ -538,8 +531,11 @@ public:
                 else
                     local_join_duplicates++;
             }
-
             vector_buffer_free(&temp_buffer);
+            t3 = MPI_Wtime();
+
+            sum1 = sum1 + (t2 - t1);
+            sum2 = sum2 + (t3 - t2);
 
             //if (local_join_inserts > threshhold)
             //{
@@ -548,17 +544,16 @@ public:
             //    return false;
             //}
             //std::cout << "FINAL2 " << input0_buffer[k1] << " " << input0_buffer[k1 + 1] << " " << k1 << " Temp Count " << temp_count << std::endl;
-
         }
-
         //std::cout << "local_join_inserts " << local_join_inserts << std::endl;
-
         deduplicate.remove_tuple();
 
 
         //if (rank == 0)
         //    std::cout  <<"[Join Complete] [Local Join] " << i1_size << " " << " (" << input0_buffer_size << ") " << local_join_inserts << " Duplicates " << local_join_duplicates << " Offset " << *offset << " Duplicates " << local_join_duplicates << std::endl;
 
+        if (mcomm.get_rank() == 0)
+            std::cout << input0_buffer_size << " " << sumc << " " << sum1 << " " << sum2 << " ";
 
         //*local_join_count = local_join_inserts;
         //*offset = input0_buffer_size + 1;
