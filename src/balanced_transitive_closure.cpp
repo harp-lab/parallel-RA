@@ -1,6 +1,4 @@
-//#include "balanced_hash_relation.h"
 #include "comm.h"
-//#include "parallel_join.h"
 #include "RA_tasks.h"
 
 

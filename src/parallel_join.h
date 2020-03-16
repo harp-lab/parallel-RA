@@ -448,7 +448,7 @@ public:
     }
 
     // TODO join_order
-    bool local_join(int input0_buffer_size, int input0_buffer_width, u64 *input0_buffer, int join_order,
+    u32 local_join(int input0_buffer_size, int input0_buffer_width, u64 *input0_buffer, int join_order,
                     google_relation *input1, u32 i1_size, int input1_buffer_width,
                     int reorder_map_array_size, int* reorder_map_array,
                     relation* output,
@@ -563,7 +563,7 @@ public:
         //*local_join_count = local_join_inserts;
         //*offset = input0_buffer_size + 1;
 
-        return true;
+        return local_join_duplicates;
     }
 };
 

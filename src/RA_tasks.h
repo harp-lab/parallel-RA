@@ -235,14 +235,14 @@ public:
     }
 
 
-    bool local_compute(u32* local_join_count, int* offset)
+    u32 local_compute(u32* local_join_count, int* offset)
     {
         u32 join_tuples = 0;
         u32 total_join_tuples = 0;
         u32 RA_count = RA_list.size();
         u32 nprocs = (u32)mcomm.get_nprocs();
 
-        bool join_completed = true;
+        //bool join_completed = true;
 
         local_compute_output = new vector_buffer*[RA_count];
         local_compute_output_size = new int*[RA_count];
@@ -262,6 +262,8 @@ public:
         }
 
         u32 counter = 0;
+        u32 current_join_duplicates = 0;
+
         for (std::vector<parallel_RA*>::iterator it = RA_list.begin() ; it != RA_list.end(); ++it)
         {
             if ((*it)->get_RA_type() == COPY)
@@ -319,8 +321,8 @@ public:
                     relation* delta0 = current_ra->get_join_input0();
                     relation* delta1 = current_ra->get_join_input1();
 
-                    join_completed = join_completed &
-                            current_ra->local_join(intra_bucket_buf_output_size[counter], delta1->get_arity(), intra_bucket_buf_output[counter], 0,
+                    //join_completed = join_completed &
+                            current_join_duplicates = current_ra->local_join(intra_bucket_buf_output_size[counter], delta1->get_arity(), intra_bucket_buf_output[counter], 0,
                                                    delta0->get_delta(), delta0->get_delta_element_count(), delta0->get_arity(),
                                                    reorder_map_array_size, reorder_map_array,
                                                    output_relation,
@@ -335,8 +337,8 @@ public:
                     relation* delta = current_ra->get_join_input0();
 
 
-                    join_completed = join_completed &
-                            current_ra->local_join(intra_bucket_buf_output_size[counter], delta->get_arity(), intra_bucket_buf_output[counter], 0,
+                    //join_completed = join_completed &
+                            current_join_duplicates = current_ra->local_join(intra_bucket_buf_output_size[counter], delta->get_arity(), intra_bucket_buf_output[counter], 0,
                                                    full->get_full(), full->get_full_element_count(), full->get_arity(),
                                                    reorder_map_array_size, reorder_map_array,
                                                    output_relation,
@@ -350,8 +352,8 @@ public:
                     relation* full = current_ra->get_join_input0();
                     relation* delta = current_ra->get_join_input1();
 
-                    join_completed = join_completed &
-                            current_ra->local_join(intra_bucket_buf_output_size[counter], delta->get_arity(), intra_bucket_buf_output[counter], 1,
+                    //join_completed = join_completed &
+                            current_join_duplicates = current_ra->local_join(intra_bucket_buf_output_size[counter], delta->get_arity(), intra_bucket_buf_output[counter], 1,
                                                    full->get_full(), full->get_full_element_count(), full->get_arity(),
                                                    reorder_map_array_size, reorder_map_array,
                                                    output_relation,
@@ -406,7 +408,8 @@ public:
         delete[] intra_bucket_buf_output_size;
         delete[] intra_bucket_buf_output;
 
-        return true;
+
+        return current_join_duplicates;
     }
 
 
@@ -796,10 +799,8 @@ public:
         //bool threshold_reached = false;
         int rank = mcomm.get_rank();
 
-
+        print_full();
         double start_time = MPI_Wtime();
-
-
 
         //if (rank == 0)
         //    std::cout <<  "Threshold " << threshold << " RF " << refinement_factor << " RI " << refinement_ts << std::endl;
@@ -810,8 +811,8 @@ public:
                 if (!threshold_reached)
                     load_balance(refinement_factor, refinement_chooser);
 #endif
-
-        print_full();
+        u32 running_join_duplicates = 0;
+        u32 current_join_duplicates = 0;
         while (true)
         {
             intra_bucket_start = MPI_Wtime();
@@ -821,27 +822,33 @@ public:
             running_intra_bucket_comm_time = running_intra_bucket_comm_time + (intra_bucket_end - intra_bucket_start);
 
 
+
             local_join_start = MPI_Wtime();
             //threshold_reached = local_compute(&local_join_count, offset);
-            local_compute(&local_join_count, offset);
+            current_join_duplicates = local_compute(&local_join_count, offset);
+            running_join_duplicates = running_join_duplicates + current_join_duplicates;
             local_join_end = MPI_Wtime();
             running_local_join_time = running_local_join_time + (local_join_end - local_join_start);
+
 
             all_to_all_start = MPI_Wtime();
             all_to_all();
             all_to_all_end = MPI_Wtime();
             running_all_to_all_time = running_all_to_all_time + (all_to_all_end - all_to_all_start);
 
+
             insert_newt_start = MPI_Wtime();
             local_insert_in_newt();
             insert_newt_end = MPI_Wtime();
             running_insert_in_newt_time = running_insert_in_newt_time + (insert_newt_end - insert_newt_start);
+
 
             insert_full_start = MPI_Wtime();
             //local_insert_in_full(threshold_reached);
             local_insert_in_full();
             insert_full_end = MPI_Wtime();
             running_insert_in_full_time = running_insert_in_full_time + (insert_full_end - insert_full_start);
+
 #if 1
             /*
             if (threshold_reached == true)
@@ -864,7 +871,9 @@ public:
                 running_time = running_time + iteration_time;
 
                 if (rank == 0)
-                    std::cout << "T CC OL " << outer_loop << " IL " << inner_loop << " [" << iteration << "] " << running_time << " " << iteration_time
+                    std::cout << "T " << outer_loop << " [" << iteration << "] "
+                              << running_join_duplicates << " " << current_join_duplicates << " "
+                              << running_time << " " << iteration_time
                               << " intra_bucket " <<  (intra_bucket_end - intra_bucket_start)
                               << " LJ " <<  (local_join_end - local_join_start)
                               << " All to All " <<  (all_to_all_end - all_to_all_start)
@@ -892,7 +901,9 @@ public:
             running_time = running_time + iteration_time;
 
             if (rank == 0)
-                std::cout << "F CC OL " << outer_loop << " IL " << inner_loop << " [" << iteration << "] " << running_time << " " << iteration_time
+                std::cout << "F " << outer_loop << " [" << iteration << "] "
+                          << running_join_duplicates << " " << current_join_duplicates << " "
+                          << running_time << " " << iteration_time
                           << " intra_bucket " <<  (intra_bucket_end - intra_bucket_start)
                           << " LJ " <<  (local_join_end - local_join_start)
                           << " All to All " <<  (all_to_all_end - all_to_all_start)
@@ -900,7 +911,6 @@ public:
                           << " Insert newt " <<  (insert_newt_end - insert_newt_start)
                           << " Verify " <<  (verify_end - verify_start)
                           << std::endl;
-
 
             inner_loop++;
             iteration++;
@@ -927,8 +937,7 @@ public:
         if (total_time == max_time)
             std::cout << "Rank " << rank
                       << " Total Time: [" << (end_time - start_time)
-                      << " " << running_time
-                      << " "
+                      << " " << running_time << " "
                       << (running_intra_bucket_comm_time + running_local_join_time + running_all_to_all_time + running_insert_in_newt_time + running_insert_in_full_time + running_lb + running_verify_time)
                       << "] intra_bucket " << running_intra_bucket_comm_time
                       << " LJ " << running_local_join_time
@@ -937,6 +946,12 @@ public:
                       << " Insert in full " << running_insert_in_full_time
                       << " LB " << running_lb
                       << " FPC " << running_verify_time << std::endl;
+
+        u64 global_join_duplicates = 0;
+        MPI_Allreduce(&running_join_duplicates, &global_join_duplicates, 1, MPI_UNSIGNED_LONG_LONG, MPI_SUM, MPI_COMM_WORLD);
+        if (mcomm.get_rank() == 0)
+            std::cout << "Total Join Duplicates: " << global_join_duplicates << " Total time " << (end_time - start_time) << running_time << std::endl;
+
         print_full();
 #endif
     }
