@@ -832,8 +832,8 @@ public:
                 if (!threshold_reached)
                     load_balance(refinement_factor, refinement_chooser);
 #endif
-        u32 running_join_duplicates = 0;
-        u32 current_join_duplicates = 0;
+        u64 running_join_duplicates = 0;
+        u64 current_join_duplicates = 0;
         while (true)
         {
             if (logging == true)
