@@ -124,7 +124,7 @@ public:
 
             // Puts btree data into a vector
             std::vector<u64> prefix = {};
-            rel[i].as_vector_buffer(&(input_buffer[i]), prefix);
+            rel[i].as_vector_buffer_recursive(&(input_buffer[i]), prefix);
 
             // size of data to be sent
             input_buffer_size[i] = (&input_buffer[i])->size / sizeof(u64);
@@ -480,23 +480,40 @@ public:
 
         //assert(reorder_map_array_size == input1_buffer_width + input0_buffer_width - join_colun_count);
         //u64 reordered_cur_path[input1_buffer_width + input0_buffer_width - join_colun_count];
-        u64 projected_path[input1_buffer_width];
+        //u64 projected_path[input1_buffer_width];
 
-        double t1, t2, t3, sum1=0, sum2=0;
-        u64 sumc=0;
+        double t1, t2, sum1=0;
+        //u64 sumc=0;
+
+
         for (int k1 = *offset; k1 < input0_buffer_size; k1 = k1 + input0_buffer_width)
         {
             t1 = MPI_Wtime();
             u64 bucket_id = hash_function(input0_buffer[k1]) % buckets;
-            std::vector<u64> prefix;
-            for (int jc=0; jc < join_colun_count; jc++)
-                prefix.push_back(input0_buffer[k1 + jc]);
 
-            vector_buffer temp_buffer = vector_buffer_create_empty();
-            input1[bucket_id].as_vector_buffer_recursive(&temp_buffer, prefix);
-            sumc = sumc + temp_buffer.size / sizeof(u64);
+
+            std::vector<u64> prefix;
+            prefix.reserve(1024);
+            prefix.push_back(input0_buffer[k1]);
+            //for (int jc=0; jc < join_colun_count; jc++)
+            //prefix.push_back(input0_buffer[k1 + jc]);
+
+            //vector_buffer temp_buffer = vector_buffer_create_empty();// vector_buffer_create_with_capacity(1024);
+            //input1[bucket_id].as_vector_buffer_recursive(&temp_buffer, prefix);
+
+
+            input1[bucket_id].as_vector_buffer_recursive_hack(prefix,
+                                                              &local_join_inserts, &local_join_duplicates,
+                                                              &deduplicate,
+                                                              buckets, output_sub_bucket_count, output_sub_bucket_rank,
+                                                              iteration,
+                                                              local_join_output, process_size, cumulative_process_size,
+                                                              input0_buffer[k1 + 1]);
+
+            //sumc = sumc + temp_buffer.size / sizeof(u64);
             t2 = MPI_Wtime();
 
+#if 0
             for (u32 s = 0; s < temp_buffer.size / sizeof(u64); s = s + input1_buffer_width)
             {
                 /*
@@ -534,10 +551,9 @@ public:
                     local_join_duplicates++;
             }
             vector_buffer_free(&temp_buffer);
-            t3 = MPI_Wtime();
+#endif
 
             sum1 = sum1 + (t2 - t1);
-            sum2 = sum2 + (t3 - t2);
 
             //if (local_join_inserts > threshhold)
             //{
@@ -555,7 +571,7 @@ public:
         //    std::cout  <<"[Join Complete] [Local Join] " << i1_size << " " << " (" << input0_buffer_size << ") " << local_join_inserts << " Duplicates " << local_join_duplicates << " Offset " << *offset << " Duplicates " << local_join_duplicates << std::endl;
 
         if (mcomm.get_rank() == 0)
-            std::cout << input0_buffer_size << " " << sumc << " " << local_join_duplicates << " " << sum1 << " " << sum2 << " ";
+            std::cout << input0_buffer_size << " " << local_join_inserts << " " << local_join_duplicates << " " << sum1 << " ";
 
         //*local_join_count = local_join_inserts;
         //*offset = input0_buffer_size + 1;
@@ -641,7 +657,7 @@ public:
                 vector_buffer temp_buffer = vector_buffer_create_empty();
 
                 std::vector<u64> prefix = {};
-                input[i].as_vector_buffer(&temp_buffer, prefix);
+                input[i].as_vector_buffer_recursive(&temp_buffer, prefix);
 
                 //std::cout << "temp_buffer.size / sizeof(u64) " << temp_buffer.size / sizeof(u64) << std::endl;
                 for (u32 s = 0; s < temp_buffer.size / sizeof(u64); s=s+arity)
