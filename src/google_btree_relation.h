@@ -12,9 +12,6 @@
 class google_relation {
 public:
     google_relation() {}
-    google_relation(int arity) {m_arity = arity;}
-
-    void set_arity(int ar)  {m_arity = ar;}
 
     class VectorIterator {
     public:
@@ -40,29 +37,9 @@ public:
         }
 
 
-        void as_vector_buffer_recursive(vector_buffer* vb){
-            // check if m_trie is null, which means no match
-            if(m_trie==nullptr) return;
-            as_vector_buffer_recursive_helper(m_trie, m_prefix, vb);
-        }
-        void as_vector_buffer_recursive_helper(
-                google_relation *cur_trie, std::vector<u64> cur_path,
-                vector_buffer* result_vector){
-            if(cur_trie->is_end)
-            {
-                const unsigned char* ptr =  reinterpret_cast<const unsigned char *>(&(cur_path[0]));
-                vector_buffer_append(result_vector, ptr, sizeof(u64)*cur_path.size());
-            }
-
-            for (std::pair<u64, google_relation*> nxt: cur_trie->next)
-            {
-                u64 nxt_node = nxt.first;
-                google_relation *nxt_trie = nxt.second;
-                cur_path.push_back(nxt_node);
-                as_vector_buffer_recursive_helper(nxt_trie, cur_path, result_vector);
-                cur_path.pop_back();
-            }
-        }
+        // Begin
+        // Advance
+        // More
 
     private:
 
@@ -156,7 +133,6 @@ public:
 private:
     btree::btree_map<u64, google_relation *> next = {};
     bool is_end = false;
-    int m_arity = 0;
 };
 
 
