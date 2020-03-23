@@ -78,11 +78,6 @@ public:
         node->next = {};
     }
 
-    void as_vector_buffer(vector_buffer* vb, std::vector<u64> prefix) {
-        VectorIterator vi(this, prefix);
-        vi.as_vector_buffer_recursive(vb);
-        return;
-    }
 
 
     void as_vector_buffer_recursive(vector_buffer* vb, std::vector<u64> prefix)
