@@ -122,7 +122,10 @@ int main(int argc, char **argv)
     scc4.push_relation(W);
     scc4.set_comm(mcomm);
     scc4.push_back(join_2);
+    //scc4.enable_logging();
     scc4.execute();
+
+    //scc4.print_all_relation();
 
     if (mcomm.get_rank() == 0)
         std::cout << "-----------------------" << std::endl << std::endl;

@@ -17,6 +17,7 @@ bool threshold_enabled = false;
 class RAM
 {
 private:
+    bool logging = false;
     bool comm_compaction;
     u32 threshold;
 
@@ -765,6 +766,26 @@ public:
     }
 #endif
 
+    void print_all_relation()
+    {
+        u32 rel_count=0;
+        for (std::vector<relation*>::iterator it = relation_manager.begin() ; it != relation_manager.end(); ++it)
+        {
+            std::cout << "Relation " << rel_count++ << std::endl;
+
+            relation* current_r = *it;
+            current_r->print();
+
+            std::cout << std::endl;
+        }
+        return;
+    }
+
+    void enable_logging()
+    {
+        logging = true;
+        return;
+    }
 
     void execute()
     {
@@ -815,6 +836,9 @@ public:
         u32 current_join_duplicates = 0;
         while (true)
         {
+            if (logging == true)
+                print_all_relation();
+
             intra_bucket_start = MPI_Wtime();
             //if (!threshold_reached) intra_bucket_comm();
             intra_bucket_comm();
@@ -904,7 +928,7 @@ public:
                 std::cout << "F " << outer_loop << " [" << iteration << "] "
                           << running_join_duplicates << " " << current_join_duplicates << " "
                           << running_time << " " << iteration_time
-                          << " intra_bucket " <<  (intra_bucket_end - intra_bucket_start)
+                          << " IB " <<  (intra_bucket_end - intra_bucket_start)
                           << " LJ " <<  (local_join_end - local_join_start)
                           << " All to All " <<  (all_to_all_end - all_to_all_start)
                           << " Insert Full " <<  (insert_full_end - insert_full_start)
@@ -939,7 +963,7 @@ public:
                       << " Total Time: [" << (end_time - start_time)
                       << " " << running_time << " "
                       << (running_intra_bucket_comm_time + running_local_join_time + running_all_to_all_time + running_insert_in_newt_time + running_insert_in_full_time + running_lb + running_verify_time)
-                      << "] intra_bucket " << running_intra_bucket_comm_time
+                      << "] IB " << running_intra_bucket_comm_time
                       << " LJ " << running_local_join_time
                       << " A2A " << running_all_to_all_time
                       << " Insert in new " << running_insert_in_newt_time

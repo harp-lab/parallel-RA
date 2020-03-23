@@ -70,7 +70,9 @@ int main(int argc, char **argv)
     scc1.push_relation(T);
     scc1.set_comm(mcomm);
     scc1.push_back(join_1);
+    //scc1.enable_logging();
     scc1.execute();
+    //scc1.print_all_relation();
 
     delete join_1;
     delete copy_1;

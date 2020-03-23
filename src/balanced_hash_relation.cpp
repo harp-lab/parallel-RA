@@ -69,8 +69,7 @@ void relation::create_newt()
 
 void relation::print()
 {
-    int rank = mcomm.get_rank();
-    if (rank == 1)
+    if (mcomm.get_rank() == 0)
     {
         vector_buffer *vb_full = new vector_buffer[buckets];
         std::cout << "FULL ";
@@ -78,7 +77,7 @@ void relation::print()
         {
             vb_full[i] = vector_buffer_create_empty();
             std::vector<u64> prefix = {};
-            full[i].as_vector_buffer(&(vb_full[i]), prefix, 0);
+            full[i].as_vector_buffer(&(vb_full[i]), prefix);
 
             std::cout << vb_full[i].size/sizeof(u64) << " arity " << arity << std::endl;
             for (u32 j=0; j < vb_full[i].size/sizeof(u64); j = j + arity)
@@ -103,7 +102,7 @@ void relation::print()
         {
             vb_delta[i] = vector_buffer_create_empty();
             std::vector<u64> prefix = {};
-            delta[i].as_vector_buffer(&(vb_delta[i]), prefix, 0);
+            delta[i].as_vector_buffer(&(vb_delta[i]), prefix);
 
             std::cout << vb_delta[i].size/sizeof(u64) << " arity " << arity << std::endl;
             for (u32 j=0; j < vb_delta[i].size/sizeof(u64); j = j + arity)
@@ -128,7 +127,7 @@ void relation::print()
         {
             vb_newt[i] = vector_buffer_create_empty();
             std::vector<u64> prefix = {};
-            newt[i].as_vector_buffer(&(vb_newt[i]), prefix, 0);
+            newt[i].as_vector_buffer(&(vb_newt[i]), prefix);
 
             std::cout << vb_newt[i].size/sizeof(u64) << " arity " << arity << std::endl;
             for (u32 j=0; j < vb_newt[i].size/sizeof(u64); j = j + arity)
@@ -168,7 +167,12 @@ void relation::initialize_relation(u32 arity, mpi_comm& mcomm)
 
     sub_bucket_per_bucket_count = new u32[buckets];
     for (u64 b = 0; b < buckets; b++)
+    {
+        delta[b].set_arity(arity);
+        full[b].set_arity(arity);
+        newt[b].set_arity(arity);
         sub_bucket_per_bucket_count[b] = default_sub_bucket_per_bucket_count;
+    }
 
     sub_bucket_rank = new u32*[buckets];
     distinct_sub_bucket_rank = new int*[buckets];
@@ -294,7 +298,7 @@ void relation::read_from_relation(relation* input, int full_delta)
     google_relation* full = input->get_full();
     std::vector<u64> prefix = {};
     vector_buffer vb = vector_buffer_create_empty();
-    full[mcomm.get_rank()].as_vector_buffer(&vb, prefix, 0);
+    full[mcomm.get_rank()].as_vector_buffer(&vb, prefix);
 
     if (full_delta == DELTA)
         initialize_delta(vb.size/sizeof(u64), 2, (u64*)vb.buffer);
@@ -409,7 +413,7 @@ int relation::insert_delta_in_full()
         if (bucket_map[i] == 1)
         {
             std::vector<u64> prefix = {};
-            delta[i].as_vector_buffer(&(input_buffer[i]), prefix, 0);
+            delta[i].as_vector_buffer(&(input_buffer[i]), prefix);
             for (u64 j = 0; j < (&input_buffer[i])->size / sizeof(u64); j=j+arity)
             {
                 //u64 t1, t2;
