@@ -5,7 +5,6 @@ project (BTree)
 add_compile_options(--std=c++14 -Wno-strict-aliasing)
 
 
-
 find_package(MPI REQUIRED)
 find_package(OpenMP)
 if (OPENMP_FOUND)
@@ -24,9 +23,11 @@ set (source_dir "${PROJECT_SOURCE_DIR}/src")
 
 
 
-file (GLOB source_files_btc "${source_dir}/RA_tasks.h"  "${source_dir}/parallel_join.h" "${source_dir}/balanced_hash_relation.cpp" "${source_dir}/balanced_transitive_closure.cpp")
-file (GLOB source_files_btcdp "${source_dir}/RA_tasks.h"  "${source_dir}/parallel_join.h" "${source_dir}/balanced_hash_relation.cpp" "${source_dir}/balanced_transitive_closure_data_parallel.cpp")
-file (GLOB source_files_btcdp2 "${source_dir}/RA_tasks.h"  "${source_dir}/parallel_join.h" "${source_dir}/balanced_hash_relation.cpp" "${source_dir}/balanced_transitive_closure_data_parallel2.cpp")
+#file (GLOB source_files_tom_btc "${source_dir}/RA_tasks.h"  "${source_dir}/parallel_join.h" "${source_dir}/TOM_transitive_closure.cpp" "${source_dir}/TOM_transitive_closure.cpp")
+file (GLOB source_files_btctp "${source_dir}/RA_tasks.h" "${source_dir}/lie.h"  "${source_dir}/parallel_join.h" "${source_dir}/balanced_hash_relation.cpp" "${source_dir}/transitive_closure_task_parallel.cpp")
+#file (GLOB source_files_btc "${source_dir}/RA_tasks.h" "${source_dir}/lie.h"  "${source_dir}/parallel_join.h" "${source_dir}/balanced_hash_relation.cpp" "${source_dir}/balanced_transitive_closure.cpp")
+#file (GLOB source_files_btcdp "${source_dir}/RA_tasks.h"  "${source_dir}/parallel_join.h" "${source_dir}/balanced_hash_relation.cpp" "${source_dir}/balanced_transitive_closure_data_parallel.cpp")
+#file (GLOB source_files_btcdp2 "${source_dir}/RA_tasks.h"  "${source_dir}/parallel_join.h" "${source_dir}/balanced_hash_relation.cpp" "${source_dir}/balanced_transitive_closure_data_parallel2.cpp")
 
 #add_library(hash_relation "${source_dir}/balanced_hash_relation.cpp")
 
@@ -65,20 +66,26 @@ file (GLOB source_files_btcdp2 "${source_dir}/RA_tasks.h"  "${source_dir}/parall
 
 
 
+#add_executable(tom_bTC ${source_files_tom_btc})
+#INCLUDE_DIRECTORIES(${MPI_INCLUDE_PATH})
+#TARGET_LINK_LIBRARIES(tom_bTC ${MPI_LIBRARIES})
 
 
-add_executable(bTC ${source_files_btc})
+add_executable(TC ${source_files_btctp})
 INCLUDE_DIRECTORIES(${MPI_INCLUDE_PATH})
-TARGET_LINK_LIBRARIES(bTC ${MPI_LIBRARIES})
+TARGET_LINK_LIBRARIES(TC ${MPI_LIBRARIES})
 
-add_executable(bTCdp ${source_files_btcdp})
-INCLUDE_DIRECTORIES(${MPI_INCLUDE_PATH})
-TARGET_LINK_LIBRARIES(bTCdp ${MPI_LIBRARIES})
+#add_executable(bTC ${source_files_btc})
+#INCLUDE_DIRECTORIES(${MPI_INCLUDE_PATH})
+#TARGET_LINK_LIBRARIES(bTC ${MPI_LIBRARIES})
 
+#add_executable(bTCdp ${source_files_btcdp})
+#INCLUDE_DIRECTORIES(${MPI_INCLUDE_PATH})
+#TARGET_LINK_LIBRARIES(bTCdp ${MPI_LIBRARIES})
 
-add_executable(bTCdp2 ${source_files_btcdp2})
-INCLUDE_DIRECTORIES(${MPI_INCLUDE_PATH})
-TARGET_LINK_LIBRARIES(bTCdp2 ${MPI_LIBRARIES})
+#add_executable(bTCdp2 ${source_files_btcdp2})
+#INCLUDE_DIRECTORIES(${MPI_INCLUDE_PATH})
+#TARGET_LINK_LIBRARIES(bTCdp2 ${MPI_LIBRARIES})
 
 
 

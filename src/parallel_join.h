@@ -51,7 +51,7 @@ public:
     virtual void set_join_input1(relation* i1, int g_type1) {return;}
     virtual relation* get_join_input1() {return NULL;}
     virtual int get_join_input1_graph_type() {return 0;}
-    virtual void set_join_output(relation* out) {return;}
+    virtual void set_join_output(relation*& out) {return;}
     virtual relation* get_join_output() {return NULL;}
     virtual void set_join_projection_index (int* projection_reorder_index_array, int projection_reorder_index_array_length) {return;}
     virtual void get_join_projection_index(int** projection_reorder_index_array, int* projection_reorder_index_array_length) {return;}
@@ -61,13 +61,13 @@ public:
     virtual void set_copy_input(relation* i0, int g_type0){return;}
     virtual relation* get_copy_input(){return NULL;}
     virtual int get_copy_input0_graph_type(){return 0;}
-    virtual void set_copy_output(relation* out) {return;}
+    virtual void set_copy_output(relation*& out) {return;}
     virtual relation* get_copy_output(){return NULL;}
     virtual void set_copy_rename_index (int* pria, int prial) {return;}
     virtual void get_copy_rename_index(int** projection_reorder_index_array, int* projection_reorder_index_array_length) {return;}
 
 
-    void set_comm(mpi_comm mcomm)
+    void set_comm(mpi_comm& mcomm)
     {
         this->mcomm = mcomm;
     }
@@ -93,24 +93,20 @@ public:
     ///     total_buffer_size
     ///     recvbuf
 
-    void intra_bucket_comm(google_relation *rel,
-                           int input_bucket_count, int* input_distinct_sub_bucket_rank_count, int** input_distinct_sub_bucket_rank, u32* input_bucket_map,
-                           int output_bucket_count, int* output_distinct_sub_bucket_rank_count, int** output_distinct_sub_bucket_rank, u32* output_bucket_map,
+    void intra_bucket_comm(u32 buckets,
+                           google_relation *rel,
+                           int* input_distinct_sub_bucket_rank_count, int** input_distinct_sub_bucket_rank, u32* input_bucket_map,
+                           int* output_distinct_sub_bucket_rank_count, int** output_distinct_sub_bucket_rank, u32* output_bucket_map,
                            u64 *total_buffer_size, u64 **recvbuf)
     {
-        /// Meta data Exchange
-        /// u32 buckets = mcomm.get_number_of_buckets();
-
-
-        //assert (input_bucket_count == output_bucket_count);
-        u32 buckets = output_bucket_count;
         // buffer to hold relation data to be sent out
-        vector_buffer *input_buffer = new vector_buffer[input_bucket_count];
-        int *input_buffer_size = new int[input_bucket_count];
+        vector_buffer *input_buffer = new vector_buffer[buckets];
+        int *input_buffer_size = new int[buckets];
 
+        //std::cout << "Buckets " << buckets << std::endl;
 
-        u32** meta_buffer_size = new u32*[input_bucket_count];
-        memset(meta_buffer_size, 0, sizeof(u32*) * input_bucket_count);
+        u32** meta_buffer_size = new u32*[buckets];
+        memset(meta_buffer_size, 0, sizeof(u32*) * buckets);
 
         *total_buffer_size = 0;
         u32* bucket_offset = new u32[buckets];
@@ -130,6 +126,7 @@ public:
             input_buffer_size[i] = (&input_buffer[i])->size / sizeof(u64);
             total_send_buffer_size = total_send_buffer_size + input_buffer_size[i];
 
+
             meta_buffer_size[i] = new u32[input_distinct_sub_bucket_rank_count[i]];
             memset(meta_buffer_size[i], 0, sizeof(u32) * input_distinct_sub_bucket_rank_count[i]);
 
@@ -142,7 +139,7 @@ public:
                 for (int r = 0; r < output_distinct_sub_bucket_rank_count[i]; r++)
                 {
                     int buffer_size = input_buffer_size[i];
-                    MPI_Isend(&buffer_size, 1, MPI_INT, output_distinct_sub_bucket_rank[i][r], 123, MPI_COMM_WORLD, &req1[req_counter1]);
+                    MPI_Isend(&buffer_size, 1, MPI_INT, output_distinct_sub_bucket_rank[i][r], 123, mcomm.get_local_comm(), &req1[req_counter1]);
                     req_counter1++;
                 }
             }
@@ -151,7 +148,7 @@ public:
             {
                 for (int r = 0; r < input_distinct_sub_bucket_rank_count[i]; r++)
                 {
-                    MPI_Irecv(meta_buffer_size[i] + r, 1, MPI_INT, input_distinct_sub_bucket_rank[i][r], 123, MPI_COMM_WORLD, &req1[req_counter1]);
+                    MPI_Irecv(meta_buffer_size[i] + r, 1, MPI_INT, input_distinct_sub_bucket_rank[i][r], 123, mcomm.get_local_comm(), &req1[req_counter1]);
                     req_counter1++;
                 }
             }
@@ -172,8 +169,8 @@ public:
         // Code to verify that the intra-bucket comm is setup correctly
         u64 global_send_buffer_size1 = 0;
         u64 global_send_buffer_size2 = 0;
-        MPI_Allreduce(&total_send_buffer_size, &global_send_buffer_size1, 1, MPI_UNSIGNED_LONG_LONG, MPI_SUM, MPI_COMM_WORLD);
-        MPI_Allreduce(total_buffer_size, &global_send_buffer_size2, 1, MPI_UNSIGNED_LONG_LONG, MPI_SUM, MPI_COMM_WORLD);
+        MPI_Allreduce(&total_send_buffer_size, &global_send_buffer_size1, 1, MPI_UNSIGNED_LONG_LONG, MPI_SUM, mcomm.get_local_comm());
+        MPI_Allreduce(total_buffer_size, &global_send_buffer_size2, 1, MPI_UNSIGNED_LONG_LONG, MPI_SUM, mcomm.get_local_comm());
         //std::cout << "total_send_buffer_size = " << total_send_buffer_size << std::endl;
         //std::cout << "*total_buffer_size = " << *total_buffer_size << std::endl;
 
@@ -202,7 +199,7 @@ public:
                 {
                     if (input_buffer_size[i] != 0)
                     {
-                        MPI_Isend(input_buffer[i].buffer, input_buffer_size[i], MPI_UNSIGNED_LONG_LONG, output_distinct_sub_bucket_rank[i][r], 123, MPI_COMM_WORLD, &req2[req_counter2]);
+                        MPI_Isend(input_buffer[i].buffer, input_buffer_size[i], MPI_UNSIGNED_LONG_LONG, output_distinct_sub_bucket_rank[i][r], 123, mcomm.get_local_comm(), &req2[req_counter2]);
                         req_counter2++;
                     }
                 }
@@ -215,7 +212,7 @@ public:
                 {
                     if (meta_buffer_size[i][r] != 0)
                     {
-                        MPI_Irecv((*recvbuf) + offset + bucket_offset[i], meta_buffer_size[i][r], MPI_UNSIGNED_LONG_LONG, input_distinct_sub_bucket_rank[i][r], 123, MPI_COMM_WORLD, &req2[req_counter2]);
+                        MPI_Irecv((*recvbuf) + offset + bucket_offset[i], meta_buffer_size[i][r], MPI_UNSIGNED_LONG_LONG, input_distinct_sub_bucket_rank[i][r], 123, mcomm.get_local_comm(), &req2[req_counter2]);
                         offset = offset + meta_buffer_size[i][r];
                         req_counter2++;
                     }
@@ -358,16 +355,16 @@ class parallel_join: public parallel_RA
 private:
 
     relation* join_input0_table;
-    u32 join_input0_graph_type;
+    int join_input0_graph_type;
 
     relation* join_input1_table;
-    u32 join_input1_graph_type;
+    int join_input1_graph_type;
 
     relation* join_output_table;
 
     int join_column_count;
 
-    int* projection_reorder_index_array;
+    std::vector<int> projection_reorder_index_array;
     int projection_reorder_index_array_length;
 
 public:
@@ -376,9 +373,10 @@ public:
         RA_type = JOIN;
     }
 
-    ~parallel_join()
+    parallel_join(relation* G, int G_type, relation* T, int T_type, relation* output, int jc_count, std::vector<int> projection_reorder_index_array, int projection_reorder_index_array_length)
+        : join_input0_table(G), join_input0_graph_type(G_type), join_input1_table(T), join_input1_graph_type(T_type), join_output_table(output), join_column_count(jc_count), projection_reorder_index_array(projection_reorder_index_array), projection_reorder_index_array_length(projection_reorder_index_array_length)
     {
-        delete[] projection_reorder_index_array;
+        RA_type = JOIN;
     }
 
 
@@ -414,7 +412,7 @@ public:
         return join_input1_graph_type;
     }
 
-    void set_join_output(relation* out)
+    void set_join_output(relation*& out)
     {
         join_output_table = out;
     }
@@ -424,11 +422,10 @@ public:
         return join_output_table;
     }
 
-    void set_join_projection_index (int* pria, int prial)
+    void set_join_projection_index (std::vector<int> pria, int prial)
     {
         projection_reorder_index_array_length = prial;
-        projection_reorder_index_array = new int[prial];
-        memcpy(projection_reorder_index_array, pria, sizeof(int) * prial);
+        projection_reorder_index_array = pria;
     }
 
     void set_join_column_count (int jcc)
@@ -441,22 +438,22 @@ public:
         return join_column_count;
     }
 
-    void get_join_projection_index(int** projection_reorder_index_array, int* projection_reorder_index_array_length)
+    void get_join_projection_index(std::vector<int>* projection_reorder_index_array, int* projection_reorder_index_array_length)
     {
         *projection_reorder_index_array_length = this->projection_reorder_index_array_length;
         *projection_reorder_index_array = this->projection_reorder_index_array;
     }
 
     // TODO join_order
-    u32 local_join(int input0_buffer_size, int input0_buffer_width, u64 *input0_buffer, int join_order,
+    u32 local_join( u32 buckets,
+                    int input0_buffer_size, int input0_buffer_width, u64 *input0_buffer, int join_order,
                     google_relation *input1, u32 i1_size, int input1_buffer_width,
-                    int reorder_map_array_size, int* reorder_map_array,
+                    int reorder_map_array_size, std::vector<int> reorder_map_array,
                     relation* output,
                     vector_buffer** local_join_output, int** process_size, int* cumulative_process_size,
-                    u32 threshhold, int *offset, int join_colun_count,
+                    u32 threshhold, int join_colun_count,
                     u32* local_join_count, int iteration)
     {
-        *offset = 0; // TODO
         u32 local_join_duplicates = 0;
         u32 local_join_inserts = 0;
 
@@ -466,11 +463,8 @@ public:
         u32** output_sub_bucket_rank = output->get_sub_bucket_rank();
 
         // TODO: fix this
-        int buckets = mcomm.get_nprocs();
         //int rank = mcomm.get_rank();
 
-        //if (*offset > input0_buffer_size || input0_buffer_size == 0 || i1_size == 0)
-        //    return true;
 
         //std::cout << "reorder_map_array_size " << reorder_map_array_size << std::endl;
         //std::cout << "input1_buffer_width " << input1_buffer_width << std::endl;
@@ -480,13 +474,13 @@ public:
 
         //assert(reorder_map_array_size == input1_buffer_width + input0_buffer_width - join_colun_count);
         //u64 reordered_cur_path[input1_buffer_width + input0_buffer_width - join_colun_count];
-        //u64 projected_path[input1_buffer_width];
+        u64 projected_path[input1_buffer_width];
 
         double t1, t2, sum1=0;
         //u64 sumc=0;
 
 
-        for (int k1 = *offset; k1 < input0_buffer_size; k1 = k1 + input0_buffer_width)
+        for (int k1 = 0; k1 < input0_buffer_size; k1 = k1 + input0_buffer_width)
         {
             t1 = MPI_Wtime();
             u64 bucket_id = hash_function(input0_buffer[k1]) % buckets;
@@ -494,14 +488,13 @@ public:
 
             std::vector<u64> prefix;
             prefix.reserve(1024);
-            prefix.push_back(input0_buffer[k1]);
-            //for (int jc=0; jc < join_colun_count; jc++)
-            //prefix.push_back(input0_buffer[k1 + jc]);
+            for (int jc=0; jc < join_colun_count; jc++)
+                prefix.push_back(input0_buffer[k1 + jc]);
 
-            //vector_buffer temp_buffer = vector_buffer_create_empty();// vector_buffer_create_with_capacity(1024);
-            //input1[bucket_id].as_vector_buffer_recursive(&temp_buffer, prefix);
+            vector_buffer temp_buffer = vector_buffer_create_empty();// vector_buffer_create_with_capacity(1024);
+            input1[bucket_id].as_vector_buffer_recursive(&temp_buffer, prefix);
 
-
+            /*
             input1[bucket_id].as_vector_buffer_recursive_hack(prefix,
                                                               &local_join_inserts, &local_join_duplicates,
                                                               &deduplicate,
@@ -509,11 +502,12 @@ public:
                                                               iteration,
                                                               local_join_output, process_size, cumulative_process_size,
                                                               input0_buffer[k1 + 1]);
+            */
 
             //sumc = sumc + temp_buffer.size / sizeof(u64);
             t2 = MPI_Wtime();
 
-#if 0
+#if 1
             for (u32 s = 0; s < temp_buffer.size / sizeof(u64); s = s + input1_buffer_width)
             {
                 /*
@@ -554,28 +548,9 @@ public:
 #endif
 
             sum1 = sum1 + (t2 - t1);
-
-            //if (local_join_inserts > threshhold)
-            //{
-            //    *offset = k1 + input0_buffer_width;
-            //    *local_join_count = local_join_inserts;
-            //    return false;
-            //}
-            //std::cout << "FINAL2 " << input0_buffer[k1] << " " << input0_buffer[k1 + 1] << " " << k1 << " Temp Count " << temp_count << std::endl;
         }
         //std::cout << "local_join_inserts " << local_join_inserts << std::endl;
         deduplicate.remove_tuple();
-
-
-        //if (rank == 0)
-        //    std::cout  <<"[Join Complete] [Local Join] " << i1_size << " " << " (" << input0_buffer_size << ") " << local_join_inserts << " Duplicates " << local_join_duplicates << " Offset " << *offset << " Duplicates " << local_join_duplicates << std::endl;
-
-        if (mcomm.get_rank() == 0)
-            std::cout << input0_buffer_size << " " << local_join_inserts << " " << local_join_duplicates << " " << sum1 << " ";
-
-        //*local_join_count = local_join_inserts;
-        //*offset = input0_buffer_size + 1;
-
         return local_join_duplicates;
     }
 };
@@ -585,10 +560,10 @@ class parallel_copy: public parallel_RA
 
 private:
     relation* copy_input0_table;
-    u32 copy_input0_graph_type;
+    int copy_input0_graph_type;
     relation* copy_output_table;
 
-    int* copy_reorder_index_array;
+    std::vector<int> copy_reorder_index_array;
     int copy_reorder_index_array_length;
 
 public:
@@ -598,10 +573,13 @@ public:
         RA_type = COPY;
     }
 
-    ~parallel_copy()
+    parallel_copy(relation* G, int G_version, relation* output, std::vector<int> reorder_index_array, int reorder_index_array_size)
+        : copy_input0_table(G), copy_input0_graph_type(G_version), copy_output_table(output), copy_reorder_index_array(reorder_index_array), copy_reorder_index_array_length(reorder_index_array_size)
     {
-        delete[] copy_reorder_index_array;
+        RA_type = COPY;
     }
+
+
 
     void set_copy_input(relation* i0, int g_type0)
     {
@@ -616,7 +594,7 @@ public:
     {
         return copy_input0_graph_type;
     }
-    void set_copy_output(relation* out)
+    void set_copy_output(relation*& out)
     {
         copy_output_table = out;
     }
@@ -625,32 +603,28 @@ public:
         return copy_output_table;
     }
 
-    void set_copy_rename_index (int* pria, int prial)
+    void set_copy_rename_index (std::vector<int> pria, int prial)
     {
         copy_reorder_index_array_length = prial;
-        copy_reorder_index_array = new int[prial];
-        memcpy(copy_reorder_index_array, pria, sizeof(int) * prial);
+        copy_reorder_index_array = pria;
     }
 
-    void get_copy_rename_index(int** projection_reorder_index_array, int* projection_reorder_index_array_length)
+    void get_copy_rename_index(std::vector<int>* projection_reorder_index_array, int* projection_reorder_index_array_length)
     {
         *projection_reorder_index_array_length = this->copy_reorder_index_array_length;
         *projection_reorder_index_array = this->copy_reorder_index_array;
     }
 
 
-    void local_copy(google_relation* input, u32* input_bucket_map, relation* output, int reorder_map_length, int* reorder_map, vector_buffer* local_join_output, int* process_size, int* cumulative_process_size)
+    void local_copy(u32 buckets, google_relation* input, u32* input_bucket_map, relation* output, int reorder_map_length, std::vector<int> reorder_map, vector_buffer* local_join_output, int* process_size, int* cumulative_process_size)
     {
-        //TODO
-        int buckets = output->get_number_of_buckets();
-
         u32 arity = output->get_arity();
         //assert(reorder_map_length == (int)arity);
 
         u32* output_sub_bucket_count = output->get_sub_bucket_per_bucket_count();
         u32** output_sub_bucket_rank = output->get_sub_bucket_rank();
 
-        for (int i = 0; i < buckets; i++)
+        for (u32 i = 0; i < buckets; i++)
         {
             if (input_bucket_map[i] == 1)
             {
@@ -673,7 +647,7 @@ public:
                     process_size[index] = process_size[index] + arity;
                     cumulative_process_size[index] = cumulative_process_size[index] + arity;
 
-                    //if (mcomm.get_rank() == 1)
+                    //if (mcomm.get_local_rank() == 1)
                     //    std::cout << s << " " << index << " " << reordered_cur_path[0] << " " << reordered_cur_path[1] << " " << process_size[index] << std::endl;
 
                     vector_buffer_append(&local_join_output[index], (const unsigned char*)reordered_cur_path, sizeof(u64)*arity);

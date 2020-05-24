@@ -52,36 +52,40 @@ public:
         return hash_buffer_size;
     }
 
-    void parallel_read_input_relation_from_file_to_local_buffer(const char *fname, MPI_Comm comm)
+    void parallel_read_input_relation_from_file_to_local_buffer(const char *fname, MPI_Comm lcomm, MPI_Comm gcomm)
     {
-        MPI_Comm_rank(comm, &rank);
-        MPI_Comm_size(comm, &nprocs);
-        world_comm = comm;
+        MPI_Comm_rank(lcomm, &rank);
+        MPI_Comm_size(lcomm, &nprocs);
+        world_comm = lcomm;
         file_name = fname;
-
         u32 global_row_count;
+
+        int grank;
+        int gnprocs;
+        MPI_Comm_rank(gcomm, &grank);
+        MPI_Comm_size(gcomm, &gnprocs);
 
         /* Read the metadata file containing the total number of rows and columns */
         if (rank == 0)
         {
             char meta_data_filename[1024];
             sprintf(meta_data_filename, "%s/meta_data.txt", file_name);
-            printf("Opening File %s\n", meta_data_filename);
+
+            //printf("Opening File %s [%d %d] [%d %d]\n", meta_data_filename, rank, nprocs, grank, gnprocs);
 
             FILE *fp_in;
             fp_in = fopen(meta_data_filename, "r");
             if (fscanf (fp_in, "(row count)\n%d\n(col count)\n%d", &global_row_count, &col_count) != 2)
             {
                 printf("Wrong input format (Meta Data)\n");
-                MPI_Abort(comm, -1);
+                MPI_Abort(lcomm, -1);
             }
             fclose(fp_in);
         }
 
         /* Broadcast the total number of rows and column to all processes */
-        MPI_Bcast(&global_row_count, 1, MPI_INT, 0, comm);
-        MPI_Bcast(&col_count, 1, MPI_INT, 0, comm);
-
+        MPI_Bcast(&global_row_count, 1, MPI_INT, 0, lcomm);
+        MPI_Bcast(&col_count, 1, MPI_INT, 0, lcomm);
 
         /* Read all data in parallel */
         u32 read_offset;
@@ -110,7 +114,7 @@ public:
         if (rb_size != entry_count * col_count * sizeof(u64))
         {
             std::cout << "Wrong IO: rank: " << rank << " " << rb_size << " " <<  entry_count << " " << col_count << std::endl;
-            MPI_Abort(comm, -1);
+            MPI_Abort(lcomm, -1);
         }
         close(fp);
 
@@ -121,7 +125,8 @@ public:
 
     void delete_raw_buffers()
     {
-        delete[] input_buffer;
+        if (entry_count != 0)
+            delete[] input_buffer;
     }
 
 

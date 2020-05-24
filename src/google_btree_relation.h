@@ -85,6 +85,8 @@ public:
     void as_vector_buffer_recursive(vector_buffer* vb, std::vector<u64> prefix)
     {
         google_relation *m_trie = this;
+        if (m_trie == NULL)
+            return;
         for (u64 n : prefix)
         {
           if (m_trie->next.find(n)==m_trie->next.end())

@@ -21,18 +21,17 @@ class relation
 
 private:
 
+    //u32 buckets;
+    int initailization_type = -1;
     const char* filename = NULL;
-
-    // A relation should be distributed across different number of processes
-    u32 buckets;
 
     int load_balance_factor;
 
     int join_column_count;
 
-    int arity;
+    int arity=2;
 
-    u32 full_inserts_element_count;
+    //u32 full_inserts_element_count;
 
     google_relation *newt;
     u32 newt_element_count;
@@ -49,7 +48,6 @@ private:
     u32 **delta_sub_bucket_element_count;
     u32 *delta_bucket_element_count;   // TODO (implement this carefully)
 
-    int last_rank;
     u32 *total_sub_bucket_count;
     u32 default_sub_bucket_per_bucket_count;
     u32 *sub_bucket_per_bucket_count;          // sub_bucket_per_bucket_count[i] holds the total number of sub-buckets at bucket index i
@@ -66,20 +64,21 @@ private:
     mpi_comm mcomm;
     parallel_io file_io;
 
+    int tester = 5;
+
 public:
 
-
-    ~relation();
-
-    int get_last_rank() {return last_rank;}
-    void set_last_rank(int lr)  {last_rank = lr;}
-
-    int get_number_of_buckets() {return buckets;}
-    void set_number_of_buckets(u32 bucket_count)   {   buckets = bucket_count;   }
+    mpi_comm get_mcomm()    {return mcomm;}
+    void set_mcomm(mpi_comm& mc)    {mcomm = mc;}
 
     void set_filename(const char* fn)   {filename = fn;}
     const char* get_filename()   {return filename;}
 
+    void set_initailization_type(int x) { initailization_type = x;  }
+    int get_bucket_count()  {   return mcomm.get_local_nprocs(); }
+    //void get_bucket_count(int buck) {   buckets = buck; }
+    void set_tester(int x)  { tester = x; }
+    int get_tester()  { return tester; }
     u32* get_bucket_map()   {return bucket_map;}
     int* get_distinct_sub_bucket_rank_count()   {return distinct_sub_bucket_rank_count;}
     int** get_distinct_sub_bucket_rank()    {return distinct_sub_bucket_rank;}
@@ -94,8 +93,6 @@ public:
     void set_delta_element_count(int val)   {delta_element_count = val;}
     int get_delta_element_count()   {return delta_element_count;}
     int get_new_element_count() {return newt_element_count;}
-    int get_full_inserts_element_count()    {return full_inserts_element_count;}
-    void set_full_inserts_element_count(int x)  {full_inserts_element_count = x;}
     int get_full_element_count()    {return full_element_count;}
     google_relation* get_delta()    {return delta;}
     int get_nprocs()    {return mcomm.get_nprocs();}
@@ -105,21 +102,26 @@ public:
     void copy_newt_to_delta()   {delta = newt;}
     void delete_delta() {delete[] delta;}
 
-    bool fixed_point_check();
+    void fixed_point_check(std::vector<u64>& history);
 
     void local_insert_in_delta();
     void create_newt();
     void print();
 
-    void read_from_file(const char *fname, int full_delta);
+    void read_from_file();
 
     void flush_full();
 
     void read_from_relation(relation* input, int full_deta);
 
-    void initialize_relation(u32 arity, mpi_comm& mcomm);
+    void initialize(u32 arity);
+    void initialize(u32 arity, int tuple_count, char* filename, int version);
+    void initialize_relation(mpi_comm& mcomm);
     void initialize_full(u32 buffer_size, u64 col_count, u64* buffer);
     void initialize_delta (u32 buffer_size, u64 col_count, u64* buffer);
+
+    void finalize_relation();
+    void copy_relation(relation*& recv_rel, mpi_comm output_comm, int target_cumulative_rank, int tuples_per_task, u32 ib,  u32 ob);
 
 
     bool find_in_full(u64* t);
