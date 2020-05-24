@@ -149,8 +149,9 @@ public:
             mpi_comm new_mcomm(mcomm);
 
             std::vector<u64> history;
+            int finished_task_count=0;
 
-            loop_again:
+loop_again:
 
             double loop_exec_start = MPI_Wtime();
             number_of_parallel_tasks = taskgraph[i].size();
@@ -179,7 +180,7 @@ public:
             int new_color = -1;
             int* prev_ranks_per_task = new int[number_of_parallel_tasks];
             memcpy(prev_ranks_per_task, ranks_per_task, number_of_parallel_tasks * sizeof(int));
-            bool check_for_rebalance = rebalance_comm(history, number_of_parallel_tasks, tuple_count_per_task, ranks_per_task, cumulative_ranks_per_task, new_mcomm, &color, &new_color, mode);
+            bool check_for_rebalance = rebalance_comm(history, number_of_parallel_tasks, tuple_count_per_task, ranks_per_task, cumulative_ranks_per_task, new_mcomm, &color, &new_color, &finished_task_count, mode);
             double rebalance_check_end = MPI_Wtime();
             rebalance_check_time = rebalance_check_time + (rebalance_check_end - rebalance_check_start);
 
@@ -198,11 +199,6 @@ public:
             double rebalance_end = MPI_Wtime();
             rebalance_time = rebalance_time + (rebalance_end - rebalance_start);
 #endif
-
-            int finished_task_count = 0;
-            for (int j=0; j < number_of_parallel_tasks; j++)
-                if (tuple_count_per_task[j] == 0)
-                    finished_task_count++;
 
             if (mcomm.get_rank() == 0)
                 std::cout << "OUTER R [" << color << "] Loop " << loop_count
@@ -274,7 +270,7 @@ public:
     }
 
 
-    bool rebalance_comm(std::vector<u64>& history, int number_of_parallel_tasks, u64*& current_tuple_count_per_task, int*& current_ranks_per_task, int*& current_cumulative_ranks_per_task, mpi_comm& new_mcomm, int *current_color, int *next_color, int mode)
+    bool rebalance_comm(std::vector<u64>& history, int number_of_parallel_tasks, u64*& current_tuple_count_per_task, int*& current_ranks_per_task, int*& current_cumulative_ranks_per_task, mpi_comm& new_mcomm, int *current_color, int *next_color, int* finished_task_count, int mode)
     {
 
         // Check if balancing is required
@@ -343,8 +339,13 @@ public:
 
         u64 total_tuple_count = 0;
 
+        (*finished_task_count) = 0;
         for (int j=0; j < number_of_parallel_tasks; j++)
+        {
             total_tuple_count = total_tuple_count + next_tuple_count_per_task[j];
+            if (next_tuple_count_per_task[j] == 0)
+                (*finished_task_count)++;
+        }
 
         int* next_cumulative_ranks_per_task = new int[number_of_parallel_tasks + 1];
         memset(next_cumulative_ranks_per_task, 0, (number_of_parallel_tasks + 1) * sizeof(int));
@@ -438,27 +439,14 @@ public:
         }
 
 
-        memset(current_cumulative_ranks_per_task, 0, (number_of_parallel_tasks + 1) * sizeof(int));
-        //memset(current_ranks_per_task, 0, number_of_parallel_tasks * sizeof(int));
-        memset(current_tuple_count_per_task, 0, number_of_parallel_tasks * sizeof(u64));
 
-        int *temp = new int[number_of_parallel_tasks];
-        memset(temp, 0, number_of_parallel_tasks * sizeof(int));
-        for (int j=0; j < number_of_parallel_tasks; j++)
-        {
-            temp[j] = current_ranks_per_task[j];
-            current_ranks_per_task[j] = next_ranks_per_task[j];
-            current_tuple_count_per_task[j] = next_tuple_count_per_task[j];
-            current_cumulative_ranks_per_task[j] = next_cumulative_ranks_per_task[j];
-        }
-        current_cumulative_ranks_per_task[number_of_parallel_tasks] = next_cumulative_ranks_per_task[number_of_parallel_tasks];
-
-
-        delete[] next_tuple_count_per_task;
 
 
         if (total_tuple_count == 0)
         {
+            if (mcomm.get_rank() == 0)
+                std::cout << "-------------------All Tasks finished-------------------" << std::endl;
+
             delete[] next_ranks_per_task;
             delete[] next_cumulative_ranks_per_task;
             return false;
@@ -466,6 +454,14 @@ public:
 
         if (count == number_of_parallel_tasks)
         {
+            if (mcomm.get_rank() == 0)
+            {
+                std::cout << "-------------------No change in rank distribution-------------------" << std::endl;
+                for (int j=0; j < number_of_parallel_tasks; j++)
+                    std::cout << "[" << current_ranks_per_task[j] << " " << next_ranks_per_task[j] << "] ";
+                std::cout << std::endl;
+            }
+
             delete[] next_ranks_per_task;
             delete[] next_cumulative_ranks_per_task;
             return false;
@@ -474,21 +470,25 @@ public:
         if (max < task_threshold)
         {
             if (mcomm.get_rank() == 0)
+            {
                 std::cout << "Does not cross threshold of 1.1 current threshold is = " << max << " " << num << " " << den << std::endl;
+                for (int j=0; j < number_of_parallel_tasks; j++)
+                    std::cout << "[" << current_ranks_per_task[j] << " " << next_ranks_per_task[j] << "] ";
+                std::cout << std::endl;
+            }
             delete[] next_cumulative_ranks_per_task;
             return false;
         }
         else
         {
-        if (mcomm.get_rank() == 0){
-            std::cout << "-----------------Crosses the threshold of 1.1 current threshold is = " << max << " " << num << " " << den << "-----------------" << std::endl;
-            for (int j=0; j < number_of_parallel_tasks; j++)
-                std::cout << "[" << temp[j] << " " << next_ranks_per_task[j] << "] ";
-            std::cout << std::endl;
+            if (mcomm.get_rank() == 0){
+                std::cout << "-----------------Crosses the threshold of 1.1 current threshold is = " << max << " " << num << " " << den << "-----------------" << std::endl;
+                for (int j=0; j < number_of_parallel_tasks; j++)
+                    std::cout << "[" << current_ranks_per_task[j] << " " << next_ranks_per_task[j] << "] ";
+                std::cout << std::endl;
+            }
         }
-        }
-        delete[] next_ranks_per_task;
-        delete[] temp;
+
 
         *next_color = -1;
         for (int j=0; j < number_of_parallel_tasks; j++)
@@ -499,13 +499,23 @@ public:
                 break;
             }
         }
-        delete[] next_cumulative_ranks_per_task;
+
 
         MPI_Comm newcomm;
         MPI_Comm_split(mcomm.get_comm(), *next_color, mcomm.get_rank(), &newcomm);
         new_mcomm.set_local_comm(&newcomm);
 
-        //std::cout << "222222222222 Rank is " << new_mcomm.get_rank() << " Color is " << *next_color << " PC " << new_mcomm.get_local_nprocs() << std::endl;
+        for (int j=0; j < number_of_parallel_tasks; j++)
+        {
+            current_ranks_per_task[j] = next_ranks_per_task[j];
+            current_tuple_count_per_task[j] = next_tuple_count_per_task[j];
+            current_cumulative_ranks_per_task[j] = next_cumulative_ranks_per_task[j];
+        }
+        current_cumulative_ranks_per_task[number_of_parallel_tasks] = next_cumulative_ranks_per_task[number_of_parallel_tasks];
+
+        delete[] next_ranks_per_task;
+        delete[] next_cumulative_ranks_per_task;
+        delete[] next_tuple_count_per_task;
 
         return true;
     }
