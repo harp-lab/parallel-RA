@@ -295,8 +295,13 @@ loop_again:
             MPI_Allreduce(next_tuple_count_per_task_local, next_tuple_count_per_task, number_of_parallel_tasks, MPI_UNSIGNED_LONG_LONG, MPI_BOR, mcomm.get_comm());
             memset(current_tuple_count_per_task, 0, number_of_parallel_tasks * sizeof(u64));
 
+            (*finished_task_count) = 0;
             for (int j=0; j < number_of_parallel_tasks; j++)
+            {
                 current_tuple_count_per_task[j] = next_tuple_count_per_task[j];
+                if (next_tuple_count_per_task[j] == 0)
+                    (*finished_task_count)++;
+            }
 
             delete[] next_tuple_count_per_task_local;
             delete[] next_tuple_count_per_task;
