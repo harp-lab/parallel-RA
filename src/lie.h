@@ -13,6 +13,7 @@ class LIE
 private:
     int mode;
     u32 batch_size;
+    double batch_time;
     float task_threshold;
     mpi_comm mcomm;
     std::vector<RAM*> tasks;
@@ -25,6 +26,10 @@ public:
 
     void set_batch_size (u32 bs)    {batch_size = bs;}
     u32 get_batch_size ()    {return batch_size;}
+
+    void set_batch_time (double bt)    {batch_time = bt;}
+    double get_batch_time ()    {return batch_time;}
+
     void set_task_threshold (float th)    {task_threshold = th;}
     float get_task_threshold ()    {return task_threshold;}
 
@@ -155,7 +160,12 @@ loop_again:
 
             double loop_exec_start = MPI_Wtime();
             number_of_parallel_tasks = taskgraph[i].size();
-            taskgraph[i][color].execute(batch_size, history);
+
+            if (batch_size != 0)
+                taskgraph[i][color].execute(batch_size, history);
+            else
+                taskgraph[i][color].execute_time(batch_time, history);
+
             double loop_exec_end = MPI_Wtime();
             exec_time = exec_time + (loop_exec_end - loop_exec_start);
 
@@ -205,6 +215,8 @@ loop_again:
                           << " Finished task count: " << finished_task_count
                           << " Rebalance time: " << (rebalance_end - rebalance_start)
                           << " Total exec time " << rebalance_time
+                          << std::endl
+                          << "-------------------------------------------------------------------------------------------------------------------------------"
                           << std::endl << std::endl;
 
             if (finished_task_count != number_of_parallel_tasks)
@@ -285,7 +297,7 @@ loop_again:
         u64 full_in_scc = 0;
         u64 delta_in_scc = 0;
 
-        if (mode == -1)
+        if (mode == 1)
         {
             full_in_scc = history[history.size()-1];
             delta_in_scc = history[history.size()-2];
@@ -293,12 +305,10 @@ loop_again:
 
             next_tuple_count_per_task_local[*current_color] = full_in_scc;
             MPI_Allreduce(next_tuple_count_per_task_local, next_tuple_count_per_task, number_of_parallel_tasks, MPI_UNSIGNED_LONG_LONG, MPI_BOR, mcomm.get_comm());
-            memset(current_tuple_count_per_task, 0, number_of_parallel_tasks * sizeof(u64));
 
             (*finished_task_count) = 0;
             for (int j=0; j < number_of_parallel_tasks; j++)
             {
-                current_tuple_count_per_task[j] = next_tuple_count_per_task[j];
                 if (next_tuple_count_per_task[j] == 0)
                     (*finished_task_count)++;
             }
@@ -307,9 +317,46 @@ loop_again:
             delete[] next_tuple_count_per_task;
             return false;
         }
+        else if (mode == 2)
+        {
+            full_in_scc = history[history.size()-1];
+            delta_in_scc = history[history.size()-2];
+            if (delta_in_scc == 0)  full_in_scc = 0;
 
+            next_tuple_count_per_task_local[*current_color] = full_in_scc;
+            MPI_Allreduce(next_tuple_count_per_task_local, next_tuple_count_per_task, number_of_parallel_tasks, MPI_UNSIGNED_LONG_LONG, MPI_BOR, mcomm.get_comm());
 
-        if (history.size() > 6 && mode == 1)
+            int prev_finished_task_count = 0;
+            for (int j=0; j < number_of_parallel_tasks; j++)
+            {
+                if (current_tuple_count_per_task[j] == 0)
+                    prev_finished_task_count++;
+            }
+
+            (*finished_task_count) = 0;
+            for (int j=0; j < number_of_parallel_tasks; j++)
+            {
+                if (next_tuple_count_per_task[j] == 0)
+                    (*finished_task_count)++;
+            }
+
+            if (prev_finished_task_count == *finished_task_count)
+            {
+                delete[] next_tuple_count_per_task_local;
+                delete[] next_tuple_count_per_task;
+                return false;
+            }
+        }
+        else if (mode == 3)
+        {
+            full_in_scc = history[history.size()-1];
+            delta_in_scc = history[history.size()-2];
+            if (delta_in_scc == 0)  full_in_scc = 0;
+
+            next_tuple_count_per_task_local[*current_color] = full_in_scc;
+            MPI_Allreduce(next_tuple_count_per_task_local, next_tuple_count_per_task, number_of_parallel_tasks, MPI_UNSIGNED_LONG_LONG, MPI_BOR, mcomm.get_comm());
+        }
+        else
         {
             full_in_scc = history[history.size()-1];
             delta_in_scc = history[history.size()-2];
@@ -321,20 +368,11 @@ loop_again:
             // x = 2c - p
             for (int j=0; j < number_of_parallel_tasks; j++)
             {
-                if (current_tuple_count_per_task[j] >=  2 * next_tuple_count_per_task[j])
+                if (((3 * next_tuple_count_per_task[j])/2) - current_tuple_count_per_task[j]/2 <= 0)
                     next_tuple_count_per_task[j] = 0;
                 else
-                    next_tuple_count_per_task[j] = 2 * next_tuple_count_per_task[j] - current_tuple_count_per_task[j];
+                    next_tuple_count_per_task[j] = ((3 * next_tuple_count_per_task[j])/2) - current_tuple_count_per_task[j]/2;
             }
-        }
-        else
-        {
-            full_in_scc = history[history.size()-1];
-            delta_in_scc = history[history.size()-2];
-            if (delta_in_scc == 0)  full_in_scc = 0;
-
-            next_tuple_count_per_task_local[*current_color] = full_in_scc;
-            MPI_Allreduce(next_tuple_count_per_task_local, next_tuple_count_per_task, number_of_parallel_tasks, MPI_UNSIGNED_LONG_LONG, MPI_BOR, mcomm.get_comm());
         }
 
 
@@ -442,10 +480,6 @@ loop_again:
                 num = next_ranks_per_task[i];
             }
         }
-
-
-
-
 
         if (total_tuple_count == 0)
         {

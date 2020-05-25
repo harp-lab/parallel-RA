@@ -837,6 +837,8 @@ public:
         //if (enable_dump_io == true)
         //    print_full();
 
+        if (mcomm.get_rank() == 0)
+            std::cout << std::endl <<  "-------------------------------------------------------------------------------------------------------" << std::endl;
         int inner_loop = 0;
         double running_time = 0;
         while (batch_size != 0)
@@ -893,8 +895,82 @@ public:
 
         if (enable_dump_io == true)
             print_full();
+    }
+
+    void execute_time(double batch_time, std::vector<u64>& history)
+    {
+        //if (enable_dump_io == true)
+        //    print_full();
+
+        double running_time = 0;
+        int inner_loop = 0;
+
+        if (mcomm.get_rank() == 0)
+            std::cout << std::endl <<  "-------------------------------------------------------------------------------------------------------------------------------" << std::endl;
+        while (running_time <= batch_time)
+        {
+            double elapsed_start = MPI_Wtime();
+
+            double intra_start = MPI_Wtime();
+            intra_bucket_comm();
+            double intra_end = MPI_Wtime();
+
+            double compute_start = MPI_Wtime();
+            local_compute();
+            double compute_end = MPI_Wtime();
+
+            double all_to_all_start = MPI_Wtime();
+            all_to_all();
+            double all_to_all_end = MPI_Wtime();
+
+            double insert_in_newt_start = MPI_Wtime();
+            local_insert_in_newt();
+            double insert_in_newt_end = MPI_Wtime();
+
+            double insert_in_full_start = MPI_Wtime();
+            local_insert_in_full();
+            double insert_in_full_end = MPI_Wtime();
 
 
+            running_total = running_total + (intra_end - intra_start) + (compute_end - compute_start) + (all_to_all_end - all_to_all_start) + (insert_in_newt_end - insert_in_newt_start) + (insert_in_full_end - insert_in_full_start);
+
+#if 1
+            if (mcomm.get_rank() == 0)
+                std::cout << "INNER [" << inner_loop << "] "
+                      << " Intra " << (intra_end - intra_start)
+                      << " compute " << (compute_end - compute_start)
+                      << " All to all " << (all_to_all_end - all_to_all_start)
+                      << " Insert newt " << (insert_in_newt_end - insert_in_newt_start)
+                      << " Insert full " << (insert_in_full_end - insert_in_full_start)
+                      << " Total " << (intra_end - intra_start) + (compute_end - compute_start) + (all_to_all_end - all_to_all_start) + (insert_in_newt_end - insert_in_newt_start) + (insert_in_full_end - insert_in_full_start)
+                      << " [ "
+                      << running_time
+                      << " ]" << std::endl;
+#endif
+            inner_loop++;
+
+            if (iteration_count == 1)
+                break;
+
+            double elapsed_end = MPI_Wtime();
+            running_time = running_time + (elapsed_end - elapsed_start);
+
+            double mint;
+            MPI_Allreduce(&running_time, &mint, 1, MPI_DOUBLE, MPI_MAX, mcomm.get_local_comm());
+            running_time = mint;
+            //std::cout << "Running time " << running_time << std::endl;
+
+            //if (enable_dump_io == true)
+            //    print_full();
+        }
+
+        check_for_fixed_point(history);
+
+        //if (mcomm.get_rank() == 0)
+        //    std::cout << "Exec " << relation_manager.size() << std::endl;
+
+        //if (enable_dump_io == true)
+            print_full();
     }
 
 };

@@ -9,14 +9,18 @@ int main(int argc, char **argv)
     mcomm.create(argc, argv);
 
     u32 batch_size = atoi(argv[1]);
-    float threshold = atof(argv[2]);
-    int mode = atoi(argv[3]);
-    u32 task_count = atoi(argv[4]);
+    double batch_time = atof(argv[2]);
+    float threshold = atof(argv[3]);
+    int mode = atoi(argv[4]);
+    u32 task_count = atoi(argv[5]);
 
     LIE engine;
     engine.set_comm(mcomm);
     engine.set_task_threshold(threshold);
+
+    engine.set_batch_time(batch_time);
     engine.set_batch_size(batch_size);
+
     engine.set_mode(mode);
     std::vector<std::vector<RAM>> taskgraph(2, std::vector<RAM>(task_count));
 
@@ -28,7 +32,7 @@ int main(int argc, char **argv)
 
     for (u32 i=0; i< task_count; i++)
     {
-        G[i].initialize(2, atoi(argv[5+2*i]), argv[6+2*i], FULL);
+        G[i].initialize(2, atoi(argv[6+2*i]), argv[7+2*i], FULL);
         T[i].initialize(2);
 
         scc0[i].push_relation(&G[i]);
