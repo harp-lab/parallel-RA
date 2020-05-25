@@ -11,6 +11,7 @@
 class LIE
 {
 private:
+    int sync_time=0;
     int mode;
     u32 batch_size;
     double batch_time;
@@ -263,6 +264,7 @@ loop_again:
                       << " Exec time: " << exec_time
                       << " Rebalance check time: " << rebalance_check_time
                       << " Rebalance time: " << rebalance_time
+                      << " Number of syncs " << sync_time
                       << std::endl;
         }
 
@@ -355,6 +357,13 @@ loop_again:
 
             next_tuple_count_per_task_local[*current_color] = full_in_scc;
             MPI_Allreduce(next_tuple_count_per_task_local, next_tuple_count_per_task, number_of_parallel_tasks, MPI_UNSIGNED_LONG_LONG, MPI_BOR, mcomm.get_comm());
+
+            if (mcomm.get_rank() == 0)
+            {
+            for (int j=0; j < number_of_parallel_tasks; j++)
+                std::cout << next_tuple_count_per_task[j] << " ";
+            std::cout << std::endl;
+            }
         }
         else
         {
@@ -365,13 +374,14 @@ loop_again:
             next_tuple_count_per_task_local[*current_color] = full_in_scc;
             MPI_Allreduce(next_tuple_count_per_task_local, next_tuple_count_per_task, number_of_parallel_tasks, MPI_UNSIGNED_LONG_LONG, MPI_BOR, mcomm.get_comm());
 
-            // x = 2c - p
+
+            // x = c + (c-p)/2
             for (int j=0; j < number_of_parallel_tasks; j++)
             {
-                if (((3 * next_tuple_count_per_task[j])/2) - current_tuple_count_per_task[j]/2 <= 0)
+                if ((3*next_tuple_count_per_task[j]) <= current_tuple_count_per_task[j])
                     next_tuple_count_per_task[j] = 0;
                 else
-                    next_tuple_count_per_task[j] = ((3 * next_tuple_count_per_task[j])/2) - current_tuple_count_per_task[j]/2;
+                    next_tuple_count_per_task[j] = ((3*next_tuple_count_per_task[j])-current_tuple_count_per_task[j])/2;
             }
         }
 
@@ -520,8 +530,9 @@ loop_again:
         }
         else
         {
+            sync_time++;
             if (mcomm.get_rank() == 0){
-                std::cout << "-----------------Crosses the threshold of 1.1 current threshold is = " << max << " " << num << " " << den << "-----------------" << std::endl;
+                std::cout << sync_time << " -----------------Crosses the threshold of 1.1 current threshold is = " << max << " " << num << " " << den << "-----------------" << std::endl;
                 for (int j=0; j < number_of_parallel_tasks; j++)
                     std::cout << "[" << current_ranks_per_task[j] << " " << next_ranks_per_task[j] << "] ";
                 std::cout << std::endl;
