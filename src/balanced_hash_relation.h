@@ -1,16 +1,6 @@
-#ifndef balanced_hash_relation_H
-#define balanced_hash_relation_H
+#ifndef __balanced_hash_relation_H__
+#define __balanced_hash_relation_H__
 
-
-
-#include <iostream>
-#include <string>
-#include <unordered_set>
-#include <mpi.h>
-#include "google_btree_relation.h"
-#include "balanced_parallel_io.h"
-#include "comm.h"
-#include "vector_buffer.h"
 
 
 enum {DELTA=0, FULL, FULL_AND_DELTA};
@@ -21,7 +11,6 @@ class relation
 
 private:
 
-    //u32 buckets;
     int initailization_type = -1;
     const char* filename = NULL;
 
@@ -30,8 +19,8 @@ private:
     int join_column_count;
 
     int arity=2;
+    int last_rank;
 
-    //u32 full_inserts_element_count;
 
     google_relation *newt;
     u32 newt_element_count;
@@ -41,12 +30,12 @@ private:
     google_relation *full;
     u32 full_element_count;
     u32 **full_sub_bucket_element_count;
-    u32 *full_bucket_element_count;   // TODO (implement this carefully)
+    u32 *full_bucket_element_count;
 
     google_relation *delta;
     u32 delta_element_count;
     u32 **delta_sub_bucket_element_count;
-    u32 *delta_bucket_element_count;   // TODO (implement this carefully)
+    u32 *delta_bucket_element_count;
 
     u32 *total_sub_bucket_count;
     u32 default_sub_bucket_per_bucket_count;
@@ -64,7 +53,6 @@ private:
     mpi_comm mcomm;
     parallel_io file_io;
 
-    int tester = 5;
 
 public:
 
@@ -74,11 +62,11 @@ public:
     void set_filename(const char* fn)   {filename = fn;}
     const char* get_filename()   {return filename;}
 
+    void set_last_rank(int lr)   {last_rank = lr;}
+    int get_last_rank() {   return last_rank;}
+
     void set_initailization_type(int x) { initailization_type = x;  }
     int get_bucket_count()  {   return mcomm.get_local_nprocs(); }
-    //void get_bucket_count(int buck) {   buckets = buck; }
-    void set_tester(int x)  { tester = x; }
-    int get_tester()  { return tester; }
     u32* get_bucket_map()   {return bucket_map;}
     int* get_distinct_sub_bucket_rank_count()   {return distinct_sub_bucket_rank_count;}
     int** get_distinct_sub_bucket_rank()    {return distinct_sub_bucket_rank;}
@@ -125,7 +113,6 @@ public:
 
 
     bool find_in_full(u64* t);
-    //bool find_in_full(std::vector<u64> t);
     bool find_in_delta(u64* t);
     bool find_in_newt(u64* t);
 
@@ -136,6 +123,11 @@ public:
 
 
     int insert_delta_in_full();
+
+    bool load_balance_merge_full(float rf);
+    bool load_balance_split_full(float rf);
+    bool load_balance_merge_full_and_delta(float rf);
+    bool load_balance_split_full_and_delta(float rf, int rc);
 };
 
 

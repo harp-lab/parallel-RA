@@ -1,20 +1,24 @@
-#include "load_balancer.h"
+#include "parallel_RA_inc.h"
 
-#if 0
-bool load_balancer::load_balance_merge_full(relation* rel, float rf)
+
+
+
+
+bool relation::load_balance_merge_full(float rf)
 {
-    u32 rank = (u32)mcomm.get_rank();
-    int nprocs = mcomm.get_nprocs();
-    int buckets = rel->get_number_of_buckets();
+#if 1
+    u32 rank = (u32)mcomm.get_local_rank();
+    int nprocs = mcomm.get_local_nprocs();
+    int buckets = get_bucket_count();
 
-    u32* bucket_map = rel->get_bucket_map();
-    u32* sub_bucket_count = rel->get_sub_bucket_count();
-    google_relation* full = rel->get_full();
-    u32** full_sub_bucket_size = rel->get_full_sub_bucket_element_count();
-    u32** sub_bucket_rank = rel->get_sub_bucket_rank();
-    int** distinct_sub_bucket_rank = rel->get_distinct_sub_bucket_rank();
-    int* distinct_sub_bucket_rank_count = rel->get_distinct_sub_bucket_rank_count();
-    int arity = rel->get_arity();
+    u32* bucket_map = get_bucket_map();
+    u32* sub_bucket_count = get_sub_bucket_per_bucket_count();
+    //google_relation* full = get_full();
+    u32** full_sub_bucket_size = get_full_sub_bucket_element_count();
+    u32** sub_bucket_rank = get_sub_bucket_rank();
+    int** distinct_sub_bucket_rank = get_distinct_sub_bucket_rank();
+    int* distinct_sub_bucket_rank_count = get_distinct_sub_bucket_rank_count();
+    int arity = get_arity();
 
     u32 global_new_sub_bucket[buckets];
     memcpy(global_new_sub_bucket, sub_bucket_count, buckets * sizeof(u32));
@@ -67,8 +71,8 @@ bool load_balancer::load_balance_merge_full(relation* rel, float rf)
     int *global_max = new int[buckets];
     memset(global_max, 0, buckets * sizeof(int));
     int average_sub_bucket_size;
-    MPI_Allreduce(max_sub_bucket_size, global_max, buckets, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
-    MPI_Allreduce(&total_sub_bucket_size, &global_total_sub_bucket_size, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+    MPI_Allreduce(max_sub_bucket_size, global_max, buckets, MPI_INT, MPI_MAX, mcomm.get_local_comm());
+    MPI_Allreduce(&total_sub_bucket_size, &global_total_sub_bucket_size, 1, MPI_INT, MPI_SUM, mcomm.get_local_comm());
     delete[] max_sub_bucket_size;
     average_sub_bucket_size = global_total_sub_bucket_size / total_sub_bucket_count;
 
@@ -100,10 +104,6 @@ bool load_balancer::load_balance_merge_full(relation* rel, float rf)
 
             for (u64 x = 0; x < global_new_sub_bucket[b]; x++)
             {
-                //rcount++;
-                //sub_bucket_rank[b][x] = rcount % nprocs;
-                //rel->set_last_rank(rcount);
-
                 if (sub_bucket_rank[b][x] == rank)
                     bucket_map[b] = 1;
 
@@ -137,7 +137,7 @@ bool load_balancer::load_balance_merge_full(relation* rel, float rf)
 
     vector_buffer* process_data_vector = (vector_buffer*)malloc(sizeof(vector_buffer) * nprocs);
     for (int i = 0; i < nprocs; ++i) {
-        process_data_vector[i] = vector_buffer_create_empty();
+        process_data_vector[i].vector_buffer_create_empty();
     }
 
     int prefix_sum_process_size[nprocs];
@@ -151,7 +151,7 @@ bool load_balancer::load_balance_merge_full(relation* rel, float rf)
 
     vector_buffer* process_data_vector_dt1 = (vector_buffer*)malloc(sizeof(vector_buffer) * nprocs);
     for (int i = 0; i < nprocs; ++i) {
-        process_data_vector_dt1[i] = vector_buffer_create_empty();
+        process_data_vector_dt1[i].vector_buffer_create_empty();
     }
 
     int prefix_sum_process_size_dt[nprocs];
@@ -160,7 +160,7 @@ bool load_balancer::load_balance_merge_full(relation* rel, float rf)
     int recv_process_size_buffer_dt[nprocs];
     memset(recv_process_size_buffer_dt, 0, nprocs * sizeof(int));
 
-    u64 val[2] = {0, 0};
+#if 1
     for (int bk = 0; bk < buckets; bk++)
     {
         if (old_sub_bucket_count[bk] != global_new_sub_bucket[bk])
@@ -169,70 +169,67 @@ bool load_balancer::load_balance_merge_full(relation* rel, float rf)
             full_sub_bucket_size[bk] = new u32[global_new_sub_bucket[bk]];
             memset(full_sub_bucket_size[bk], 0, sizeof(u32) * global_new_sub_bucket[bk]);
 
+            vector_buffer temp_buffer;
+            temp_buffer.vector_buffer_create_empty();
 
-            for (auto it = full[bk].begin(); it != full[bk].end(); it++)
+            std::vector<u64> prefix = {};
+            full[bk].as_vector_buffer_recursive(&temp_buffer, prefix);
+
+            for (u32 s = 0; s < temp_buffer.size / sizeof(u64); s=s+arity)
             {
-                Map0* it2 = it->second;
-                for (auto dit2 = it2->begin(); dit2 != it2->end(); dit2++)
-                {
-                    val[0] = it->first;
-                    val[1] = dit2->first;
-                    uint64_t bucket_id = hash_function(val[0]) % buckets;
-                    uint64_t sub_bucket_id = hash_function(val[1]) % global_new_sub_bucket[bucket_id];
+                u64 reordered_cur_path[arity];
+                for (int j =0; j < arity; j++)
+                    memcpy(reordered_cur_path, (&temp_buffer)->buffer + ((s + j) * sizeof(u64)), sizeof(u64));
 
-                    int index = sub_bucket_rank[bucket_id][sub_bucket_id];
-                    process_size[index] = process_size[index] + arity;
+                uint64_t bucket_id = hash_function(reordered_cur_path[0]) % buckets;
+                uint64_t sub_bucket_id = hash_function(reordered_cur_path[1]) % sub_bucket_count[bucket_id];
+                int index = sub_bucket_rank[bucket_id][sub_bucket_id];
+
+                process_size[index] = process_size[index] + arity;
 
 
-                    vector_buffer_append(&process_data_vector[index],(unsigned char *) val, sizeof(u64) * arity);
-
-                    //if (index == 0)
-                    //std::cout << "BI and SBI " << val[0] << " " << val[1] << " " << hash_function(val[0]) << " " << bucket_id << " " << sub_bucket_id << " rank " << index << std::endl;
-                }
+                process_data_vector[index].vector_buffer_append((const unsigned char*)reordered_cur_path, sizeof(u64)*arity);
             }
-
-            for(google_relation::iterator iy2 = full[bk].begin(); iy2 != full[bk].end(); iy2++)
-                delete (iy2->second);
-
-            full[bk].clear();
+            temp_buffer.vector_buffer_free();
+            full[bk].remove_tuple();
         }
     }
+#endif
 
     u64 outer_hash_buffer_size = 0;
     u64* outer_hash_data;
-    all_to_all_comm(process_data_vector, process_size, &outer_hash_buffer_size, &outer_hash_data);
+    all_to_all_comm(process_data_vector, process_size, &outer_hash_buffer_size, &outer_hash_data, mcomm.get_local_comm());
 
     free (process_data_vector);
 
-    //if (rank == 0)
-    //    std::cout << "outer_hash_buffer_size " << outer_hash_buffer_size <<std::endl;
 
     u64 t[2];
     for (u64 in = 0; in < outer_hash_buffer_size; in = in + arity)
     {
         t[0] = outer_hash_data[in];
         t[1] = outer_hash_data[in + 1];
-        rel->insert_in_full(t);
+        insert_in_full(t);
     }
     delete[] outer_hash_data;
     delete[] old_sub_bucket_count;
-
+#endif
     return true;
 }
 
-bool load_balancer::load_balance_split_full(relation* rel, float rf)
+bool relation::load_balance_split_full(float rf)
 {
-    u32 rank = (u32)mcomm.get_rank();
+#if 1
+    u32 rank = (u32)mcomm.get_local_rank();
     int nprocs = mcomm.get_nprocs();
-    int buckets = mcomm.get_number_of_buckets();
-    u32* bucket_map = rel->get_bucket_map();
-    u32* sub_bucket_count = rel->get_sub_bucket_count();
-    google_relation* full = rel->get_full();
-    u32** full_sub_bucket_size = rel->get_full_sub_bucket_element_count();
-    u32** sub_bucket_rank = rel->get_sub_bucket_rank();
-    int** distinct_sub_bucket_rank = rel->get_distinct_sub_bucket_rank();
-    int* distinct_sub_bucket_rank_count = rel->get_distinct_sub_bucket_rank_count();
-    int arity = rel->get_arity();
+    int buckets = get_bucket_count();
+    u32* bucket_map = get_bucket_map();
+    u32* sub_bucket_count = get_sub_bucket_per_bucket_count();
+    google_relation* full = get_full();
+    u32** full_sub_bucket_size = get_full_sub_bucket_element_count();
+    u32** sub_bucket_rank = get_sub_bucket_rank();
+    int** distinct_sub_bucket_rank = get_distinct_sub_bucket_rank();
+    int* distinct_sub_bucket_rank_count = get_distinct_sub_bucket_rank_count();
+    int arity = get_arity();
 
     int min_sub_bucket_size = INT_MAX;
     int *max_sub_bucket_size = new int[buckets];
@@ -267,9 +264,9 @@ bool load_balancer::load_balance_split_full(relation* rel, float rf)
 
     int global_min;
     int average_sub_bucket_size;
-    MPI_Allreduce(max_sub_bucket_size, global_max, buckets, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
-    MPI_Allreduce(&min_sub_bucket_size, &global_min, 1, MPI_INT, MPI_MIN, MPI_COMM_WORLD);
-    MPI_Allreduce(&total_sub_bucket_size, &global_total_sub_bucket_size, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+    MPI_Allreduce(max_sub_bucket_size, global_max, buckets, MPI_INT, MPI_MAX, mcomm.get_local_comm());
+    MPI_Allreduce(&min_sub_bucket_size, &global_min, 1, MPI_INT, MPI_MIN, mcomm.get_local_comm());
+    MPI_Allreduce(&total_sub_bucket_size, &global_total_sub_bucket_size, 1, MPI_INT, MPI_SUM, mcomm.get_local_comm());
     delete[] max_sub_bucket_size;
 
     average_sub_bucket_size = global_total_sub_bucket_size / total_sub_bucket_count;
@@ -321,7 +318,7 @@ bool load_balancer::load_balance_split_full(relation* rel, float rf)
 
 
     //int rcount = sub_bucket_rank[buckets-1][sub_bucket_count[buckets-1] - 1] + 1;
-    int rcount =  rel->get_last_rank();// sub_bucket_rank[buckets-1][sub_bucket_count[buckets-1] - 1] + 1;
+    int rcount =  get_last_rank();// sub_bucket_rank[buckets-1][sub_bucket_count[buckets-1] - 1] + 1;
 
     for (int b = 0; b < buckets; b++)
     {
@@ -345,7 +342,7 @@ bool load_balancer::load_balance_split_full(relation* rel, float rf)
                 {
                     rcount++;
                     sub_bucket_rank[b][x] = rcount % nprocs;
-                    rel->set_last_rank(rcount);
+                    set_last_rank(rcount);
                 }
 
                 if (sub_bucket_rank[b][x] == rank)
@@ -378,7 +375,7 @@ bool load_balancer::load_balance_split_full(relation* rel, float rf)
 
     vector_buffer* process_data_vector = (vector_buffer*)malloc(sizeof(vector_buffer) * nprocs);
     for (int i = 0; i < nprocs; ++i) {
-        process_data_vector[i] = vector_buffer_create_empty();
+        process_data_vector[i].vector_buffer_create_empty();
     }
 
     int prefix_sum_process_size[nprocs];
@@ -392,7 +389,7 @@ bool load_balancer::load_balance_split_full(relation* rel, float rf)
 
     vector_buffer* process_data_vector_dt1 = (vector_buffer*)malloc(sizeof(vector_buffer) * nprocs);
     for (int i = 0; i < nprocs; ++i) {
-        process_data_vector_dt1[i] = vector_buffer_create_empty();
+        process_data_vector_dt1[i].vector_buffer_create_empty();
     }
 
     int prefix_sum_process_size_dt[nprocs];
@@ -401,7 +398,6 @@ bool load_balancer::load_balance_split_full(relation* rel, float rf)
     int recv_process_size_buffer_dt[nprocs];
     memset(recv_process_size_buffer_dt, 0, nprocs * sizeof(int));
 
-    u64 val[2] = {0, 0};
     for (int bk = 0; bk < buckets; bk++)
     {
         if (old_sub_bucket_count[bk] != global_new_sub_bucket[bk])
@@ -410,37 +406,36 @@ bool load_balancer::load_balance_split_full(relation* rel, float rf)
             full_sub_bucket_size[bk] = new u32[global_new_sub_bucket[bk]];
             memset(full_sub_bucket_size[bk], 0, sizeof(u32) * global_new_sub_bucket[bk]);
 
-            for (auto it = full[bk].begin(); it != full[bk].end(); it++)
+            vector_buffer temp_buffer;
+            temp_buffer.vector_buffer_create_empty();
+
+            std::vector<u64> prefix = {};
+            full[bk].as_vector_buffer_recursive(&temp_buffer, prefix);
+
+            for (u32 s = 0; s < temp_buffer.size / sizeof(u64); s=s+arity)
             {
-                Map0* it2 = it->second;
-                for (auto dit2 = it2->begin(); dit2 != it2->end(); dit2++)
-                {
-                    val[0] = it->first;
-                    val[1] = dit2->first;
-                    uint64_t bucket_id = hash_function(val[0]) % buckets;
-                    uint64_t sub_bucket_id = hash_function(val[1]) % global_new_sub_bucket[bucket_id];
+                u64 reordered_cur_path[arity];
+                for (int j =0; j < arity; j++)
+                    memcpy(reordered_cur_path, (&temp_buffer)->buffer + ((s + j) * sizeof(u64)), sizeof(u64));
 
-                    int index = sub_bucket_rank[bucket_id][sub_bucket_id];
-                    process_size[index] = process_size[index] + arity;
+                uint64_t bucket_id = hash_function(reordered_cur_path[0]) % buckets;
+                uint64_t sub_bucket_id = hash_function(reordered_cur_path[1]) % sub_bucket_count[bucket_id];
+                int index = sub_bucket_rank[bucket_id][sub_bucket_id];
+
+                process_size[index] = process_size[index] + arity;
 
 
-                    vector_buffer_append(&process_data_vector[index],(unsigned char *) val, sizeof(u64) * arity);
-
-                    //if (index == 0)
-                    //std::cout << "BI and SBI " << val[0] << " " << val[1] << " " << hash_function(val[0]) << " " << bucket_id << " " << sub_bucket_id << " rank " << index << std::endl;
-                }
+                process_data_vector[index].vector_buffer_append((const unsigned char*)reordered_cur_path, sizeof(u64)*arity);
             }
+            temp_buffer.vector_buffer_free();
 
-            for(google_relation::iterator iy2 = full[bk].begin(); iy2 != full[bk].end(); iy2++)
-                delete (iy2->second);
-
-            full[bk].clear();
+            full[bk].remove_tuple();
         }
     }
 
     u64 outer_hash_buffer_size = 0;
     u64* outer_hash_data;
-    all_to_all_comm(process_data_vector, process_size, &outer_hash_buffer_size, &outer_hash_data);
+    all_to_all_comm(process_data_vector, process_size, &outer_hash_buffer_size, &outer_hash_data, mcomm.get_local_comm());
     free(process_data_vector);
 
     u64 t[2];
@@ -448,19 +443,20 @@ bool load_balancer::load_balance_split_full(relation* rel, float rf)
     {
         t[0] = outer_hash_data[in];
         t[1] = outer_hash_data[in + 1];
-        rel->insert_in_full(t);
+        insert_in_full(t);
     }
 
     delete[] outer_hash_data;
     delete[] old_sub_bucket_count;
 
-
+#endif
     return true;
 }
 
 
-bool load_balancer::load_balance_merge_full_and_delta(relation* rel, float rf)
+bool relation::load_balance_merge_full_and_delta(float rf)
 {
+#if 0
     u32 rank = (u32)mcomm.get_rank();
     int nprocs = mcomm.get_nprocs();
     int buckets = mcomm.get_number_of_buckets();
@@ -528,8 +524,8 @@ bool load_balancer::load_balance_merge_full_and_delta(relation* rel, float rf)
     int *global_max = new int[buckets];
     memset(global_max, 0, buckets * sizeof(int));
     int average_sub_bucket_size;
-    MPI_Allreduce(max_sub_bucket_size, global_max, buckets, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
-    MPI_Allreduce(&total_sub_bucket_size, &global_total_sub_bucket_size, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+    MPI_Allreduce(max_sub_bucket_size, global_max, buckets, MPI_INT, MPI_MAX, mcomm.get_local_comm());
+    MPI_Allreduce(&total_sub_bucket_size, &global_total_sub_bucket_size, 1, MPI_INT, MPI_SUM, mcomm.get_local_comm());
     delete[] max_sub_bucket_size;
     average_sub_bucket_size = global_total_sub_bucket_size / total_sub_bucket_count;
 
@@ -543,7 +539,7 @@ bool load_balancer::load_balance_merge_full_and_delta(relation* rel, float rf)
         for (u32 j = 0; j < sub_bucket_count[bk]; j++)
             T_tuple_count_before = T_tuple_count_before + full_sub_bucket_size[bk][j];
     }
-    MPI_Allreduce(&T_tuple_count_before, &T_tuple_count_before_global, 1, MPI_UNSIGNED_LONG_LONG, MPI_SUM, MPI_COMM_WORLD);
+    MPI_Allreduce(&T_tuple_count_before, &T_tuple_count_before_global, 1, MPI_UNSIGNED_LONG_LONG, MPI_SUM, mcomm.get_local_comm());
 
     u64 dT_tuple_count_before = 0;
     u64 dT_tuple_count_before_global = 0;
@@ -553,7 +549,7 @@ bool load_balancer::load_balance_merge_full_and_delta(relation* rel, float rf)
         for (u32 j = 0; j < sub_bucket_count[bk]; j++)
             dT_tuple_count_before = dT_tuple_count_before + delta_sub_bucket_size[bk][j];
     }
-    MPI_Allreduce(&dT_tuple_count_before, &dT_tuple_count_before_global, 1, MPI_UNSIGNED_LONG_LONG, MPI_SUM, MPI_COMM_WORLD);
+    MPI_Allreduce(&dT_tuple_count_before, &dT_tuple_count_before_global, 1, MPI_UNSIGNED_LONG_LONG, MPI_SUM, mcomm.get_local_comm());
 
     //if (rank == 0)
     //    std::cout << "[T] Before Load balancing " << T_tuple_count_before_global << std::endl;
@@ -766,7 +762,7 @@ bool load_balancer::load_balance_merge_full_and_delta(relation* rel, float rf)
         for (u32 j = 0; j < global_new_sub_bucket[bk]; j++)
             T_tuple_count_after = T_tuple_count_after + full_sub_bucket_size[bk][j];
     }
-    MPI_Allreduce(&T_tuple_count_after, &T_tuple_count_after_global, 1, MPI_UNSIGNED_LONG_LONG, MPI_SUM, MPI_COMM_WORLD);
+    MPI_Allreduce(&T_tuple_count_after, &T_tuple_count_after_global, 1, MPI_UNSIGNED_LONG_LONG, MPI_SUM, mcomm.get_local_comm());
     //if (rank == 0)
     //    std::cout << "[T] After Load balancing " << T_tuple_count_before_global << " " << T_tuple_count_after_global << std::endl;
     assert(T_tuple_count_before_global == T_tuple_count_after_global);
@@ -779,17 +775,19 @@ bool load_balancer::load_balance_merge_full_and_delta(relation* rel, float rf)
         for (u32 j = 0; j < global_new_sub_bucket[bk]; j++)
             dT_tuple_count_after = dT_tuple_count_after + delta_sub_bucket_size[bk][j];
     }
-    MPI_Allreduce(&dT_tuple_count_after, &dT_tuple_count_after_global, 1, MPI_UNSIGNED_LONG_LONG, MPI_SUM, MPI_COMM_WORLD);
+    MPI_Allreduce(&dT_tuple_count_after, &dT_tuple_count_after_global, 1, MPI_UNSIGNED_LONG_LONG, MPI_SUM, mcomm.get_local_comm());
     //if (rank == 0)
     //    std::cout << "[dT] After Load balancing " << dT_tuple_count_before_global << " " << dT_tuple_count_after_global << std::endl;
     assert(dT_tuple_count_before_global == dT_tuple_count_after_global);
+#endif
 #endif
     return true;
 }
 
 
-bool load_balancer::load_balance_split_full_and_delta(relation* rel, float rf, int rc)
+bool relation::load_balance_split_full_and_delta(float rf, int rc)
 {
+#if 0
     u32 rank = (u32)mcomm.get_rank();
     int nprocs = mcomm.get_nprocs();
     int buckets = mcomm.get_number_of_buckets();
@@ -820,7 +818,7 @@ bool load_balancer::load_balance_split_full_and_delta(relation* rel, float rf, i
         for (u32 j = 0; j < sub_bucket_count[bk]; j++)
             T_tuple_count_before = T_tuple_count_before + full_sub_bucket_size[bk][j];
     }
-    MPI_Allreduce(&T_tuple_count_before, &T_tuple_count_before_global, 1, MPI_UNSIGNED_LONG_LONG, MPI_SUM, MPI_COMM_WORLD);
+    MPI_Allreduce(&T_tuple_count_before, &T_tuple_count_before_global, 1, MPI_UNSIGNED_LONG_LONG, MPI_SUM, mcomm.get_local_comm());
 
     u64 dT_tuple_count_before = 0;
     u64 dT_tuple_count_before_global = 0;
@@ -830,7 +828,7 @@ bool load_balancer::load_balance_split_full_and_delta(relation* rel, float rf, i
         for (u32 j = 0; j < sub_bucket_count[bk]; j++)
             dT_tuple_count_before = dT_tuple_count_before + delta_sub_bucket_size[bk][j];
     }
-    MPI_Allreduce(&dT_tuple_count_before, &dT_tuple_count_before_global, 1, MPI_UNSIGNED_LONG_LONG, MPI_SUM, MPI_COMM_WORLD);
+    MPI_Allreduce(&dT_tuple_count_before, &dT_tuple_count_before_global, 1, MPI_UNSIGNED_LONG_LONG, MPI_SUM, mcomm.get_local_comm());
 
     //if (rank == 0)
     //    std::cout << "[T] Before Load balancing " << T_tuple_count_before_global << std::endl;
@@ -895,9 +893,9 @@ bool load_balancer::load_balance_split_full_and_delta(relation* rel, float rf, i
     memset(global_min, 0, buckets * sizeof(int));
 
     int average_sub_bucket_size;
-    MPI_Allreduce(max_sub_bucket_size, global_max, buckets, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
-    MPI_Allreduce(min_sub_bucket_size, global_min, buckets, MPI_INT, MPI_MIN, MPI_COMM_WORLD);
-    MPI_Allreduce(&total_sub_bucket_size, &global_total_sub_bucket_size, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+    MPI_Allreduce(max_sub_bucket_size, global_max, buckets, MPI_INT, MPI_MAX, mcomm.get_local_comm());
+    MPI_Allreduce(min_sub_bucket_size, global_min, buckets, MPI_INT, MPI_MIN, mcomm.get_local_comm());
+    MPI_Allreduce(&total_sub_bucket_size, &global_total_sub_bucket_size, 1, MPI_INT, MPI_SUM, mcomm.get_local_comm());
     delete[] max_sub_bucket_size;
     delete[] min_sub_bucket_size;
 
@@ -1156,7 +1154,7 @@ bool load_balancer::load_balance_split_full_and_delta(relation* rel, float rf, i
         for (u32 j = 0; j < global_new_sub_bucket[bk]; j++)
             T_tuple_count_after = T_tuple_count_after + full_sub_bucket_size[bk][j];
     }
-    MPI_Allreduce(&T_tuple_count_after, &T_tuple_count_after_global, 1, MPI_UNSIGNED_LONG_LONG, MPI_SUM, MPI_COMM_WORLD);
+    MPI_Allreduce(&T_tuple_count_after, &T_tuple_count_after_global, 1, MPI_UNSIGNED_LONG_LONG, MPI_SUM, mcomm.get_local_comm());
     //if (rank == 0)
     //    std::cout << "[T] After Load balancing " << T_tuple_count_before_global << " " << T_tuple_count_after_global << std::endl;
     assert(T_tuple_count_before_global == T_tuple_count_after_global);
@@ -1169,63 +1167,12 @@ bool load_balancer::load_balance_split_full_and_delta(relation* rel, float rf, i
         for (u32 j = 0; j < global_new_sub_bucket[bk]; j++)
             dT_tuple_count_after = dT_tuple_count_after + delta_sub_bucket_size[bk][j];
     }
-    MPI_Allreduce(&dT_tuple_count_after, &dT_tuple_count_after_global, 1, MPI_UNSIGNED_LONG_LONG, MPI_SUM, MPI_COMM_WORLD);
+    MPI_Allreduce(&dT_tuple_count_after, &dT_tuple_count_after_global, 1, MPI_UNSIGNED_LONG_LONG, MPI_SUM, mcomm.get_local_comm());
     //if (rank == 0)
     //    std::cout << "[dT] After Load balancing " << dT_tuple_count_before_global << " " << dT_tuple_count_after_global << std::endl;
     assert(dT_tuple_count_before_global == dT_tuple_count_after_global);
 #endif
-
+#endif
     return true;
 }
 
-void all_to_all_comm(vector_buffer* local_join_output, int* process_size, u64 *outer_hash_buffer_size, u64 **outer_hash_data)
-{
-    int nprocs = mcomm.get_nprocs();
-    //int rank = mcomm.get_rank();
-
-    /* This step prepares for actual data transfer */
-    /* Every process sends to every other process the amount of data it is going to send */
-    int recv_process_size_buffer[nprocs];
-    memset(recv_process_size_buffer, 0, nprocs * sizeof(int));
-    MPI_Alltoall(process_size, 1, MPI_INT, recv_process_size_buffer, 1, MPI_INT, mcomm.get_comm());
-
-    int prefix_sum_process_size[nprocs];
-    memset(prefix_sum_process_size, 0, nprocs * sizeof(int));
-
-    for (int i = 1; i < nprocs; i++)
-        prefix_sum_process_size[i] = prefix_sum_process_size[i - 1] + process_size[i - 1];
-
-    int process_data_buffer_size = prefix_sum_process_size[nprocs - 1] + process_size[nprocs - 1];
-
-    u64* process_data = 0;
-    process_data = new u64[process_data_buffer_size];
-    memset(process_data, 0, process_data_buffer_size * sizeof(u64));
-
-    for(int i = 0; i < nprocs; i++)
-    {
-        memcpy(process_data + prefix_sum_process_size[i], (&local_join_output[i])->buffer, (&local_join_output[i])->size);
-        vector_buffer_free(&local_join_output[i]);
-    }
-
-    int prefix_sum_recv_process_size_buffer[nprocs];
-    memset(prefix_sum_recv_process_size_buffer, 0, nprocs * sizeof(int));
-
-    /* Sending data to all processes: What is the buffer size to allocate */
-    *outer_hash_buffer_size = recv_process_size_buffer[0];
-    for(int i = 1; i < nprocs; i++)
-    {
-        prefix_sum_recv_process_size_buffer[i] = prefix_sum_recv_process_size_buffer[i - 1] + recv_process_size_buffer[i - 1];
-        *outer_hash_buffer_size = *outer_hash_buffer_size + recv_process_size_buffer[i];
-    }
-
-    *outer_hash_data = new u64[*outer_hash_buffer_size];
-    memset(*outer_hash_data, 0, *outer_hash_buffer_size * sizeof(u64));
-
-
-    MPI_Alltoallv(process_data, process_size, prefix_sum_process_size, MPI_UNSIGNED_LONG_LONG, *outer_hash_data, recv_process_size_buffer, prefix_sum_recv_process_size_buffer, MPI_UNSIGNED_LONG_LONG, mcomm.get_comm());
-
-    delete[] process_data;
-
-    return;
-}
-#endif

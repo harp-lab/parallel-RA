@@ -1,5 +1,5 @@
-#ifndef COMPAT__H
-#define COMPAT__H
+#ifndef PARALLEL_RA_INC_H
+#define PARALLEL_RA_INC_H
 
 #include <stdint.h>
 
@@ -15,6 +15,12 @@
 #include <unistd.h>
 #include <iostream>
 #include <fstream>
+#include <mpi.h>
+#include <vector>
+#include <unordered_set>
+#include <queue>
+
+#include "btree/btree_map.h"
 
 #ifdef __GNUC__
 
@@ -29,38 +35,27 @@ typedef uint64_t u64;
 typedef int64_t s64;
 typedef char c8;
 typedef wchar_t c16;
-
 #else
-
 #error No compat declarations for this compiler
-
 #endif
 
-inline u64 tunedhash(const u8* bp, const u32 len)
-{
-    u64 h0 = 0xb97a19cb491c291d;
-    u64 h1 = 0xc18292e6c9371a17;
-    const u8* const ep = bp+len;
-    while (bp < ep)
-    {
-        h1 ^= *bp;
-        h1 *= 31;
-        h0 ^= (((u64)*bp) << 17) ^ *bp;
-        h0 *= 0x100000001b3;
-        h0 = (h0 >> 7) | (h0 << 57);
-        ++bp;
-    }
-    return h0 ^ h1;
-}
+#include "hash.h"
+#include "comm.h"
+#include "vector_buffer.h"
+#include "parallel_io.h"
+#include "google_btree_relation.h"
+#include "all_to_all_comm.h"
+
+#include "balanced_hash_relation.h"
+#include "parallel_RA.h"
+#include "parallel_join.h"
+#include "parallel_copy.h"
+#include "RA_tasks.h"
+#include "lie.h"
 
 
-
-static u64 hash_function(const u64 val)
-{
-    return tunedhash((u8*)(&val),sizeof(u64));
-}
 
 #undef LOGGING
 
 
-#endif //COMPAT__H
+#endif
