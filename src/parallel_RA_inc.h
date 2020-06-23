@@ -1,3 +1,11 @@
+/*
+ *
+ * Parallel Relational Algebra
+ * Copyright (c) Sidharth Kumar, Thomas Gilray, Kristopher Micinski, see License.md
+ *
+ */
+
+
 #ifndef PARALLEL_RA_INC_H
 #define PARALLEL_RA_INC_H
 
@@ -19,7 +27,7 @@
 #include <vector>
 #include <unordered_set>
 #include <queue>
-
+#include <unordered_map>
 #include "btree/btree_map.h"
 
 #ifdef __GNUC__
@@ -39,19 +47,23 @@ typedef wchar_t c16;
 #error No compat declarations for this compiler
 #endif
 
-#include "hash.h"
-#include "comm.h"
-#include "vector_buffer.h"
-#include "parallel_io.h"
-#include "google_btree_relation.h"
-#include "all_to_all_comm.h"
+#include "log/logger.h"
+#include "hash/hash.h"
+#include "comm/comm.h"
+#include "buffer/vector_buffer.h"
+#include "IO/parallel_io.h"
+#include "comm/all_to_all_comm.h"
+#include "relation/google_btree_relation.h"
 
-#include "balanced_hash_relation.h"
-#include "parallel_RA.h"
-#include "parallel_join.h"
-#include "parallel_copy.h"
-#include "RA_tasks.h"
-#include "lie.h"
+
+#include "relation/balanced_hash_relation.h"
+#include "RA/parallel_RA.h"
+#include "RA/parallel_join.h"
+#include "RA/parallel_copy.h"
+#include "RA/parallel_acopy.h"
+#include "comm/intra_bucket_comm.h"
+#include "RA/RA_tasks.h"
+#include "lie/lie.h"
 
 
 
