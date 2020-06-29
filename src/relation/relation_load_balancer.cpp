@@ -66,6 +66,7 @@ bool relation::load_balance_merge_full_and_delta(float rf)
     int process_size[nprocs];
     memset(process_size, 0, nprocs * sizeof(int));
 
+    int process_data_vector_size=0;
     vector_buffer* process_data_vector = (vector_buffer*)malloc(sizeof(vector_buffer) * nprocs);
     for (int i = 0; i < nprocs; ++i) {
         process_data_vector[i].vector_buffer_create_empty();
@@ -75,6 +76,7 @@ bool relation::load_balance_merge_full_and_delta(float rf)
     int process_size_dt[nprocs];
     memset(process_size_dt, 0, nprocs * sizeof(int));
 
+    int process_data_vector_dt_size=0;
     vector_buffer* process_data_vector_dt = (vector_buffer*)malloc(sizeof(vector_buffer) * nprocs);
     for (int i = 0; i < nprocs; ++i) {
         process_data_vector_dt[i].vector_buffer_create_empty();
@@ -137,7 +139,7 @@ bool relation::load_balance_merge_full_and_delta(float rf)
             std::vector<u64> prefix = {};
 
             temp_buffer.vector_buffer_create_empty();
-            full[b].as_vector_buffer_recursive(&temp_buffer, prefix);
+            full[b]->as_vector_buffer_recursive(&temp_buffer, prefix);
 
             for (u32 s = 0; s < temp_buffer.size / sizeof(u64); s=s+arity)
             {
@@ -151,12 +153,14 @@ bool relation::load_balance_merge_full_and_delta(float rf)
 
                 process_size[index] = process_size[index] + arity;
                 process_data_vector[index].vector_buffer_append((const unsigned char*)reordered_cur_path, sizeof(u64)*arity);
+
+                process_data_vector_size = process_data_vector_size + (arity + 1);
             }
             temp_buffer.vector_buffer_free();
-            full[b].remove_tuple();
+            full[b]->remove_tuple();
 
             temp_buffer.vector_buffer_create_empty();
-            delta[b].as_vector_buffer_recursive(&temp_buffer, prefix);
+            delta[b]->as_vector_buffer_recursive(&temp_buffer, prefix);
 
             for (u32 s = 0; s < temp_buffer.size / sizeof(u64); s=s+arity)
             {
@@ -170,9 +174,11 @@ bool relation::load_balance_merge_full_and_delta(float rf)
 
                 process_size_dt[index] = process_size_dt[index] + arity;
                 process_data_vector_dt[index].vector_buffer_append((const unsigned char*)reordered_cur_path, sizeof(u64)*arity);
+
+                process_data_vector_dt_size = process_data_vector_dt_size + (arity + 1);
             }
             temp_buffer.vector_buffer_free();
-            delta[b].remove_tuple();
+            delta[b]->remove_tuple();
         }
     }
     delete[] global_max;
@@ -181,7 +187,7 @@ bool relation::load_balance_merge_full_and_delta(float rf)
 
     u64 outer_hash_buffer_size = 0;
     u64* outer_hash_data;
-    all_to_all_comm(process_data_vector, process_size, &outer_hash_buffer_size, &outer_hash_data, mcomm.get_local_comm());
+    all_to_all_comm(process_data_vector, process_data_vector_size, process_size, &outer_hash_buffer_size, &outer_hash_data, mcomm.get_local_comm());
     free (process_data_vector);
 
     u64 t[arity];
@@ -197,7 +203,7 @@ bool relation::load_balance_merge_full_and_delta(float rf)
 
     u64 dt_outer_hash_buffer_size = 0;
     u64* dt_outer_hash_data;
-    all_to_all_comm(process_data_vector_dt, process_size_dt, &dt_outer_hash_buffer_size, &dt_outer_hash_data, mcomm.get_local_comm());
+    all_to_all_comm(process_data_vector_dt, process_data_vector_dt_size, process_size_dt, &dt_outer_hash_buffer_size, &dt_outer_hash_data, mcomm.get_local_comm());
     free (process_data_vector_dt);
 
     for (u64 in = 0; in < dt_outer_hash_buffer_size; in = in + 2)
@@ -308,6 +314,7 @@ bool relation::load_balance_split_full_and_delta(float rf)
     int process_size[nprocs];
     memset(process_size, 0, nprocs * sizeof(int));
 
+    int process_data_vector_size=0;
     vector_buffer* process_data_vector = (vector_buffer*)malloc(sizeof(vector_buffer) * nprocs);
     for (int i = 0; i < nprocs; ++i) {
         process_data_vector[i].vector_buffer_create_empty();
@@ -316,6 +323,7 @@ bool relation::load_balance_split_full_and_delta(float rf)
     int process_size_dt[nprocs];
     memset(process_size_dt, 0, nprocs * sizeof(int));
 
+    int process_data_vector_dt_size=0;
     vector_buffer* process_data_vector_dt = (vector_buffer*)malloc(sizeof(vector_buffer) * nprocs);
     for (int i = 0; i < nprocs; ++i) {
         process_data_vector_dt[i].vector_buffer_create_empty();
@@ -370,7 +378,7 @@ bool relation::load_balance_split_full_and_delta(float rf)
             temp_buffer.vector_buffer_create_empty();
 
             std::vector<u64> prefix = {};
-            full[b].as_vector_buffer_recursive(&temp_buffer, prefix);
+            full[b]->as_vector_buffer_recursive(&temp_buffer, prefix);
 
             for (u32 s = 0; s < temp_buffer.size / sizeof(u64); s=s+arity)
             {
@@ -384,13 +392,15 @@ bool relation::load_balance_split_full_and_delta(float rf)
 
                 process_size[index] = process_size[index] + arity;
                 process_data_vector[index].vector_buffer_append((const unsigned char*)reordered_cur_path, sizeof(u64)*arity);
+
+                process_data_vector_size = process_data_vector_size + (arity+1);
             }
             temp_buffer.vector_buffer_free();
-            full[b].remove_tuple();
+            full[b]->remove_tuple();
 
 
             temp_buffer.vector_buffer_create_empty();
-            delta[b].as_vector_buffer_recursive(&temp_buffer, prefix);
+            delta[b]->as_vector_buffer_recursive(&temp_buffer, prefix);
 
             for (u32 s = 0; s < temp_buffer.size / sizeof(u64); s=s+arity)
             {
@@ -404,9 +414,11 @@ bool relation::load_balance_split_full_and_delta(float rf)
 
                 process_size_dt[index] = process_size_dt[index] + arity;
                 process_data_vector_dt[index].vector_buffer_append((const unsigned char*)reordered_cur_path, sizeof(u64)*arity);
+
+                process_data_vector_dt_size = process_data_vector_dt_size + (arity+1);
             }
             temp_buffer.vector_buffer_free();
-            delta[b].remove_tuple();
+            delta[b]->remove_tuple();
         }
     }
 
@@ -415,7 +427,7 @@ bool relation::load_balance_split_full_and_delta(float rf)
 
     u64 outer_hash_buffer_size = 0;
     u64* outer_hash_data;
-    all_to_all_comm(process_data_vector, process_size, &outer_hash_buffer_size, &outer_hash_data, mcomm.get_local_comm());
+    all_to_all_comm(process_data_vector, process_data_vector_size, process_size, &outer_hash_buffer_size, &outer_hash_data, mcomm.get_local_comm());
     free(process_data_vector);
 
     u64 t[2];
@@ -430,7 +442,7 @@ bool relation::load_balance_split_full_and_delta(float rf)
 
     u64 dt_outer_hash_buffer_size = 0;
     u64* dt_outer_hash_data;
-    all_to_all_comm(process_data_vector_dt, process_size_dt, &dt_outer_hash_buffer_size, &dt_outer_hash_data, mcomm.get_local_comm());
+    all_to_all_comm(process_data_vector_dt, process_data_vector_dt_size, process_size_dt, &dt_outer_hash_buffer_size, &dt_outer_hash_data, mcomm.get_local_comm());
     free(process_data_vector_dt);
 
     for (u64 in = 0; in < dt_outer_hash_buffer_size; in = in + 2)

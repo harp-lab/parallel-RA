@@ -1,12 +1,10 @@
 /*
- *
  * Buffer struct (similar to std::vector)
  * Copyright (c) Sidharth Kumar, et al, see License.md
- *
  */
 
-#ifndef __vector_buffer_H
-#define __vector_buffer_H
+#ifndef __vector_buffer_H__
+#define __vector_buffer_H__
 
 
 

@@ -1,29 +1,54 @@
-#ifndef __all_to_all_H__
-#define __all_to_all_H__
+/*
+ * Function to abstract all to all communication
+ * Copyright (c) Sidharth Kumar, et al, see License.md
+ */
 
 
-#if 1
+#ifndef __all_to_all_comm_H__
+#define __all_to_all_comm_H__
+
+
+/// Struct to transmit data for multiple relations at once for an all to all communication
 struct all_to_all_buffer
 {
+    /// Number of Relations it is compacting (for comm compaction)
     int ra_count;
 
+    /// Number of buffers to create = number of processes
     int nprocs;
 
-    int *ra_size;
+    /// Number of tuples for each of the relation
+    int *width;
 
-    // local_compute_output is of size RA_list size x nprocs, this contains data per RA rule for per process
+    /// local_compute_output is of size RA_list size x nprocs, this contains data per RA rule for per process
     vector_buffer** local_compute_output;
 
-    // local_compute_output_size is of size RA_list size x nprocs, this contains size of data per RA rule for per process
+    /// local_compute_output_size is of size RA_list size x nprocs, this contains size of data per RA rule for per process
     int **local_compute_output_size;
 
-    // cumulative_tuple_process_map is of size nprocs, cumulative_tuple_process_map[i] contains number of tuples to be transmitted to rank-i process, across all Relation Algebra (RA) rules
+
+    int* local_compute_output_size_flat;
+
+    int local_compute_output_size_total;
+
+    /// cumulative_tuple_process_map is of size nprocs, cumulative_tuple_process_map[i] contains number of tuples to be transmitted to rank-i process, across all Relation Algebra (RA) rules
     int *cumulative_tuple_process_map;
 };
-#endif
 
 
-void all_to_all_comm(vector_buffer* local_join_output, int* process_size, u64 *outer_hash_buffer_size, u64 **outer_hash_data, MPI_Comm comm);
+
+/// Function to perform all to all comm
+/// input:
+///     vectorized_send_buffer: vector_buffer of size nprocs, holding interleaved data that needs to be transmitted to every other process
+///     vectorized_send_buffer_size: size of buffer to send
+///     send_counts: size of the strided buffer
+///
+/// output:
+///     outer_hash_buffer_size: size of data: size of data received after all to all comm
+///     outer_hash_buffer: buffer that holds data after all to all comm
+void all_to_all_comm(vector_buffer* vectorized_send_buffer, int vectorized_send_buffer_size, int* send_counts, u64 *outer_hash_buffer_size, u64 **recv_buffer, MPI_Comm comm);
+
+void comm_compaction_all_to_all(all_to_all_buffer compute_buffer, int **recv_buffer_offset_size, u64 **recv_buffer, MPI_Comm comm);
 
 
 #endif

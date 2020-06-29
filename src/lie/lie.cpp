@@ -1,6 +1,18 @@
 #include "../parallel_RA_inc.h"
 
 
+
+void LIE::update_task_graph(std::unordered_set<RAM*> executable_tasks)
+{
+    for ( auto itg = executable_tasks.begin(); itg != executable_tasks.end(); ++itg )
+    {
+        tasks.erase(*itg);
+        taskgraph1.erase(*itg);
+    }
+}
+
+
+
 std::unordered_set<RAM*> list_of_runnable_tasks(std::unordered_set<RAM*> tasks, std::unordered_map<RAM*, std::unordered_set<RAM*>> taskgraph1)
 {
     std::unordered_set<RAM*> runnable_tasks;
@@ -29,52 +41,38 @@ std::unordered_set<RAM*> list_of_runnable_tasks(std::unordered_set<RAM*> tasks, 
         if (runnable_tasks.size() == 1)
             break;
     }
-
     return runnable_tasks;
 }
 
 
-void initialize_relations(RAM& task, mpi_comm& mcomm)
+
+void initialize_relations(std::unordered_set<relation*>& lie_relations, mpi_comm& mcomm)
 {
-    std::vector<relation*> rm = task.get_relation_manager();
-    for (relation* rel : rm){
-        rel->initialize_relation(mcomm);
-    }
+    for (std::unordered_set<relation*>::iterator it = lie_relations.begin() ; it != lie_relations.end(); ++it)
+        (*it)->initialize_relation(mcomm);
 }
 
 
-void finalize_relation(RAM& task)
+
+void rebalance_data(RAM*& send_task, RAM*& recv_task, int rank_offset, mpi_comm new_mcomm, int tuples_per_task, int ib, int ob)
 {
-    std::vector<relation*> rm = task.get_relation_manager();
-    for (relation* rel : rm)
-        rel->finalize_relation();
+    //std::unordered_set<relation*> send_rm = send_task->get_relation_manager();
+    //std::unordered_set<relation*> recv_rm = recv_task->get_relation_manager();
+
+    //for (auto [it1, it2] = std::tuple{send_rm.begin(), recv_rm.begin()}; it1 != send_rem.end(); ++it1, ++it2)
+    //{
+    //}
+
+    //for (std::unordered_set<relation*>::iterator it = rm.begin() ; it != rm.end(); ++it)
+
+    //for (u32 r = 0; r < send_rm.size(); r++)
+    //{
+    //    relation* send_rel =  send_rm[r];
+    //    relation* recv_rel =  recv_rm[r];
+    //    send_rel->copy_relation(recv_rel, new_mcomm, rank_offset, tuples_per_task, ib, ob);
+    //}
 }
 
-
-u64 get_total_number_of_tuples(RAM& task)
-{
-    u64 tuple_count = 0;
-    std::vector<relation*> rm = task.get_relation_manager();
-    for (relation* rel : rm)
-    {
-        tuple_count = tuple_count + rel->get_delta_element_count();
-        tuple_count = tuple_count + rel->get_full_element_count();
-    }
-    return tuple_count;
-}
-
-
-void rebalance_data(RAM& send_task, RAM& recv_task, int rank_offset, mpi_comm new_mcomm, int tuples_per_task, int ib, int ob)
-{
-    std::vector<relation*> send_rm = send_task.get_relation_manager();
-    std::vector<relation*> recv_rm = recv_task.get_relation_manager();
-    for (u32 r = 0; r < send_rm.size(); r++)
-    {
-        relation* send_rel =  send_rm[r];
-        relation* recv_rel =  recv_rm[r];
-        send_rel->copy_relation(recv_rel, new_mcomm, rank_offset, tuples_per_task, ib, ob);
-    }
-}
 
 
 bool rebalance_comm(std::vector<u64>& history, int number_of_parallel_tasks, u64*& current_tuple_count_per_task, int*& current_ranks_per_task, int*& current_cumulative_ranks_per_task, mpi_comm& new_mcomm, mpi_comm& mcomm, int *current_color, int *next_color, int* finished_task_count, int mode, float task_threshold)
@@ -175,9 +173,6 @@ bool rebalance_comm(std::vector<u64>& history, int number_of_parallel_tasks, u64
                 next_tuple_count_per_task[j] = ((3*next_tuple_count_per_task[j])-current_tuple_count_per_task[j])/2;
         }
     }
-
-
-
     delete[] next_tuple_count_per_task_local;
 
 
@@ -195,8 +190,6 @@ bool rebalance_comm(std::vector<u64>& history, int number_of_parallel_tasks, u64
     memset(next_cumulative_ranks_per_task, 0, (number_of_parallel_tasks + 1) * sizeof(int));
 
     int* next_ranks_per_task = new int[number_of_parallel_tasks];
-
-
 
 #if 1
     u32 temp_rank_count1 = 0;
@@ -329,7 +322,6 @@ bool rebalance_comm(std::vector<u64>& history, int number_of_parallel_tasks, u64
         }
     }
 
-
     *next_color = -1;
     for (int j=0; j < number_of_parallel_tasks; j++)
     {
@@ -340,10 +332,9 @@ bool rebalance_comm(std::vector<u64>& history, int number_of_parallel_tasks, u64
         }
     }
 
-
     MPI_Comm newcomm;
     MPI_Comm_split(mcomm.get_comm(), *next_color, mcomm.get_rank(), &newcomm);
-    new_mcomm.set_local_comm(&newcomm);
+    new_mcomm.set_local_comm(newcomm);
 
     for (int j=0; j < number_of_parallel_tasks; j++)
     {
@@ -361,256 +352,111 @@ bool rebalance_comm(std::vector<u64>& history, int number_of_parallel_tasks, u64
 }
 
 
+
 bool LIE::execute ()
 {
-
-    std::vector<u64> history;
     std::unordered_set<RAM*> executable_tasks = list_of_runnable_tasks(tasks, taskgraph1);
-    for ( auto itg = executable_tasks.begin(); itg != executable_tasks.end(); ++itg )
+    std::cout << "Number of executable tasks: " << executable_tasks.size() << std::endl;
+
+    mcomm.set_local_comm(MPI_COMM_WORLD);
+    initialize_relations(lie_relations, mcomm);
+    while (executable_tasks.size() != 0)
     {
-        //RAM* task = (*itg);
-        //initialize_relations(task, mcomm);
-        //task.execute(batch_size, history, 0);
-    }
+        RAM** task_list = new RAM*[executable_tasks.size()];
+        for(u32 i=0; i < executable_tasks.size(); i++)
+            task_list[i] = new RAM();
 
-    return true;
-
-}
-
-
-#if 0
-bool LIE::execute ()
-{
-    double init_start = MPI_Wtime();
-    int color = -1;
-    u32 stratified_task_layers = taskgraph.size();
-
-    int number_of_parallel_tasks = taskgraph[0].size();
-    u64 *tuple_count_per_task = new u64[number_of_parallel_tasks];
-    int *ranks_per_task = new int[number_of_parallel_tasks];
-    int *cumulative_ranks_per_task = new int[number_of_parallel_tasks + 1];
-    memset(cumulative_ranks_per_task, 0, (number_of_parallel_tasks + 1) * sizeof(int));
-
-    MPI_Comm newcomm;
-    u64 total_tuple_count = 0;
-
-    // Initialization strata
-    for (int j=0; j < number_of_parallel_tasks; j++)
-    {
-        RAM task = taskgraph[0][j];
-        tuple_count_per_task[j] = (get_total_number_of_tuples(task));
-        total_tuple_count = total_tuple_count + tuple_count_per_task[j];
-    }
-#if 1
-    u32 temp_rank_count1 = 0;
-    u32 temp_rank_count2 = 0;
-    for (int j=0; j < number_of_parallel_tasks; j++)
-        temp_rank_count1 = temp_rank_count1 + ceil(mcomm.get_nprocs() * (float)((float)tuple_count_per_task[j]/total_tuple_count));
-    u32 deficiet = temp_rank_count1 - mcomm.get_nprocs();
-
-    cumulative_ranks_per_task[0] = 0;
-    for (int j=0; j < number_of_parallel_tasks; j++)
-    {
-        if (tuple_count_per_task[j] == 0)
+        u32 index=0;
+        for ( auto itg = executable_tasks.begin(); itg != executable_tasks.end(); ++itg )
         {
-            ranks_per_task[j] = 0;
-            cumulative_ranks_per_task[j+1] = (cumulative_ranks_per_task[j]);
+            std::cout << "RAM NAME: " << (*itg)->get_name() << std::endl;
+            task_list[index] = (*itg);
+            index++;
         }
-        else if (deficiet != 0)
-        {
-            int temp = ceil(mcomm.get_nprocs() * (float)((float)tuple_count_per_task[j]/total_tuple_count));
-            if (temp == 1)
-            {
-                ranks_per_task[j] = (ceil(mcomm.get_nprocs() * (float)((float)tuple_count_per_task[j]/total_tuple_count)));
-                cumulative_ranks_per_task[j+1] = (cumulative_ranks_per_task[j] + ranks_per_task[j]);
-                temp_rank_count2 = temp_rank_count2 + ranks_per_task[j];
-            }
-            else
-            {
-                ranks_per_task[j] = (floor(mcomm.get_nprocs() * (float)((float)tuple_count_per_task[j]/total_tuple_count)));
-                cumulative_ranks_per_task[j+1] = (cumulative_ranks_per_task[j] + ranks_per_task[j]);
-                temp_rank_count2 = temp_rank_count2 + ranks_per_task[j];
-                deficiet--;
-            }
-        }
-        else
-        {
-            ranks_per_task[j] = (ceil(mcomm.get_nprocs() * (float)((float)tuple_count_per_task[j]/total_tuple_count)));
-            cumulative_ranks_per_task[j+1] = (cumulative_ranks_per_task[j] + ranks_per_task[j]);
-            temp_rank_count2 = temp_rank_count2 + ranks_per_task[j];
-        }
-    }
 
-#else
-    cumulative_ranks_per_task[0] = 0;
-    for (int j=0; j < number_of_parallel_tasks; j++)
-    {
-        ranks_per_task[j] = (ceil(mcomm.get_nprocs() * (float)((float)tuple_count_per_task[j]/total_tuple_count)));
-        cumulative_ranks_per_task[j+1] = (cumulative_ranks_per_task[j] + ranks_per_task[j]);
+        int color = -1;
+        int number_of_parallel_tasks = executable_tasks.size();
+        u64 *tuple_count_per_task = new u64[number_of_parallel_tasks];
+        int *ranks_per_task = new int[number_of_parallel_tasks];
+        int *cumulative_ranks_per_task = new int[number_of_parallel_tasks + 1];
+        memset(cumulative_ranks_per_task, 0, (number_of_parallel_tasks + 1) * sizeof(int));
 
-        if (cumulative_ranks_per_task[j+1] > mcomm.get_nprocs())
-        {
-            ranks_per_task[j] = mcomm.get_nprocs() - cumulative_ranks_per_task[j];
-            cumulative_ranks_per_task[j+1] = cumulative_ranks_per_task[j] + ranks_per_task[j];
-            assert(j == number_of_parallel_tasks-1);
-        }
-    }
-#endif
-
-
-    for (int j=0; j < number_of_parallel_tasks; j++)
-    {
-        if (mcomm.get_rank() < cumulative_ranks_per_task[j+1])
-        {
-            color = j;
-            break;
-        }
-    }
-
-
-    MPI_Comm_split(mcomm.get_comm(), color, mcomm.get_rank(), &newcomm);
-    mcomm.set_local_comm(&newcomm);
-
-    for (u32 i=0; i < stratified_task_layers; i++)
+        cumulative_ranks_per_task[0] = 0;
         for (int j=0; j < number_of_parallel_tasks; j++)
-            taskgraph[i][j].set_comm(mcomm);
+        {
+            tuple_count_per_task[j] = 0;
+            ranks_per_task[j] = mcomm.get_nprocs()/number_of_parallel_tasks;
+            cumulative_ranks_per_task[j+1] = (cumulative_ranks_per_task[j]) + ranks_per_task[j];
 
+            //std::cout << "Ranks per task " << j << " " << ranks_per_task[j] << std::endl;
+        }
 
-    initialize_relations(taskgraph[0][color], mcomm);
+        MPI_Comm newcomm;
+        for (int j=0; j < number_of_parallel_tasks; j++)
+        {
+            if (mcomm.get_rank() < cumulative_ranks_per_task[j+1])
+            {
+                color = j;
+                break;
+            }
+        }
 
-#if 1
-    int loop_count = 0;
+        //std::cout << "Rank " << mcomm.get_rank() << " Color " << color << std::endl;
+        MPI_Comm_split(mcomm.get_comm(), color, mcomm.get_rank(), &newcomm);
+        mcomm.set_local_comm(newcomm);
 
-    double exec_time = 0;
-    double rebalance_check_time = 0;
-    double rebalance_time = 0;
-    double init_end = MPI_Wtime();
+        for (int j=0; j < number_of_parallel_tasks; j++)
+            task_list[color]->set_comm(mcomm);
 
-    if (mcomm.get_rank() == 0)
-        std::cout << "Initialization Time: " << (init_end - init_start) << std::endl;
-
-    for (u32 i=0; i < stratified_task_layers; i++)
-    {
-        //int finished_task_count = 0;
-        mpi_comm new_mcomm(mcomm);
-
-        std::vector<u64> history;
-        int finished_task_count=0;
-
-loop_again:
-
-        double loop_exec_start = MPI_Wtime();
-        number_of_parallel_tasks = taskgraph[i].size();
-
-        if (batch_size != 0)
-            taskgraph[i][color].execute(batch_size, history, color);
+        std::vector<u32> history;
+        if (task_list[color]->get_iteration_count() == 1)
+            task_list[color]->execute(batch_size, history, color);
         else
-            taskgraph[i][color].execute_time(batch_time, history, color);
+        {
+        u64 delta_in_scc = 0;
+        do
+        {
+            task_list[color]->execute(batch_size, history, color);
+            delta_in_scc = history[history.size()-2];
+            //std::cout << "History " << delta_in_scc << std::endl;
+        }
+        while (delta_in_scc != 0);
+        }
 
-        MPI_Barrier(mcomm.get_comm());
-        double loop_exec_end = MPI_Wtime();
-        exec_time = exec_time + (loop_exec_end - loop_exec_start);
-
-        if (mcomm.get_rank() == 0)
-            std::cout << "OUTER E [" << color << "] Loop " << loop_count << " Exec time: " << (loop_exec_end - loop_exec_start) << " Total exec time " << exec_time << std::endl;
 
 #if 0
-        if (mcomm.get_rank() == 0)
+        u32 loop_count=0;
+        int finished_task_count =0;
+        mpi_comm new_mcomm(mcomm);
+        while (finished_task_count != number_of_parallel_tasks)
         {
-            std::cout << "History ";
-            for (u32 x=0; x < history.size(); x++)
-                std::cout << history[x] << " ";
-            std::cout << std::endl;
-        }
-#endif
+            task_list[color]->execute(batch_size, history, color);
 
+            int new_color = -1;
+            int* prev_ranks_per_task = new int[number_of_parallel_tasks];
+            memcpy(prev_ranks_per_task, ranks_per_task, number_of_parallel_tasks * sizeof(int));
 
-        if (i == 0) continue;
+            bool check_for_rebalance = rebalance_comm(history, number_of_parallel_tasks, tuple_count_per_task, ranks_per_task, cumulative_ranks_per_task, new_mcomm, mcomm, &color, &new_color, &finished_task_count, mode, task_threshold);
 
-#if 1
-        double rebalance_check_start = MPI_Wtime();
-        int new_color = -1;
-        int* prev_ranks_per_task = new int[number_of_parallel_tasks];
-        memcpy(prev_ranks_per_task, ranks_per_task, number_of_parallel_tasks * sizeof(int));
-        bool check_for_rebalance = rebalance_comm(history, number_of_parallel_tasks, tuple_count_per_task, ranks_per_task, cumulative_ranks_per_task, new_mcomm, mcomm, &color, &new_color, &finished_task_count, mode, task_threshold);
-        double rebalance_check_end = MPI_Wtime();
-        rebalance_check_time = rebalance_check_time + (rebalance_check_end - rebalance_check_start);
+            if (check_for_rebalance == true)
+            {
+                rebalance_data(task_list[color], task_list[new_color], cumulative_ranks_per_task[color], new_mcomm, tuple_count_per_task[color], prev_ranks_per_task[color], ranks_per_task[color]);
+                task_list[new_color]->set_comm(new_mcomm);
+                color = new_color;
+            }
+            delete[] prev_ranks_per_task;
 
-        if (mcomm.get_rank() == 0)
-            std::cout << "OUTER RC [" << color << "] Loop " << loop_count << " Rebalance check time: " << (rebalance_check_end - rebalance_check_start) << " Total exec time " << rebalance_check_time << std::endl;
-
-
-        double rebalance_start = MPI_Wtime();
-        if (check_for_rebalance == true)
-        {
-            rebalance_data(taskgraph[i][color], taskgraph[i][new_color], cumulative_ranks_per_task[color], new_mcomm, tuple_count_per_task[color], prev_ranks_per_task[color], ranks_per_task[color]);
-            taskgraph[i][new_color].set_comm(new_mcomm);
-            color = new_color;
-        }
-        delete[] prev_ranks_per_task;
-        double rebalance_end = MPI_Wtime();
-        rebalance_time = rebalance_time + (rebalance_end - rebalance_start);
-#endif
-
-        if (mcomm.get_rank() == 0)
-            std::cout << "OUTER R [" << color << "] Loop " << loop_count
-                      << " Finished task count: " << finished_task_count
-                      << " Rebalance time: " << (rebalance_end - rebalance_start)
-                      << " Total exec time " << rebalance_time
-                      << std::endl
-                      << "-------------------------------------------------------------------------------------------------------------------------------"
-                      << std::endl << std::endl;
-
-        if (finished_task_count != number_of_parallel_tasks)
-        {
             loop_count++;
-            //if (mcomm.get_rank() == 0)
-            //    std::cout << "Loop count " << loop_count << " Finished task count " << finished_task_count << " Number of parallel tasks " << number_of_parallel_tasks << std::endl;
-            goto loop_again;
         }
-    }
 #endif
-    double finalize_start = MPI_Wtime();
-    finalize_relation(taskgraph[0][color]);
+        update_task_graph(executable_tasks);
+        executable_tasks = list_of_runnable_tasks(tasks, taskgraph1);
 
-    delete[] tuple_count_per_task;
-    delete[] ranks_per_task;
-    delete[] cumulative_ranks_per_task;
-
-
-    double finalize_end = MPI_Wtime();
-
-    if (mcomm.get_rank() == 0)
-        std::cout << "Finalize Time: " << (finalize_end - finalize_start) << std::endl << std::endl;
-
-    double total_time = finalize_end - init_start;
-    double max_time = 0;
-    MPI_Allreduce(&total_time, &max_time, 1, MPI_DOUBLE, MPI_MAX, mcomm.get_comm());
-
-    if (total_time == max_time)
-    {
-        std::cout << "[M] [" << mcomm.get_rank() << "] Total Time: " << (finalize_end - finalize_start) + (rebalance_time) + rebalance_check_time + exec_time + (init_end - init_start)
-                  << " Init time: " << (init_end - init_start)
-                  << " Exec time: " << exec_time
-                  << " Rebalance check time: " << rebalance_check_time
-                  << " Rebalance time: " << rebalance_time
-                  << std::endl;
-    }
-
-    MPI_Barrier(MPI_COMM_WORLD);
-    //if (mcomm.get_rank() == 0)
-    {
-        std::cout << "[" << mcomm.get_rank() << "] Total Time: " << (finalize_end - finalize_start) + (rebalance_time) + rebalance_check_time + exec_time + (init_end - init_start)
-                  << " Init time: " << (init_end - init_start)
-                  << " Exec time: " << exec_time
-                  << " Rebalance check time: " << rebalance_check_time
-                  << " Rebalance time: " << rebalance_time
-                  << std::endl;
     }
 
     return true;
 }
-#endif
+
 
 
 void LIE::add_scc_dependance (RAM* src_task, RAM* destination_task)

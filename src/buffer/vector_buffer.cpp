@@ -1,7 +1,12 @@
+/*
+ * Buffer struct (similar to std::vector)
+ * Copyright (c) Sidharth Kumar, et al, see License.md
+ */
+
+
 #include "../parallel_RA_inc.h"
 
 #define Max2ab(a,b)      (((a)> (b))?(a):(b))
-
 
 vector_buffer::vector_buffer()
 {

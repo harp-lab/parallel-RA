@@ -1,7 +1,10 @@
-// Class to manage basic MPI stuff
+/*
+ * Function to handle MPI Communicator
+ * Copyright (c) Sidharth Kumar, et al, see License.md
+ */
 
-#ifndef COMM_H
-#define COMM_H
+#ifndef __comm_H__
+#define __comm_H__
 
 
 class mpi_comm
@@ -9,21 +12,13 @@ class mpi_comm
 
 private:
 
-    //u32 buckets;
+    MPI_Comm world_comm;    /// Stores the global comm (MPI_COMM_WORLD)
+    int rank;               /// Rank of a processe in the global communicator (MPI_COMM_WORLD)
+    int nprocs;             /// Total number of processes in the global communicator (MPI_COMM_WORLD)
 
-    // stores the rank of a process
-    int rank;
-
-    // stores the total number of processes in a communicator
-    int nprocs;
-
-    int local_nprocs;
-
-    int local_rank;
-
-    // Stores the MPI comm
-    MPI_Comm world_comm;
-    MPI_Comm local_comm;
+    MPI_Comm local_comm;    /// Stores the local comm (per-task communicator)
+    int local_rank;         /// Rank of a processe in the local communicator (per-task communicator)
+    int local_nprocs;       /// Total number of processes in the local communicator (per-task communicator)
 
 public:
 
@@ -43,33 +38,45 @@ public:
 
 
 
-    int get_nprocs()    {return nprocs;}
-
-
-    int get_local_nprocs()  {return local_nprocs;}
-
-
-    int get_local_rank()    {return local_rank;}
-
-    // returns the total number of processes
-    int get_rank()  {return rank;}
-
-
+    /// Returns the global communicator (MPI_COMM_WORLD)
     MPI_Comm get_comm() {return world_comm;}
 
 
+
+    /// Returns total number of processes in the global communicator (MPI_COMM_WORLD)
+    int get_nprocs()    {return nprocs;}
+
+
+
+    /// Returns the rank of a process in the global communicator (MPI_COMM_WORLD)
+    int get_rank()  {return rank;}
+
+
+
+    /// Returns total number of processes in the local communicator (per-task communicator)
+    int get_local_nprocs()  {return local_nprocs;}
+
+
+
+    /// Returns the rank of a process in the local communicator (per-task communicator)
+    int get_local_rank()    {return local_rank;}
+
+
+
+    /// Returns the local communicator (per-task communicator)
     MPI_Comm get_local_comm()    {return local_comm;}
 
 
-    void set_local_comm(MPI_Comm* comm);
+    /// Sets local communicators, it is called when new tasks (and hence new communicators) are created
+    void set_local_comm(MPI_Comm comm);
 
 
+    /// MPI_Init
     void create(int argc, char **argv);
 
 
+    /// MPI_Finalize
     void destroy();
-
-
 };
 
 #endif

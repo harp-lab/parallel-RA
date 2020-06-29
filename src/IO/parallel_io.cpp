@@ -1,6 +1,7 @@
 #include "../parallel_RA_inc.h"
 
 
+
 void parallel_io::parallel_read_input_relation_from_file_to_local_buffer(const char *fname, MPI_Comm lcomm)
 {
     int rank;
@@ -11,9 +12,9 @@ void parallel_io::parallel_read_input_relation_from_file_to_local_buffer(const c
     u32 global_row_count;
 
     /* Read the metadata file containing the total number of rows and columns */
+    char meta_data_filename[1024];
     if (rank == 0)
     {
-        char meta_data_filename[1024];
         sprintf(meta_data_filename, "%s/meta_data.txt", file_name);
 
         FILE *fp_in;
@@ -29,6 +30,8 @@ void parallel_io::parallel_read_input_relation_from_file_to_local_buffer(const c
     /* Broadcast the total number of rows and column to all processes */
     MPI_Bcast(&global_row_count, 1, MPI_INT, 0, lcomm);
     MPI_Bcast(&col_count, 1, MPI_INT, 0, lcomm);
+
+    //std::cout << "Filename " << meta_data_filename << " Row Count " << global_row_count << " Column count " << col_count << std::endl;
 
     /* Read all data in parallel */
     u32 read_offset;
@@ -52,17 +55,18 @@ void parallel_io::parallel_read_input_relation_from_file_to_local_buffer(const c
     sprintf(data_filename, "%s/data.raw", file_name);
     int fp = open(data_filename, O_RDONLY);
 
-    input_buffer = new u64[entry_count * col_count];
-    u32 rb_size = pread(fp, input_buffer, entry_count * col_count * sizeof(u64), read_offset * col_count * sizeof(u64));
-    if (rb_size != entry_count * col_count * sizeof(u64))
+    input_buffer = new u64[entry_count * (col_count + 1)];
+    u32 rb_size = pread(fp, input_buffer, entry_count * (col_count + 1) * sizeof(u64), read_offset * (col_count + 1) * sizeof(u64));
+    if (rb_size != entry_count * (col_count + 1) * sizeof(u64))
     {
-        std::cout << "Wrong IO: rank: " << rank << " " << rb_size << " " <<  entry_count << " " << col_count << std::endl;
+        std::cout << "Wrong IO: rank: " << rank << " " << rb_size << " " <<  entry_count << " " << col_count + 1 << std::endl;
         MPI_Abort(lcomm, -1);
     }
     close(fp);
 
     return;
 }
+
 
 
 
@@ -75,11 +79,7 @@ void parallel_io::delete_raw_buffers()
 
 
 
-
-/// Hashing based on the first and the second column
-/// The first column decises the bucket id
-/// The second column decides the sub-bucket id
-void parallel_io::buffer_data_to_hash_buffer_col(u32 buckets, u32** sub_bucket_rank, u32* sub_bucket_count, MPI_Comm comm)
+void parallel_io::buffer_data_to_hash_buffer_col(u32 arity, u32 join_column_count, u32 buckets, u32** sub_bucket_rank, u32* sub_bucket_count, MPI_Comm comm)
 {
 
     int nprocs;
@@ -94,28 +94,31 @@ void parallel_io::buffer_data_to_hash_buffer_col(u32 buckets, u32** sub_bucket_r
     for (int i = 0; i < nprocs; i++)
         process_data_vector[i].vector_buffer_create_empty();
 
+    int process_data_vector_size=0;
     /* Hashing and buffering data for all to all comm */
-    u64 val[col_count];
-    for (u32 i = 0; i < entry_count * col_count; i=i+col_count)
+    u64 val[col_count+1];
+    assert(arity == col_count);
+    for (u32 i = 0; i < entry_count * (col_count+1); i=i+(col_count+1))
     {
-        //uint64_t bucket_id = hash_function(input_buffer[i]) % buckets;
-        //uint64_t sub_bucket_id = hash_function(input_buffer[i+1]) % sub_bucket_count[bucket_id];
-
-        uint64_t bucket_id = tuple_hash(input_buffer + i, 1) % buckets;
-        uint64_t sub_bucket_id = tuple_hash(input_buffer + i+1, 1) % sub_bucket_count[bucket_id];
+        uint64_t bucket_id = tuple_hash(input_buffer + i, join_column_count) % buckets;
+        uint64_t sub_bucket_id = tuple_hash(input_buffer + i+ (arity-join_column_count), 1) % sub_bucket_count[bucket_id];
 
         int index = sub_bucket_rank[bucket_id][sub_bucket_id];
-        process_size[index] = process_size[index] + col_count;
+        process_size[index] = process_size[index] + (col_count+1);
 
-        for (u32 j = 0; j < col_count; j++)
+        for (u32 j = 0; j < col_count+1; j++)
             val[j] = input_buffer[i + j];
 
-        process_data_vector[index].vector_buffer_append((unsigned char *) val, sizeof(u64)*col_count);
+        //std::cout << "IO " << val[0] << " " << val[1] << " " << val[2] << std::endl;
+
+        process_data_vector[index].vector_buffer_append((unsigned char *) val, sizeof(u64)*(col_count+1));
+        process_data_vector_size = process_data_vector_size + (col_count+1);
     }
 
 
     /* Transmit the packaged data process_data_vector to all processes */
-    all_to_all_comm(process_data_vector, process_size, &hash_buffer_size, &hash_buffer, comm);
+    all_to_all_comm(process_data_vector, process_data_vector_size, process_size, &hash_buffer_size, &hash_buffer, comm);
+
 
     /* Free the data buffer after all to all */
     free (process_data_vector);

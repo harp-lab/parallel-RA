@@ -19,9 +19,13 @@ void relation::finalize_relation()
 
     for (u32 i = 0; i < buckets; i++)
     {
-        full[i].remove_tuple();
-        delta[i].remove_tuple();
-        newt[i].remove_tuple();
+        full[i]->remove_tuple();
+        delta[i]->remove_tuple();
+        newt[i]->remove_tuple();
+
+        delete[] full[i];
+        delete[] delta[i];
+        delete[] newt[i];
 
         delete[] sub_bucket_rank[i];
         delete[] full_sub_bucket_element_count[i];
@@ -61,14 +65,15 @@ void relation::local_insert_in_delta()
         memset(newt_sub_bucket_element_count[b], 0, sub_bucket_per_bucket_count[b] * sizeof(u32));
     }
 
-    newt = new google_relation[buckets];
+    newt = new google_relation*[buckets];
+    for(u32 i=0; i<buckets; i++)
+        newt[i] = new google_relation();
     newt_element_count = 0;
     memset(newt_bucket_element_count, 0, buckets * sizeof(u32));
 
     return;
 }
 
-void relation::create_newt()    {    newt = new google_relation[get_bucket_count()];}
 
 
 void relation::print()
@@ -82,12 +87,12 @@ void relation::print()
         {
             vb_full[i].vector_buffer_create_empty();
             std::vector<u64> prefix = {};
-            full[i].as_vector_buffer_recursive(&(vb_full[i]), prefix);
+            full[i]->as_vector_buffer_recursive(&(vb_full[i]), prefix);
 
-            std::cout << vb_full[i].size/sizeof(u64) << " arity " << arity << std::endl;
-            for (u32 j=0; j < vb_full[i].size/sizeof(u64); j = j + arity)
+            std::cout << vb_full[i].size/sizeof(u64) << " arity " << arity + 1 << std::endl;
+            for (u32 j=0; j < vb_full[i].size/sizeof(u64); j = j + arity+1)
             {
-                for (u32 k = 0; k < arity; k++)
+                for (u32 k = 0; k < arity+1; k++)
                 {
                     u64 temp;
                     memcpy(&temp, (vb_full[i].buffer) + (j + k)*sizeof(u64), sizeof(u64));
@@ -102,17 +107,17 @@ void relation::print()
 
 
         vector_buffer *vb_delta = new vector_buffer[buckets];
-        std::cout << "DELTA ";
+        std::cout << "DELTA " << delta_element_count << " Name " << filename << " " << delta[0];
         for (u32 i=0; i < buckets; i++)
         {
             vb_delta[i].vector_buffer_create_empty();
             std::vector<u64> prefix = {};
-            delta[i].as_vector_buffer_recursive(&(vb_delta[i]), prefix);
+            delta[i]->as_vector_buffer_recursive(&(vb_delta[i]), prefix);
 
-            std::cout << vb_delta[i].size/sizeof(u64) << " arity " << arity << std::endl;
-            for (u32 j=0; j < vb_delta[i].size/sizeof(u64); j = j + arity)
+            std::cout << vb_delta[i].size/sizeof(u64) << " arity " << arity+1 << std::endl;
+            for (u32 j=0; j < vb_delta[i].size/sizeof(u64); j = j + arity+1)
             {
-                for (u32 k = 0; k < arity; k++)
+                for (u32 k = 0; k < arity+1; k++)
                 {
                     u64 temp;
                     memcpy(&temp, (vb_delta[i].buffer) + (j + k)*sizeof(u64), sizeof(u64));
@@ -132,12 +137,12 @@ void relation::print()
         {
             vb_newt[i].vector_buffer_create_empty();
             std::vector<u64> prefix = {};
-            newt[i].as_vector_buffer_recursive(&(vb_newt[i]), prefix);
+            newt[i]->as_vector_buffer_recursive(&(vb_newt[i]), prefix);
 
-            std::cout << vb_newt[i].size/sizeof(u64) << " arity " << arity << std::endl;
-            for (u32 j=0; j < vb_newt[i].size/sizeof(u64); j = j + arity)
+            std::cout << vb_newt[i].size/sizeof(u64) << " arity " << arity+1 << std::endl;
+            for (u32 j=0; j < vb_newt[i].size/sizeof(u64); j = j + arity+1)
             {
-                for (u32 k = 0; k < arity; k++)
+                for (u32 k = 0; k < arity+1; k++)
                 {
                     u64 temp;
                     memcpy(&temp, (vb_newt[i].buffer) + (j + k)*sizeof(u64), sizeof(u64));
@@ -183,11 +188,12 @@ void relation::copy_relation(relation*& recv_rel, mpi_comm output_comm, int targ
     int full_process_size[output_comm.get_nprocs()];
     memset(full_process_size, 0, output_comm.get_nprocs() * sizeof(int));
 
+    int full_output_size=0;
     vector_buffer* full_output = new vector_buffer[output_comm.get_nprocs()];
     for (int i = 0; i < output_comm.get_nprocs(); i++)
         full_output[i].vector_buffer_create_empty();
 
-    //google_relation* delta = input->get_delta();
+    int delta_output_size=0;
     vector_buffer *delta_input_buffer = new vector_buffer[input_buckets];
     for (u32 i = 0; i < input_buckets; i++)
         full_input_buffer[i].vector_buffer_create_empty();
@@ -207,7 +213,7 @@ void relation::copy_relation(relation*& recv_rel, mpi_comm output_comm, int targ
         for (u32 i = 0; i < input_buckets; i++)
         {
             std::vector<u64> prefix = {};
-            full[i].as_vector_buffer_recursive(&(full_input_buffer[i]), prefix);
+            full[i]->as_vector_buffer_recursive(&(full_input_buffer[i]), prefix);
 
             fsize = fsize + (full_input_buffer[i].size / sizeof(u64));
             for (u32 s = 0; s < full_input_buffer[i].size / sizeof(u64); s=s+arity)
@@ -222,6 +228,7 @@ void relation::copy_relation(relation*& recv_rel, mpi_comm output_comm, int targ
 
                 full_process_size[index] = full_process_size[index] + arity;
                 full_output[index].vector_buffer_append((const unsigned char*)reordered_cur_path, sizeof(u64)*arity);
+                full_output_size = full_output_size + (arity+1);
             }
             full_input_buffer[i].vector_buffer_free();
         }
@@ -229,7 +236,7 @@ void relation::copy_relation(relation*& recv_rel, mpi_comm output_comm, int targ
         for (u32 i = 0; i < input_buckets; i++)
         {
             std::vector<u64> prefix = {};
-            delta[i].as_vector_buffer_recursive(&(delta_input_buffer[i]), prefix);
+            delta[i]->as_vector_buffer_recursive(&(delta_input_buffer[i]), prefix);
 
             dsize = dsize + (delta_input_buffer[i].size / sizeof(u64));
             for (u32 s = 0; s < delta_input_buffer[i].size / sizeof(u64); s=s+arity)
@@ -244,6 +251,7 @@ void relation::copy_relation(relation*& recv_rel, mpi_comm output_comm, int targ
 
                 delta_process_size[index] = delta_process_size[index] + arity;
                 delta_output[index].vector_buffer_append((const unsigned char*)reordered_cur_path, sizeof(u64)*arity);
+                delta_output_size = delta_output_size + (arity+1);
             }
             delta_input_buffer[i].vector_buffer_free();
         }
@@ -263,7 +271,7 @@ void relation::copy_relation(relation*& recv_rel, mpi_comm output_comm, int targ
 #if 1
     u64 full_buffer_size;
     u64* full_buffer;
-    all_to_all_comm(full_output, full_process_size, &full_buffer_size, &full_buffer, mcomm.get_comm());
+    all_to_all_comm(full_output, full_output_size, full_process_size, &full_buffer_size, &full_buffer, mcomm.get_comm());
     delete[] full_output;
 
 
@@ -283,7 +291,7 @@ void relation::copy_relation(relation*& recv_rel, mpi_comm output_comm, int targ
 
     u64 delta_buffer_size;
     u64* delta_buffer;
-    all_to_all_comm(delta_output, delta_process_size, &delta_buffer_size, &delta_buffer, mcomm.get_comm());
+    all_to_all_comm(delta_output, delta_output_size, delta_process_size, &delta_buffer_size, &delta_buffer, mcomm.get_comm());
     delete[] delta_output;
 
 
@@ -322,13 +330,19 @@ void relation::initialize_relation(mpi_comm& mcomm)
     newt_element_count = 0;
     full_element_count = 0;
     delta_element_count = 0;
-    delta = new google_relation[buckets];
-    full = new google_relation[buckets];
-    newt = new google_relation[buckets];
+    delta = new google_relation*[buckets];
+    full = new google_relation*[buckets];
+    newt = new google_relation*[buckets];
 
     sub_bucket_per_bucket_count = new u32[buckets];
     for (u32 b = 0; b < buckets; b++)
+    {
+        delta[b] = new google_relation();
+        full[b] = new google_relation();
+        newt[b] = new google_relation();
+
         sub_bucket_per_bucket_count[b] = default_sub_bucket_per_bucket_count;
+    }
 
     sub_bucket_rank = new u32*[buckets];
     distinct_sub_bucket_rank = new int*[buckets];
@@ -439,19 +453,20 @@ void relation::initialize (u32 arity, int tuple_count, char* filename, int versi
 }
 
 
-void relation::initialize_full(u32 buffer_size, u64 col_count, u64* buffer)
+void relation::initialize_full(u32 buffer_size, u64* buffer)
 {
     u32 counter = 0;
-    u64 t[col_count];
+    u64 t[arity+1];
     u32 buckets = get_bucket_count();
 
-    for (u32 i = 0; i < buffer_size; i = i + arity)
+    for (u32 i = 0; i < buffer_size; i = i + (arity+1))
     {
-        uint64_t bucket_id = tuple_hash(buffer+i, join_column_count) % buckets;
+        uint64_t bucket_id = tuple_hash(buffer + i, join_column_count) % buckets;
 
-        for (u32 a = i; a < i + arity; a++)
+        for (u32 a = i; a < i + arity + 1; a++)
             t[a-i] = buffer[a];
-        if (full[bucket_id].insert_tuple_from_array(t, col_count) == true)
+
+        if (full[bucket_id]->insert_tuple_from_array(t, (arity+1)) == true)
         {
             full_element_count++;
             full_bucket_element_count[bucket_id]++;
@@ -464,18 +479,19 @@ void relation::initialize_full(u32 buffer_size, u64 col_count, u64* buffer)
 }
 
 
-void relation::initialize_delta (u32 buffer_size, u64 col_count, u64* buffer)
+void relation::initialize_delta (u32 buffer_size, u64* buffer)
 {
-    u64 t[col_count];
+    u64 t[arity+1];
     u32 buckets = get_bucket_count();
 
-    for (u32 i = 0; i < buffer_size; i = i + arity)
+    for (u32 i = 0; i < buffer_size; i = i + (arity+1))
     {
-        uint64_t bucket_id = tuple_hash(buffer+i, join_column_count) % buckets;
+        uint64_t bucket_id = tuple_hash(buffer + i, join_column_count) % buckets;
 
-        for (u32 a = i; a < i + arity; a++)
+        for (u32 a = i; a < i + arity + 1; a++)
             t[a-i] = buffer[a];
-        if (delta[bucket_id].insert_tuple_from_array(t, col_count) == true)
+
+        if (delta[bucket_id]->insert_tuple_from_array(t, arity+1) == true)
         {
             delta_element_count++;
             delta_bucket_element_count[bucket_id]++;
@@ -490,36 +506,36 @@ void relation::read_from_file()
     /* Parallel I/O to read the relations in parallel */
     file_io.parallel_read_input_relation_from_file_to_local_buffer(filename, mcomm.get_local_comm());
 
-    file_io.buffer_data_to_hash_buffer_col(get_bucket_count(), sub_bucket_rank, sub_bucket_per_bucket_count, mcomm.get_local_comm());
+    file_io.buffer_data_to_hash_buffer_col(arity, join_column_count, get_bucket_count(), sub_bucket_rank, sub_bucket_per_bucket_count, mcomm.get_local_comm());
 
     file_io.delete_raw_buffers();
-#if 1
+
     /* Copy data from buffer to relation */
     if (initailization_type == DELTA)
-        initialize_delta(file_io.get_hash_buffer_size(), file_io.get_col_count(), file_io.get_hash_buffer());
+        initialize_delta(file_io.get_hash_buffer_size(), file_io.get_hash_buffer());
 
     else if (initailization_type == FULL)
-        initialize_full(file_io.get_hash_buffer_size(), file_io.get_col_count(), file_io.get_hash_buffer());
+        initialize_full(file_io.get_hash_buffer_size(), file_io.get_hash_buffer());
 
+    //std::cout << "Writing " << file_io.get_hash_buffer_size() << " bytes" << std::endl;
     file_io.delete_hash_buffers();
-#endif
 }
 
 
 void relation::read_from_relation(relation* input, int full_delta)
 {
-    google_relation* full = input->get_full();
+    google_relation** full = input->get_full();
     std::vector<u64> prefix = {};
     vector_buffer vb;
     vb.vector_buffer_create_empty();
 
-    full[mcomm.get_rank()].as_vector_buffer_recursive(&vb, prefix);
+    full[mcomm.get_rank()]->as_vector_buffer_recursive(&vb, prefix);
 
     if (full_delta == DELTA)
-        initialize_delta(vb.size/sizeof(u64), arity, (u64*)vb.buffer);
+        initialize_delta(vb.size/sizeof(u64), (u64*)vb.buffer);
 
     else if (full_delta == FULL)
-        initialize_full(vb.size/sizeof(u64), arity, (u64*)vb.buffer);
+        initialize_full(vb.size/sizeof(u64), (u64*)vb.buffer);
 
     vb.vector_buffer_free();
 }
@@ -527,48 +543,41 @@ void relation::read_from_relation(relation* input, int full_delta)
 
 void relation::flush_full()
 {
-    google_relation* full = this->get_full();
-    full[mcomm.get_rank()].remove_tuple();
+    google_relation** full = this->get_full();
+    full[mcomm.get_rank()]->remove_tuple();
     full_element_count = 0;
 }
 
 
-bool relation::find_in_full(u64* t)
+bool relation::find_in_full(u64* t, int length)
 {
     uint64_t bucket_id = tuple_hash(t, join_column_count) % get_bucket_count();
-    //std::cout << "B ID " << bucket_id << std::endl;
-    return full[bucket_id].find_tuple_from_array(t, arity);
+    return full[bucket_id]->find_tuple_from_array(t, length);
 }
 
-//bool relation::find_in_full(std::vector<u64> t)
-//{
-//    uint64_t bucket_id = hash_function(t[0]) % buckets;
-//    //std::cout << "B ID " << bucket_id << std::endl;
-//    return full[bucket_id].find_tuple_from_vector(t);
-//}
 
 
-bool relation::find_in_delta(u64* t)
+bool relation::find_in_delta(u64* t, int length)
 {
     uint64_t bucket_id = tuple_hash(t, join_column_count) % get_bucket_count();
-    return delta[bucket_id].find_tuple_from_array(t, arity);
+    return delta[bucket_id]->find_tuple_from_array(t, length);
 }
 
 bool relation::find_in_newt(u64* t)
 {
     uint64_t bucket_id = tuple_hash(t, join_column_count) % get_bucket_count();
-    //std::cout << "Bucket ID " << bucket_id << std::endl;
-    return newt[bucket_id].find_tuple_from_array(t, arity);
+    return newt[bucket_id]->find_tuple_from_array(t, arity);
 }
 
 
 bool relation::insert_in_delta(u64* t)
 {
     uint64_t bucket_id = tuple_hash(t, join_column_count) % get_bucket_count();
-    u32 sub_bucket_id = tuple_hash(t+join_column_count, (arity-join_column_count)) % sub_bucket_per_bucket_count[bucket_id];
+    u32 sub_bucket_id = 0;
+    if (arity-join_column_count != 0)
+        sub_bucket_id = tuple_hash(t+join_column_count, (arity-join_column_count)) % sub_bucket_per_bucket_count[bucket_id];
 
-    //assert((int)bucket_id == mcomm.get_local_rank());
-    if (delta[bucket_id].insert_tuple_from_array(t, arity) == true)
+    if (delta[bucket_id]->insert_tuple_from_array(t, arity+1) == true)
     {
         delta_element_count++;
         delta_bucket_element_count[bucket_id]++;
@@ -584,9 +593,11 @@ bool relation::insert_in_delta(u64* t)
 bool relation::insert_in_newt(u64* t)
 {
     uint64_t bucket_id = tuple_hash(t, join_column_count) % get_bucket_count();
-    u32 sub_bucket_id = tuple_hash(t+ join_column_count, (arity-join_column_count)) % sub_bucket_per_bucket_count[bucket_id];
+    u32 sub_bucket_id = 0;
+    if (arity-join_column_count != 0)
+        sub_bucket_id = tuple_hash(t+ join_column_count, (arity-join_column_count)) % sub_bucket_per_bucket_count[bucket_id];
 
-    if (newt[bucket_id].insert_tuple_from_array(t, arity) == true)
+    if (newt[bucket_id]->insert_tuple_from_array(t, arity+1) == true)
     {
         newt_element_count++;
         newt_bucket_element_count[bucket_id]++;
@@ -604,12 +615,11 @@ bool relation::insert_in_full(u64* t)
 {
     u32 buckets = get_bucket_count();
     uint64_t bucket_id = tuple_hash(t, join_column_count) % buckets;
-    u32 sub_bucket_id = tuple_hash(t+join_column_count, arity-join_column_count) % sub_bucket_per_bucket_count[bucket_id];
+    u32 sub_bucket_id = 0;
+    if (arity-join_column_count != 0)
+        sub_bucket_id = tuple_hash(t+join_column_count, arity-join_column_count) % sub_bucket_per_bucket_count[bucket_id];
 
-    //if ((int)bucket_id != mcomm.get_local_rank())
-    //    std::cout << "XXXXX [" << t[0] << ", " << t[1] << "] BID " << bucket_id << " [" << mcomm.get_local_rank() << " " << mcomm.get_local_nprocs() << "] [" << mcomm.get_rank() << " " << mcomm.get_nprocs() << "] " << buckets <<  std::endl;
-    //assert((int)bucket_id == mcomm.get_local_rank());
-    if (full[bucket_id].insert_tuple_from_array(t, arity) == true)
+    if (full[bucket_id]->insert_tuple_from_array(t, arity+1) == true)
     {
         full_element_count++;
         full_bucket_element_count[bucket_id]++;
@@ -626,33 +636,27 @@ int relation::insert_delta_in_full()
 {
     u32 insert_success = 0;
     u32 buckets = get_bucket_count();
-
     vector_buffer *input_buffer = new vector_buffer[buckets];
-    for (u32 i = 0; i < buckets; i++)
-        input_buffer[i].vector_buffer_create_empty();
 
     for (u32 i = 0; i < buckets; i++)
     {
+        input_buffer[i].vector_buffer_create_empty();
         if (bucket_map[i] == 1)
         {
             std::vector<u64> prefix = {};
-            delta[i].as_vector_buffer_recursive(&(input_buffer[i]), prefix);
-            for (u64 j = 0; j < (&input_buffer[i])->size / sizeof(u64); j=j+arity)
+            delta[i]->as_vector_buffer_recursive(&(input_buffer[i]), prefix);
+            for (u64 j = 0; j < (&input_buffer[i])->size / sizeof(u64); j=j+(arity+1))
             {
                 if (insert_in_full ( (u64*)( (input_buffer[i].buffer) + (j*sizeof(u64)) )) == true)
                     insert_success++;
             }
-
-            //TODO
-            delta[i].remove_tuple();
-
+            delta[i]->remove_tuple();
             input_buffer[i].vector_buffer_free();
         }
     }
+
     set_delta_element_count(0);
     delete[] input_buffer;
-
-    //std::cout << "SIZEs " << newt_element_count << " " << delta_element_count << " " << full_element_count << std::endl;
 
     return insert_success;
 }

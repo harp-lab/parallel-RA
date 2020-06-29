@@ -10,6 +10,7 @@ private:
     /// filename of the data
     const char *file_name;
 
+    /// arity of the relation
     u32 col_count;
 
     /// total number of rows / nprocs
@@ -30,10 +31,7 @@ public:
     void delete_raw_buffers();
     void delete_hash_buffers()  {  delete[] hash_buffer;  }
 
-    /// Hashing based on the first and the second column
-    /// The first column decises the bucket id
-    /// The second column decides the sub-bucket id
-    void buffer_data_to_hash_buffer_col(u32 buckets, u32** sub_bucket_rank, u32* sub_bucket_count, MPI_Comm lcomm);
+    void buffer_data_to_hash_buffer_col(u32 arity, u32 join_column_count, u32 buckets, u32** sub_bucket_rank, u32* sub_bucket_count, MPI_Comm lcomm);
 };
 
 #endif
