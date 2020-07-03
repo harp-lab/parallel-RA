@@ -1,3 +1,10 @@
+/*
+ * Intra-bucket comm to handle sub-bucketting
+ * Copyright (c) Sidharth Kumar, et al, see License.md
+ */
+
+
+
 #ifndef INTRA_BUCKET_COMM_H
 #define INTRA_BUCKET_COMM_H
 

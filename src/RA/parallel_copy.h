@@ -1,3 +1,10 @@
+/*
+ * copy
+ * Copyright (c) Sidharth Kumar, et al, see License.md
+ */
+
+
+
 #ifndef PARALLEL_COPY_H
 #define PARALLEL_COPY_H
 
@@ -8,7 +15,9 @@ class parallel_copy: public parallel_RA
 private:
     relation* copy_input0_table;
     int copy_input0_graph_type;
+
     relation* copy_output_table;
+
     std::vector<int> copy_reorder_index_array;
 
 public:

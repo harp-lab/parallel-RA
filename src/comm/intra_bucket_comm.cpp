@@ -1,3 +1,8 @@
+/*
+ * Intra-bucket comm to handle sub-bucketting
+ * Copyright (c) Sidharth Kumar, et al, see License.md
+ */
+
 #include "../parallel_RA_inc.h"
 
 

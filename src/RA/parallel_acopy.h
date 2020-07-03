@@ -1,3 +1,10 @@
+/*
+ * acopy
+ * Copyright (c) Sidharth Kumar, et al, see License.md
+ */
+
+
+
 #ifndef PARALLEL_ACOPY_H
 #define PARALLEL_ACOPY_H
 
@@ -7,9 +14,12 @@ class parallel_acopy: public parallel_RA
 {
 
 private:
+
     relation* acopy_input0_table;
     int acopy_input0_graph_type;
+
     relation* acopy_output_table;
+
     std::vector<int> acopy_reorder_index_array;
 
 public:

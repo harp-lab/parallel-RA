@@ -1,3 +1,10 @@
+/*
+ * Google's btree relation
+ * Copyright (c) Sidharth Kumar, et al, see License.md
+ */
+
+
+
 #ifndef __GOOGLE_RELATION__
 #define __GOOGLE_RELATION__
 
@@ -10,9 +17,10 @@ struct google_relation {
 
     bool insert_tuple_from_array(u64* t, int arity);
     void remove_tuple();
+    bool find_tuple_from_array(u64* t, int arity);
+
     void as_vector_buffer_recursive(vector_buffer* vb, std::vector<u64> prefix);
     void as_vector_buffer_recursive_helper(google_relation*& cur_trie, std::vector<u64> cur_path, vector_buffer*& result_vector);
-    bool find_tuple_from_array(u64* t, int arity);
 
     void as_all_to_all_copy_buffer(all_to_all_buffer& buffer, std::vector<u64> prefix, std::vector<int> reorder_map, int ra_id, u32 buckets, u32* output_sub_bucket_count, u32** output_sub_bucket_rank, u32 arity, u32 join_column_count);
 

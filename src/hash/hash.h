@@ -1,3 +1,9 @@
+/*
+ * Hash function (used by both the backend and the frontend)
+ * Copyright (c) Sidharth Kumar, et al, see License.md
+ */
+
+
 #ifndef HASH__H
 #define HASH__H
 

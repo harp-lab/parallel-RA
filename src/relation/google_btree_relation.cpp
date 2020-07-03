@@ -1,3 +1,10 @@
+/*
+ * Google's btree relation
+ * Copyright (c) Sidharth Kumar, et al, see License.md
+ */
+
+
+
 #include "../parallel_RA_inc.h"
 
 
@@ -175,7 +182,7 @@ void google_relation::as_all_to_all_right_join_buffer_helper(google_relation*& c
                 continue;
             projected_path[reorder_map[i]] = input0_buffer[i];
         }
-        std::cout << "[RIGHT] NEW TUPLEEEEEEEEEEEEEEE " << projected_path[0] << " " << projected_path[1] << std::endl;
+        //std::cout << "[RIGHT] NEW TUPLEEEEEEEEEEEEEEE " << projected_path[0] << " " << projected_path[1] << std::endl;
 
 #if 0
         u64 reordered_cur_path[join_buffer.width[ra_id] + projection_column_count];
@@ -229,8 +236,6 @@ void google_relation::as_all_to_all_right_join_buffer_helper(google_relation*& c
 
 void google_relation::as_all_to_all_left_join_buffer(std::vector<u64> prefix, all_to_all_buffer& join_buffer, u64 *input0_buffer, int input0_buffer_width, int input1_buffer_width, int ra_id, u32 buckets, u32* output_sub_bucket_count, u32** output_sub_bucket_rank, std::vector<int> reorder_map, int projection_column_count, int join_column_count, google_relation& deduplicate, u32* local_join_duplicates, u32* local_join_inserts)
 {
-
-    std::cout << "HEREEEEEEEEEEEEE 1 " << prefix.size() <<  std::endl;
     google_relation *m_trie = this;
     for (u64 n : prefix)  {
         if (m_trie->next.find(n)==m_trie->next.end())
@@ -254,7 +259,7 @@ void google_relation::as_all_to_all_left_join_buffer_helper(google_relation*& cu
             if (reorder_map[i] == -1)
                 continue;
             projected_path[reorder_map[i]] = input0_buffer[i];
-            std::cout << "[LEFT] 1 NEW  " << i << " " << reorder_map[i] << " " << projected_path[reorder_map[i]] << std::endl;
+            //std::cout << "[LEFT] 1 NEW  " << i << " " << reorder_map[i] << " " << projected_path[reorder_map[i]] << std::endl;
         }
 
         for (int i = join_column_count; i < input1_buffer_width; i++)
@@ -262,7 +267,7 @@ void google_relation::as_all_to_all_left_join_buffer_helper(google_relation*& cu
             if (reorder_map[input0_buffer_width + (i-join_column_count)] == -1)
                 continue;
             projected_path[reorder_map[input0_buffer_width + (i-join_column_count)]] = cur_path[i];
-            std::cout << "[LEFT] 2 NEW  " << input0_buffer_width + (i-join_column_count) << " " << reorder_map[input0_buffer_width + (i-join_column_count)] << " " << projected_path[reorder_map[input0_buffer_width + (i-join_column_count)]] << std::endl;
+            //std::cout << "[LEFT] 2 NEW  " << input0_buffer_width + (i-join_column_count) << " " << reorder_map[input0_buffer_width + (i-join_column_count)] << " " << projected_path[reorder_map[input0_buffer_width + (i-join_column_count)]] << std::endl;
         }
         //std::cout << "[LEFT] NEW TUPLEEEEEEEEEEEEEEE " << projected_path[0] << " " << projected_path[1] << std::endl;
 

@@ -1,3 +1,10 @@
+/*
+ * join
+ * Copyright (c) Sidharth Kumar, et al, see License.md
+ */
+
+
+
 #include "../parallel_RA_inc.h"
 
 void parallel_join::local_join(int join_order,
@@ -22,7 +29,6 @@ void parallel_join::local_join(int join_order,
     u32* output_sub_bucket_count = output->get_sub_bucket_per_bucket_count();
     u32** output_sub_bucket_rank = output->get_sub_bucket_rank();
 
-    //std::cout << "Join Order is " << join_order << " input0_buffer_size " << input0_buffer_size << " input0_buffer_width " << input0_buffer_width << std::endl;
     if (join_order == LEFT)
     {
         for (int k1 = 0; k1 < input0_buffer_size; k1 = k1 + input0_buffer_width)
@@ -32,7 +38,6 @@ void parallel_join::local_join(int join_order,
                 prefix.push_back(input0_buffer[k1 + jc]);
 
             u64 bucket_id = tuple_hash(input0_buffer + k1, join_column_count) % buckets;
-            std::cout << "PREFIX " << input0_buffer[k1] << " join_column_count " << join_column_count << std::endl;
 
             input1[bucket_id]->as_all_to_all_left_join_buffer(prefix, join_buffer, input0_buffer + k1, input0_buffer_width, input1_buffer_width, counter, buckets, output_sub_bucket_count, output_sub_bucket_rank, reorder_map_array, projection_column_count, join_column_count, deduplicate, local_join_duplicates, local_join_inserts);
         }

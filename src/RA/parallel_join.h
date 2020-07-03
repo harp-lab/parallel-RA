@@ -1,3 +1,10 @@
+/*
+ * join
+ * Copyright (c) Sidharth Kumar, et al, see License.md
+ */
+
+
+
 #ifndef PARALLEL_JOIN_H
 #define PARALLEL_JOIN_H
 

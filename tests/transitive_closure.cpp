@@ -1,15 +1,5 @@
 #include "../src/parallel_RA_inc.h"
 
-// Incorporate load balancer
-// fix all arity issues
-// set get function issues
-// logging stuff
-// join and copy two time access issue
-// untangle task level parallelism
-// cleanup task level parallelism
-// cleanup cumulative all to all
-// document the code
-// intern
 
 int main(int argc, char **argv)
 {

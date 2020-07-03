@@ -1,11 +1,17 @@
+/*
+ * Parallel IO of relations
+ * Copyright (c) Sidharth Kumar, et al, see License.md
+ */
+
+
+
 #include "../parallel_RA_inc.h"
 
 
 
 void parallel_io::parallel_read_input_relation_from_file_to_local_buffer(const char *fname, MPI_Comm lcomm)
 {
-    int rank;
-    int nprocs;
+    int rank, nprocs;
     MPI_Comm_rank(lcomm, &rank);
     MPI_Comm_size(lcomm, &nprocs);
     file_name = fname;
@@ -69,16 +75,6 @@ void parallel_io::parallel_read_input_relation_from_file_to_local_buffer(const c
 
 
 
-
-void parallel_io::delete_raw_buffers()
-{
-    if (entry_count != 0)
-        delete[] input_buffer;
-}
-
-
-
-
 void parallel_io::buffer_data_to_hash_buffer_col(u32 arity, u32 join_column_count, u32 buckets, u32** sub_bucket_rank, u32* sub_bucket_count, MPI_Comm comm)
 {
 
@@ -101,15 +97,13 @@ void parallel_io::buffer_data_to_hash_buffer_col(u32 arity, u32 join_column_coun
     for (u32 i = 0; i < entry_count * (col_count+1); i=i+(col_count+1))
     {
         uint64_t bucket_id = tuple_hash(input_buffer + i, join_column_count) % buckets;
-        uint64_t sub_bucket_id = tuple_hash(input_buffer + i+ (arity-join_column_count), 1) % sub_bucket_count[bucket_id];
+        uint64_t sub_bucket_id = tuple_hash(input_buffer + i+ (join_column_count), arity+1-join_column_count) % sub_bucket_count[bucket_id];
 
         int index = sub_bucket_rank[bucket_id][sub_bucket_id];
         process_size[index] = process_size[index] + (col_count+1);
 
         for (u32 j = 0; j < col_count+1; j++)
             val[j] = input_buffer[i + j];
-
-        //std::cout << "IO " << val[0] << " " << val[1] << " " << val[2] << std::endl;
 
         process_data_vector[index].vector_buffer_append((unsigned char *) val, sizeof(u64)*(col_count+1));
         process_data_vector_size = process_data_vector_size + (col_count+1);

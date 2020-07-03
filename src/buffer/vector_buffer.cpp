@@ -16,12 +16,14 @@ vector_buffer::vector_buffer()
 }
 
 
+
 void vector_buffer::vector_buffer_create_empty()
 {
     buffer = NULL;
     size = 0;
     capacity = 0;
 }
+
 
 
 void vector_buffer::vector_buffer_create_with_capacity(uint64_t cap)
@@ -32,12 +34,14 @@ void vector_buffer::vector_buffer_create_with_capacity(uint64_t cap)
 }
 
 
+
 void vector_buffer::vector_buffer_free()
 {
     free(buffer);
     size = 0;
     capacity = 0;
 }
+
 
 
 void vector_buffer::vector_buffer_append(const unsigned char *data, const uint64_t si)
@@ -50,6 +54,7 @@ void vector_buffer::vector_buffer_append(const unsigned char *data, const uint64
     memcpy(buffer + size, data, si);
     size += si;
 }
+
 
 
 void vector_buffer::vector_buffer_resize(const uint64_t si)

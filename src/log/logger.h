@@ -1,3 +1,9 @@
+/*
+ * Performance Logging
+ * Copyright (c) Sidharth Kumar, et al, see License.md
+ */
+
+
 #ifndef LOGGER_H
 #define LOGGER_H
 
@@ -17,10 +23,6 @@ public:
     LOGGER()  {
 
     }
-
-
-
-
 };
 
 

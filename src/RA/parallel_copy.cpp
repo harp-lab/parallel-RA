@@ -1,3 +1,10 @@
+/*
+ * copy
+ * Copyright (c) Sidharth Kumar, et al, see License.md
+ */
+
+
+
 #include "../parallel_RA_inc.h"
 
 
@@ -12,7 +19,6 @@ void parallel_copy::local_copy(u32 buckets, google_relation** input, u32* input_
             projection_column_count++;
 
     copy_buffer.width[ra_counter] = (output->get_arity() + 1) - projection_column_count;
-    //std::cout << "Compute Width " << copy_buffer.width[ra_counter] << std::endl;
 
     for (u32 i = 0; i < buckets; i++)
     {
