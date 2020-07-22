@@ -84,11 +84,16 @@ void LIE::add_scc_dependance (RAM* src_task, RAM* destination_task)
 
 bool LIE::execute ()
 {
+
+    /// Main : Execute : init : start
+
     mcomm.set_local_comm(mcomm.get_comm());
+
 
     /// Initialize all relations
     for (std::unordered_set<relation*>::iterator it = lie_relations.begin() ; it != lie_relations.end(); ++it)
         (*it)->initialize_relation(mcomm);
+
 
     /// Executable task
     std::unordered_set<RAM*> executable_task = list_of_runnable_tasks(tasks, taskgraph1);
@@ -101,6 +106,15 @@ bool LIE::execute ()
         auto it = executable_task.begin();
         current_task = *it;
         current_task->set_comm(mcomm);
+
+        /// Initialize all relations
+        std::unordered_map<relation*, bool> scc_relation = current_task->get_RAM_relations();
+        for (std::unordered_map<relation*, bool>::iterator it = scc_relation.begin() ; it != scc_relation.end(); ++it)
+        {
+            relation* rel = it->first;
+            rel->initialize_relation_in_scc(it->second);
+        }
+
         std::vector<u32> history;
 
         /// if case is for rules (acopy and copy) that requires only one iteration

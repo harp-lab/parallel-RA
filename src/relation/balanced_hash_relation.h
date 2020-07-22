@@ -11,7 +11,7 @@
 
 enum {LEFT=0, RIGHT};
 enum {DELTA=0, FULL, FULL_AND_DELTA};
-enum {COPY=0, ACOPY, JOIN};
+enum {COPY=0, COPY_FILTER, ACOPY, JOIN};
 enum {STATIC=0, DYNAMIC};
 
 class relation
@@ -90,6 +90,7 @@ public:
     int** get_distinct_sub_bucket_rank()    {return distinct_sub_bucket_rank;}
 
 
+    void set_full_element_count(int val)   {full_element_count = val;}
     int get_full_element_count()    {return full_element_count;}
     u32** get_full_sub_bucket_element_count()   {return full_sub_bucket_element_count;}
 
@@ -131,6 +132,7 @@ public:
 
     /// initialize and finalize relation
     void initialize_relation(mpi_comm& mcomm);
+    void initialize_relation_in_scc(bool init_status);
     void populate_full(u32 buffer_size, u64* buffer);
     void populate_delta (u32 buffer_size, u64* buffer);
     void finalize_relation();
@@ -154,6 +156,7 @@ public:
 
     /// part of semi-naive evaluation
     int insert_delta_in_full();
+    int insert_full_in_delta();
     void local_insert_in_delta();
     void copy_newt_to_delta()   {delta = newt;}
 

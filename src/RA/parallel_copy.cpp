@@ -24,7 +24,7 @@ void parallel_copy::local_copy(u32 buckets, google_relation** input, u32* input_
     {
         if (input_bucket_map[i] == 1)
         {
-            input[i]->as_all_to_all_copy_buffer(copy_buffer, {}, reorder_map, ra_counter, buckets, output_sub_bucket_count, output_sub_bucket_rank, (arity+1), join_column_count);
+            input[i]->as_all_to_all_copy_buffer(copy_buffer, {}, reorder_map, ra_counter, buckets, output_sub_bucket_count, output_sub_bucket_rank, (arity), join_column_count);
         }
     }
 

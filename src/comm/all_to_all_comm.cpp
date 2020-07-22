@@ -7,6 +7,7 @@
 #include "../parallel_RA_inc.h"
 
 
+
 void all_to_all_comm(vector_buffer* vectorized_send_buffer, int vectorized_send_buffer_size, int* send_counts, u64 *recv_buffer_size, u64 **recv_buffer, MPI_Comm comm)
 {
     int nprocs;
@@ -77,7 +78,6 @@ void comm_compaction_all_to_all(all_to_all_buffer compute_buffer, int **recv_buf
     send_disp[0] = 0;
     recv_displacements[0] = 0;
 
-    //std::cout << "Send Buffer size " << compute_buffer.local_compute_output_size_total << std::endl;
     u64* send_buffer = new u64[compute_buffer.local_compute_output_size_total];
 
     u32 boffset = 0;
@@ -89,7 +89,7 @@ void comm_compaction_all_to_all(all_to_all_buffer compute_buffer, int **recv_buf
         for (u32 r = 0; r < RA_count; r++)
         {
             memcpy(send_buffer + boffset, compute_buffer.local_compute_output[r][i].buffer, compute_buffer.local_compute_output[r][i].size);
-            boffset = boffset + (compute_buffer.local_compute_output[r][i].size)/8;
+            boffset = boffset + (compute_buffer.local_compute_output[r][i].size)/sizeof(u64);
             compute_buffer.local_compute_output[r][i].vector_buffer_free();
 
             recv_counts[i] = recv_counts[i] + (*recv_buffer_offset_size)[i*RA_count + r];
@@ -105,8 +105,6 @@ void comm_compaction_all_to_all(all_to_all_buffer compute_buffer, int **recv_buf
 
     MPI_Alltoallv(send_buffer, compute_buffer.cumulative_tuple_process_map, send_disp, MPI_UNSIGNED_LONG_LONG, *recv_buffer, recv_counts, recv_displacements, MPI_UNSIGNED_LONG_LONG, comm);
 
-    //std::cout << "Size of data received " << outer_hash_buffer_size << std::endl;
-    //std::cout << "Data " << (*recv_buffer)[0] << " " << (*recv_buffer)[1] << " " << (*recv_buffer)[2] << " " << (*recv_buffer)[3] << std::endl;
 
     delete[] send_buffer;
     delete[] send_disp;

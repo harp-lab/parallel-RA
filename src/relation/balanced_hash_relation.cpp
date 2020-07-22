@@ -127,6 +127,7 @@ void relation::read_from_relation(relation* input, int full_delta)
 
 void relation::initialize_relation(mpi_comm& mcomm)
 {
+    /// Main : Execute : init : buffer_init : start
     this->mcomm = mcomm;
 
     u32 buckets = mcomm.get_local_nprocs();
@@ -210,10 +211,14 @@ void relation::initialize_relation(mpi_comm& mcomm)
         memset(newt_sub_bucket_element_count[b], 0, sizeof(u32) * sub_bucket_per_bucket_count[b]);
     }
 
+    /// Main : Execute : init : buffer_init : end
+
 
     /// reading from file
     if (initailization_type != -1)
     {
+        /// Main : Execute : init : io : end
+
         file_io.parallel_read_input_relation_from_file_to_local_buffer(filename, mcomm.get_local_comm());
 
         file_io.buffer_data_to_hash_buffer_col(arity, join_column_count, get_bucket_count(), sub_bucket_rank, sub_bucket_per_bucket_count, mcomm.get_local_comm());
@@ -229,6 +234,16 @@ void relation::initialize_relation(mpi_comm& mcomm)
 
         //std::cout << "Writing " << file_io.get_hash_buffer_size() << " bytes" << std::endl;
         file_io.delete_hash_buffers();
+    }
+}
+
+
+void relation::initialize_relation_in_scc(bool init_status)
+{
+    if (init_status == true)
+    {
+        insert_full_in_delta();
+        //flush_full();
     }
 }
 
@@ -595,10 +610,47 @@ int relation::insert_delta_in_full()
 
 
 
+int relation::insert_full_in_delta()
+{
+    u32 insert_success = 0;
+    u32 buckets = get_bucket_count();
+    vector_buffer *input_buffer = new vector_buffer[buckets];
+
+    for (u32 i = 0; i < buckets; i++)
+    {
+        input_buffer[i].vector_buffer_create_empty();
+        if (bucket_map[i] == 1)
+        {
+            std::vector<u64> prefix = {};
+            full[i]->as_vector_buffer_recursive(&(input_buffer[i]), prefix);
+            for (u64 j = 0; j < (&input_buffer[i])->size / sizeof(u64); j=j+(arity+1))
+            {
+                if (insert_in_delta ( (u64*)( (input_buffer[i].buffer) + (j*sizeof(u64)) )) == true)
+                    insert_success++;
+            }
+            full[i]->remove_tuple();
+            input_buffer[i].vector_buffer_free();
+        }
+    }
+
+    set_full_element_count(0);
+    delete[] input_buffer;
+
+    return insert_success;
+}
+
+
+
 void relation::local_insert_in_delta()
 {
     u32 buckets = get_bucket_count();
+
+    //for (u32 b = 0; b < buckets; b++)
+    //    delete[] delta[b];
     delete[] delta;
+
+    //for (u32 b = 0; b < buckets; b++)
+    //    delta[b] = newt[b];
     delta = newt;
     delta_element_count = newt_element_count;
 
@@ -607,6 +659,7 @@ void relation::local_insert_in_delta()
     {
         memcpy(delta_sub_bucket_element_count[b], newt_sub_bucket_element_count[b], sub_bucket_per_bucket_count[b] * sizeof(u32));
         memset(newt_sub_bucket_element_count[b], 0, sub_bucket_per_bucket_count[b] * sizeof(u32));
+        //newt[b]->remove_tuple();
     }
 
     newt = new google_relation*[buckets];

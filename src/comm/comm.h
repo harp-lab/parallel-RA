@@ -22,9 +22,7 @@ private:
 
 public:
 
-    mpi_comm()
-    {
-    }
+    mpi_comm()  {}
 
     mpi_comm (const mpi_comm &copy)
     {

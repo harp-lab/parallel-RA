@@ -62,6 +62,7 @@ typedef wchar_t c16;
 #include "RA/parallel_RA.h"
 #include "RA/parallel_join.h"
 #include "RA/parallel_copy.h"
+#include "RA/parallel_copy_filter.h"
 #include "RA/parallel_acopy.h"
 #include "comm/intra_bucket_comm.h"
 #include "RAM/RA_tasks.h"
