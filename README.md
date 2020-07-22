@@ -1,2 +1,2 @@
 # parallel-RA
-Paralle Relational Algebra
+Parallel Relational Algebra
