@@ -92,14 +92,14 @@ int main(int argc, char **argv)
     lie->add_scc(scc5396);
     lie->add_scc(scc5397);
     lie->add_scc(scc5398);
-    lie->add_scc(scc5399);
+    //lie->add_scc(scc5399);
     lie->add_scc(scc5400);
     lie->add_scc(scc5401);
-    lie->add_scc_dependance(scc5395, scc5399);
-    lie->add_scc_dependance(scc5396, scc5399);
-    lie->add_scc_dependance(scc5397, scc5399);
-    lie->add_scc_dependance(scc5398, scc5399);
-    lie->add_scc_dependance(scc5400, scc5399);
+    //lie->add_scc_dependance(scc5395, scc5399);
+    //lie->add_scc_dependance(scc5396, scc5399);
+    //lie->add_scc_dependance(scc5397, scc5399);
+    //lie->add_scc_dependance(scc5398, scc5399);
+    //lie->add_scc_dependance(scc5400, scc5399);
 
 
 
@@ -108,6 +108,11 @@ int main(int argc, char **argv)
 
 
     lie->execute();
+
+    rel_free_2_2->print();
+    rel_app_2_1->print();
+    rel_app_2_2->print();
+    rel_app_2_1_2->print();
 
 
     mcomm.destroy();

@@ -22,7 +22,7 @@
 ///     recvbuf
 
 void intra_bucket_comm(u32 buckets,
-                       google_relation **rel,
+                       google_relation *rel,
                        int* input_distinct_sub_bucket_rank_count, int** input_distinct_sub_bucket_rank, u32* input_bucket_map,
                        int* output_distinct_sub_bucket_rank_count, int** output_distinct_sub_bucket_rank, u32* output_bucket_map,
                        u64 *total_buffer_size, u64 **recvbuf,
@@ -49,7 +49,7 @@ void intra_bucket_comm(u32 buckets,
 
         // Puts btree data into a vector
         std::vector<u64> prefix = {};
-        rel[i]->as_vector_buffer_recursive(&(input_buffer[i]), prefix);
+        rel[i].as_vector_buffer_recursive(&(input_buffer[i]), prefix);
 
         // size of data to be sent
         input_buffer_size[i] = (&input_buffer[i])->size / sizeof(u64);

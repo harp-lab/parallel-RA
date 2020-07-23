@@ -102,7 +102,7 @@ bool LIE::execute ()
     /// Running one task at a time
     while (executable_task.size() != 0)
     {
-        RAM* current_task = new RAM();
+        RAM* current_task;
         auto it = executable_task.begin();
         current_task = *it;
         current_task->set_comm(mcomm);

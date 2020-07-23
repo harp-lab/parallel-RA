@@ -7,10 +7,16 @@ int main(int argc, char **argv)
     mcomm.create(argc, argv);    
 
 
-    relation* rel_path_2_1_2 = new relation(2, 2, 257, "D_path_2_1_2", FULL);
-    relation* rel_edge_2_1_2 = new relation(2, 2, 256, "D_edge_2_1_2", FULL);
-    relation* rel_path_2_1 = new relation(1, 2, 257, "D_path_2_1", FULL);
-    relation* rel_edge_2_2 = new relation(1, 2, 256, "D_edge_2_2", FULL);
+    //relation* rel_path_2_1_2 = new relation(2, 2, 257, "D_path_2_1_2", FULL);
+    //relation* rel_edge_2_1_2 = new relation(2, 2, 256, "D_edge_2_1_2", FULL);
+    //relation* rel_path_2_1 = new relation(1, 2, 257, "D_path_2_1", FULL);
+    //relation* rel_edge_2_2 = new relation(1, 2, 256, "D_edge_2_2", FULL);
+
+    relation* rel_path_2_1_2 = new relation(2, 2, 257, "/var/tmp/g5032/path_2_1_2", FULL);
+    relation* rel_edge_2_1_2 = new relation(2, 2, 256, "/var/tmp/g5032/edge_2_1_2", FULL);
+    relation* rel_path_2_1 = new relation(1, 2, 257, "/var/tmp/g5032/path_2_1", FULL);
+    relation* rel_edge_2_2 = new relation(1, 2, 256, "/var/tmp/g5032/edge_2_2", FULL);
+
 
     RAM* scc5026 = new RAM(false);
     scc5026->add_relation(rel_edge_2_1_2, false);
@@ -48,6 +54,10 @@ int main(int argc, char **argv)
     lie->execute();
 
     rel_path_2_1->print();
+
+    delete scc5026;
+    delete scc5027;
+    delete scc5028;
 
     mcomm.destroy();
     return 0;

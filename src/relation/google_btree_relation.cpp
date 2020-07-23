@@ -108,7 +108,8 @@ void google_relation::as_all_to_all_copy_buffer_helper(google_relation*& cur_tri
     if(cur_trie->is_end)
     {
         u64 reordered_cur_path[buffer.width[ra_id]];
-        for (u32 j =0; j < arity+1; j++)
+        //for (u32 j =0; j < arity+1; j++)
+        for (u32 j =0; j < reorder_map.size(); j++)
         {
             if (reorder_map[j]==-1)
                 continue;
@@ -160,7 +161,8 @@ void google_relation::as_all_to_all_copy_filter_buffer_helper(google_relation*& 
     if(cur_trie->is_end)
     {
         u64 reordered_cur_path[buffer.width[ra_id]];
-        for (u32 j =0; j < arity+1; j++)
+        for (u32 j =0; j < reorder_map.size(); j++)
+        //for (u32 j =0; j < arity+1; j++)
         {
             if (reorder_map[j]==-1)
                 continue;

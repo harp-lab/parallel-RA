@@ -146,7 +146,7 @@ bool relation::load_balance_merge_full_and_delta(float rf)
             std::vector<u64> prefix = {};
 
             temp_buffer.vector_buffer_create_empty();
-            full[b]->as_vector_buffer_recursive(&temp_buffer, prefix);
+            full[b].as_vector_buffer_recursive(&temp_buffer, prefix);
 
             for (u32 s = 0; s < temp_buffer.size / sizeof(u64); s=s+arity)
             {
@@ -164,10 +164,10 @@ bool relation::load_balance_merge_full_and_delta(float rf)
                 process_data_vector_size = process_data_vector_size + (arity + 1);
             }
             temp_buffer.vector_buffer_free();
-            full[b]->remove_tuple();
+            full[b].remove_tuple();
 
             temp_buffer.vector_buffer_create_empty();
-            delta[b]->as_vector_buffer_recursive(&temp_buffer, prefix);
+            delta[b].as_vector_buffer_recursive(&temp_buffer, prefix);
 
             for (u32 s = 0; s < temp_buffer.size / sizeof(u64); s=s+arity)
             {
@@ -185,7 +185,7 @@ bool relation::load_balance_merge_full_and_delta(float rf)
                 process_data_vector_dt_size = process_data_vector_dt_size + (arity + 1);
             }
             temp_buffer.vector_buffer_free();
-            delta[b]->remove_tuple();
+            delta[b].remove_tuple();
         }
     }
     delete[] global_max;
@@ -385,7 +385,7 @@ bool relation::load_balance_split_full_and_delta(float rf)
             temp_buffer.vector_buffer_create_empty();
 
             std::vector<u64> prefix = {};
-            full[b]->as_vector_buffer_recursive(&temp_buffer, prefix);
+            full[b].as_vector_buffer_recursive(&temp_buffer, prefix);
 
             for (u32 s = 0; s < temp_buffer.size / sizeof(u64); s=s+arity)
             {
@@ -403,11 +403,11 @@ bool relation::load_balance_split_full_and_delta(float rf)
                 process_data_vector_size = process_data_vector_size + (arity+1);
             }
             temp_buffer.vector_buffer_free();
-            full[b]->remove_tuple();
+            full[b].remove_tuple();
 
 
             temp_buffer.vector_buffer_create_empty();
-            delta[b]->as_vector_buffer_recursive(&temp_buffer, prefix);
+            delta[b].as_vector_buffer_recursive(&temp_buffer, prefix);
 
             for (u32 s = 0; s < temp_buffer.size / sizeof(u64); s=s+arity)
             {
@@ -425,7 +425,7 @@ bool relation::load_balance_split_full_and_delta(float rf)
                 process_data_vector_dt_size = process_data_vector_dt_size + (arity+1);
             }
             temp_buffer.vector_buffer_free();
-            delta[b]->remove_tuple();
+            delta[b].remove_tuple();
         }
     }
 

@@ -27,17 +27,17 @@ private:
 
     int last_rank;                              /// Used to store last rank
 
-    google_relation **newt;                     /// Newt
+    google_relation *newt;                     /// Newt
     u32 newt_element_count;
     u32 **newt_sub_bucket_element_count;
     u32 *newt_bucket_element_count;
 
-    google_relation **full;                     /// Full
+    google_relation *full;                     /// Full
     u32 full_element_count;
     u32 **full_sub_bucket_element_count;
     u32 *full_bucket_element_count;
 
-    google_relation **delta;                    /// Delta
+    google_relation *delta;                    /// Delta
     u32 delta_element_count;
     u32 **delta_sub_bucket_element_count;
     u32 *delta_bucket_element_count;
@@ -106,9 +106,9 @@ public:
     u32 get_intern_tag()    {return intern_tag;}
 
 
-    google_relation** get_full() {return full;}
-    google_relation** get_newt() {return newt;}
-    google_relation** get_delta()    {return delta;}
+    google_relation* get_full() {return full;}
+    google_relation* get_newt() {return newt;}
+    google_relation* get_delta()    {return delta;}
 
 
     void set_delta_element_count(int val)   {delta_element_count = val;}
@@ -126,8 +126,8 @@ public:
 
 
     /// used for initialization of dynamic relations
-    void flush_full();
-    void read_from_relation(relation* input, int full_deta);
+    //void flush_full();
+    //void read_from_relation(relation* input, int full_deta);
 
 
     /// initialize and finalize relation

@@ -31,6 +31,7 @@ void all_to_all_comm(vector_buffer* vectorized_send_buffer, int vectorized_send_
     *recv_buffer_size = recv_counts[0];
     memcpy(send_buffer, (&vectorized_send_buffer[0])->buffer, (&vectorized_send_buffer[0])->size);
 
+    vectorized_send_buffer[0].vector_buffer_free();
     for (int i = 1; i < nprocs; i++)
     {
         send_displacements[i] = send_displacements[i - 1] + send_counts[i - 1];
