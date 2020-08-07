@@ -22,8 +22,10 @@ private:
     u32 join_column_count;                      /// Number of join column counts
     u32 arity;                                  /// Arity of relation
     u32 intern_tag;                             /// id of relation (to be used for interning)
+    std::string debug_id;
     int initailization_type = -1;               /// used when task balancing is required
     const char* filename = NULL;                /// Name of file to open
+
 
     int last_rank;                              /// Used to store last rank
 
@@ -64,6 +66,13 @@ public:
         delta_bucket_element_count=0;
     }
 
+    relation (u32 jcc, u32 ar, u32 tg, const char* did, const char* fname, int version)
+        :join_column_count(jcc), arity(ar), intern_tag(tg), debug_id(did), initailization_type(version), filename(fname)
+    {
+        full_element_count=0;
+        delta_bucket_element_count=0;
+    }
+
 
 
     /// set comm
@@ -78,9 +87,13 @@ public:
     void set_initailization_type(int x) { initailization_type = x;  }
 
 
+
+
     u32 get_arity ()    {return arity;}
     u32 get_join_column_count ()    {return join_column_count;}
 
+
+    std::string get_debug_id()  {   return debug_id; }
 
     int get_bucket_count()  {   return mcomm.get_local_nprocs(); }
     u32* get_bucket_map()   {return bucket_map;}
@@ -93,6 +106,7 @@ public:
     void set_full_element_count(int val)   {full_element_count = val;}
     int get_full_element_count()    {return full_element_count;}
     u32** get_full_sub_bucket_element_count()   {return full_sub_bucket_element_count;}
+    u32 get_global_full_element_count();
 
 
     int get_new_element_count() {return newt_element_count;}
@@ -114,11 +128,11 @@ public:
     void set_delta_element_count(int val)   {delta_element_count = val;}
     int get_delta_element_count()   {return delta_element_count;}
     u32** get_delta_sub_bucket_element_count()  {return delta_sub_bucket_element_count;}
+    u32 get_global_delta_element_count();
 
 
     void set_default_sub_bucket_per_bucket_count(u32 sbc)    {default_sub_bucket_per_bucket_count = sbc;}
     u32 get_default_sub_bucket_per_bucket_count()    {return default_sub_bucket_per_bucket_count;}
-
 
 
     /// print all tuples of newt, delta and full

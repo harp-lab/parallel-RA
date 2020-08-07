@@ -40,6 +40,8 @@ void intra_bucket_comm(u32 buckets,
     *total_buffer_size = 0;
     u32* bucket_offset = new u32[buckets];
 
+    int rank;
+    MPI_Comm_rank(mcomm, &rank);
 
     u64 total_send_buffer_size = 0;
     for (u32 i = 0; i < buckets; i++)
@@ -55,6 +57,7 @@ void intra_bucket_comm(u32 buckets,
         input_buffer_size[i] = (&input_buffer[i])->size / sizeof(u64);
         total_send_buffer_size = total_send_buffer_size + input_buffer_size[i];
 
+        std::cout << "--------- rank " << rank << " " << i << " " << input_buffer_size[i] << std::endl;
 
         meta_buffer_size[i] = new u32[input_distinct_sub_bucket_rank_count[i]];
         memset(meta_buffer_size[i], 0, sizeof(u32) * input_distinct_sub_bucket_rank_count[i]);
@@ -68,6 +71,7 @@ void intra_bucket_comm(u32 buckets,
             for (int r = 0; r < output_distinct_sub_bucket_rank_count[i]; r++)
             {
                 int buffer_size = input_buffer_size[i];
+                std::cout << rank << " SEND " << buffer_size << std::endl;
                 MPI_Isend(&buffer_size, 1, MPI_INT, output_distinct_sub_bucket_rank[i][r], 123, mcomm, &req1[req_counter1]);
                 req_counter1++;
             }
@@ -77,12 +81,15 @@ void intra_bucket_comm(u32 buckets,
         {
             for (int r = 0; r < input_distinct_sub_bucket_rank_count[i]; r++)
             {
+                std::cout << rank << " RECEIVE" << std::endl;
                 MPI_Irecv(meta_buffer_size[i] + r, 1, MPI_INT, input_distinct_sub_bucket_rank[i][r], 123, mcomm, &req1[req_counter1]);
                 req_counter1++;
             }
         }
 
         MPI_Waitall(req_counter1, req1, stat1);
+
+        std::cout << rank << " META DATA COMM " << std::endl;
 
         bucket_offset[i] = *total_buffer_size;
         for (int r = 0; r < input_distinct_sub_bucket_rank_count[i]; r++)
@@ -93,9 +100,8 @@ void intra_bucket_comm(u32 buckets,
     }
 
 
-#if 0
-    int rank;
-    MPI_Comm_rank(mcomm. &rank);
+#if 1
+
     // Code to verify that the intra-bucket comm is setup correctly
     u64 global_send_buffer_size1 = 0;
     u64 global_send_buffer_size2 = 0;

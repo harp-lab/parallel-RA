@@ -61,7 +61,9 @@ void google_relation::as_all_to_all_acopy_buffer_helper(google_relation*& cur_tr
     {
         u64 reordered_cur_path[buffer.width[ra_id]];
         for (int j =0; j < buffer.width[ra_id]; j++)
-            reordered_cur_path[reorder_map[j]] = cur_path[j];
+            reordered_cur_path[j] = cur_path[reorder_map[j]];
+        //for (int j =0; j < buffer.width[ra_id]; j++)
+        //    reordered_cur_path[reorder_map[j]] = cur_path[j];
 
         uint64_t bucket_id = tuple_hash(reordered_cur_path, join_column_count) % buckets;
         uint64_t sub_bucket_id=0;
@@ -108,27 +110,38 @@ void google_relation::as_all_to_all_copy_buffer_helper(google_relation*& cur_tri
     if(cur_trie->is_end)
     {
         u64 reordered_cur_path[buffer.width[ra_id]];
-        //for (u32 j =0; j < arity+1; j++)
+
+#if 0
         for (u32 j =0; j < reorder_map.size(); j++)
         {
             if (reorder_map[j]==-1)
                 continue;
             reordered_cur_path[reorder_map[j]] = cur_path[j];
         }
+#endif
+        for (u32 j =0; j < reorder_map.size(); j++)
+            reordered_cur_path[j] = cur_path[reorder_map[j]];
+
 
         uint64_t bucket_id = tuple_hash(reordered_cur_path, join_column_count) % buckets;
 
         uint64_t sub_bucket_id=0;
-        if (arity-join_column_count != 0)
+        if (arity - join_column_count != 0)
             sub_bucket_id = tuple_hash(reordered_cur_path + join_column_count, arity-join_column_count) % output_sub_bucket_count[bucket_id];
 
         int index = output_sub_bucket_rank[bucket_id][sub_bucket_id];
         buffer.local_compute_output_size_total = buffer.local_compute_output_size_total + buffer.width[ra_id];
         buffer.local_compute_output_size_flat[index * buffer.ra_count + ra_id] = buffer.local_compute_output_size_flat[index * buffer.ra_count + ra_id] + buffer.width[ra_id];
 
+        int rank;
+        MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
         buffer.local_compute_output_size[ra_id][index] = buffer.local_compute_output_size[ra_id][index] + buffer.width[ra_id];
         buffer.cumulative_tuple_process_map[index] = buffer.cumulative_tuple_process_map[index] + buffer.width[ra_id];
         buffer.local_compute_output[ra_id][index].vector_buffer_append((const unsigned char*)reordered_cur_path, sizeof(u64)*buffer.width[ra_id]);
+
+        //if (rank == 7)
+        //    std::cout << "VAL " << index << " " << buffer.cumulative_tuple_process_map[index] << std::endl;
     }
 
     for (std::pair<u64, google_relation*> nxt: cur_trie->next)
@@ -161,16 +174,25 @@ void google_relation::as_all_to_all_copy_filter_buffer_helper(google_relation*& 
     if(cur_trie->is_end)
     {
         u64 reordered_cur_path[buffer.width[ra_id]];
+#if 0
         for (u32 j =0; j < reorder_map.size(); j++)
-        //for (u32 j =0; j < arity+1; j++)
         {
             if (reorder_map[j]==-1)
                 continue;
             reordered_cur_path[reorder_map[j]] = cur_path[j];
         }
-
-        if (lambda(reordered_cur_path) == true)
+#endif
+        u64 cur_path_array[cur_path.size()];
+        cur_path_array[0] = cur_path[0];
+        cur_path_array[1] = cur_path[1];
+        if (lambda(cur_path_array) == true)
         {
+            for (u32 j =0; j < reorder_map.size(); j++)
+                reordered_cur_path[j] = cur_path[reorder_map[j]];
+
+            std::cout << std::endl;
+
+
             uint64_t bucket_id = tuple_hash(reordered_cur_path, join_column_count) % buckets;
 
             uint64_t sub_bucket_id=0;
@@ -184,7 +206,13 @@ void google_relation::as_all_to_all_copy_filter_buffer_helper(google_relation*& 
             buffer.local_compute_output_size[ra_id][index] = buffer.local_compute_output_size[ra_id][index] + buffer.width[ra_id];
             buffer.cumulative_tuple_process_map[index] = buffer.cumulative_tuple_process_map[index] + buffer.width[ra_id];
             buffer.local_compute_output[ra_id][index].vector_buffer_append((const unsigned char*)reordered_cur_path, sizeof(u64)*buffer.width[ra_id]);
+
+
         }
+
+
+
+
     }
 
     for (std::pair<u64, google_relation*> nxt: cur_trie->next)
@@ -192,14 +220,14 @@ void google_relation::as_all_to_all_copy_filter_buffer_helper(google_relation*& 
         u64 nxt_node = nxt.first;
         google_relation *nxt_trie = nxt.second;
         cur_path.push_back(nxt_node);
-        as_all_to_all_copy_buffer_helper(nxt_trie, cur_path, buffer, ra_id, buckets, output_sub_bucket_count, output_sub_bucket_rank, reorder_map, arity, join_column_count);
+        as_all_to_all_copy_filter_buffer_helper(nxt_trie, cur_path, buffer, ra_id, buckets, output_sub_bucket_count, output_sub_bucket_rank, reorder_map, arity, join_column_count, lambda);
         cur_path.pop_back();
     }
 }
 
 
 
-void google_relation::as_all_to_all_right_join_buffer(std::vector<u64> prefix, all_to_all_buffer& join_buffer, u64 *input0_buffer, int input0_buffer_width, int input1_buffer_width, int ra_id, u32 buckets, u32* output_sub_bucket_count, u32** output_sub_bucket_rank, std::vector<int> reorder_map, int projection_column_count, int join_column_count, google_relation& deduplicate, u32* local_join_duplicates, u32* local_join_inserts)
+void google_relation::as_all_to_all_right_join_buffer(std::vector<u64> prefix, all_to_all_buffer& join_buffer, u64 *input0_buffer, int input0_buffer_width, int input1_buffer_width, int ra_id, u32 buckets, u32* output_sub_bucket_count, u32** output_sub_bucket_rank, std::vector<int> reorder_map, int join_column_count, google_relation& deduplicate, u32* local_join_duplicates, u32* local_join_inserts, std::string name)
 {
 
     google_relation *m_trie = this;
@@ -209,16 +237,17 @@ void google_relation::as_all_to_all_right_join_buffer(std::vector<u64> prefix, a
         m_trie = m_trie->next[n];
     }
 
-    as_all_to_all_right_join_buffer_helper(m_trie, prefix, join_buffer, input0_buffer, input0_buffer_width, input0_buffer_width, ra_id, buckets, output_sub_bucket_count, output_sub_bucket_rank, reorder_map, projection_column_count, join_column_count, deduplicate, local_join_duplicates, local_join_inserts);
+    as_all_to_all_right_join_buffer_helper(m_trie, prefix, join_buffer, input0_buffer, input0_buffer_width, input1_buffer_width, ra_id, buckets, output_sub_bucket_count, output_sub_bucket_rank, reorder_map, join_column_count, deduplicate, local_join_duplicates, local_join_inserts, name);
 
 }
 
 
 
-void google_relation::as_all_to_all_right_join_buffer_helper(google_relation*& cur_trie, std::vector<u64> cur_path, all_to_all_buffer& join_buffer, u64 *input0_buffer, int input0_buffer_width, int input1_buffer_width, int ra_id, u32 buckets, u32* output_sub_bucket_count, u32** output_sub_bucket_rank, std::vector<int> reorder_map, int projection_column_count, int join_column_count, google_relation& deduplicate, u32* local_join_duplicates, u32* local_join_inserts)
+void google_relation::as_all_to_all_right_join_buffer_helper(google_relation*& cur_trie, std::vector<u64> cur_path, all_to_all_buffer& join_buffer, u64 *input0_buffer, int input0_buffer_width, int input1_buffer_width, int ra_id, u32 buckets, u32* output_sub_bucket_count, u32** output_sub_bucket_rank, std::vector<int> reorder_map, int join_column_count, google_relation& deduplicate, u32* local_join_duplicates, u32* local_join_inserts, std::string name)
 {   
     if(cur_trie->is_end)
     {
+#if 0
         u64 projected_path[join_buffer.width[ra_id]];
         for (int i = 0; i < input1_buffer_width; i++)
         {
@@ -233,22 +262,26 @@ void google_relation::as_all_to_all_right_join_buffer_helper(google_relation*& c
                 continue;
             projected_path[reorder_map[i]] = input0_buffer[i];
         }
+#endif
 
-#if 0
-        u64 reordered_cur_path[join_buffer.width[ra_id] + projection_column_count];
+        u64 projected_path[join_buffer.width[ra_id]];
+        u64 reordered_cur_path[input0_buffer_width + input1_buffer_width - join_column_count];
         for (int i = 0; i < input1_buffer_width; i++)
+        {
             reordered_cur_path[i] = cur_path[i];
+            //if (name == "test")
+            //    std::cout << "X " << i << " " << reordered_cur_path[i] << std::endl;
+        }
 
         for (int i = join_column_count; i < input0_buffer_width; i++)
-            reordered_cur_path[input1_buffer_width + (i - join_column_count)] = input0_buffer[i];
-
-        for (int i =0; i < input0_buffer_width + input1_buffer_width - join_column_count; i++)
         {
-            if (reorder_map[i] == -1)
-                continue;
-            projected_path[reorder_map[i]] = reordered_cur_path[i];
+            reordered_cur_path[input1_buffer_width + (i - join_column_count)] = input0_buffer[i];
+            //if (name == "test")
+            //    std::cout << "Y " << input1_buffer_width + (i - join_column_count) << " " << reordered_cur_path[i] << std::endl;
         }
-#endif
+
+        for (int i =0; i < join_buffer.width[ra_id]; i++)
+            projected_path[i] = reordered_cur_path[reorder_map[i]];
 
         if (deduplicate.insert_tuple_from_array(projected_path, join_buffer.width[ra_id]) == true)
         {
@@ -276,7 +309,7 @@ void google_relation::as_all_to_all_right_join_buffer_helper(google_relation*& c
         u64 nxt_node = nxt.first;
         google_relation *nxt_trie = nxt.second;
         cur_path.push_back(nxt_node);
-        as_all_to_all_right_join_buffer_helper(nxt_trie, cur_path, join_buffer, input0_buffer, input0_buffer_width, input1_buffer_width, ra_id, buckets, output_sub_bucket_count, output_sub_bucket_rank, reorder_map, projection_column_count, join_column_count, deduplicate, local_join_duplicates, local_join_inserts);
+        as_all_to_all_right_join_buffer_helper(nxt_trie, cur_path, join_buffer, input0_buffer, input0_buffer_width, input1_buffer_width, ra_id, buckets, output_sub_bucket_count, output_sub_bucket_rank, reorder_map, join_column_count, deduplicate, local_join_duplicates, local_join_inserts, name);
         cur_path.pop_back();
     }
 }
@@ -284,7 +317,7 @@ void google_relation::as_all_to_all_right_join_buffer_helper(google_relation*& c
 
 
 
-void google_relation::as_all_to_all_left_join_buffer(std::vector<u64> prefix, all_to_all_buffer& join_buffer, u64 *input0_buffer, int input0_buffer_width, int input1_buffer_width, int ra_id, u32 buckets, u32* output_sub_bucket_count, u32** output_sub_bucket_rank, std::vector<int> reorder_map, int projection_column_count, int join_column_count, google_relation& deduplicate, u32* local_join_duplicates, u32* local_join_inserts)
+void google_relation::as_all_to_all_left_join_buffer(std::vector<u64> prefix, all_to_all_buffer& join_buffer, u64 *input0_buffer, int input0_buffer_width, int input1_buffer_width, int ra_id, u32 buckets, u32* output_sub_bucket_count, u32** output_sub_bucket_rank, std::vector<int> reorder_map, int join_column_count, google_relation& deduplicate, u32* local_join_duplicates, u32* local_join_inserts)
 {
     google_relation *m_trie = this;
     for (u64 n : prefix)  {
@@ -293,16 +326,17 @@ void google_relation::as_all_to_all_left_join_buffer(std::vector<u64> prefix, al
         m_trie = m_trie->next[n];
     }
 
-    as_all_to_all_left_join_buffer_helper(m_trie, prefix, join_buffer, input0_buffer, input0_buffer_width, input1_buffer_width, ra_id, buckets, output_sub_bucket_count, output_sub_bucket_rank, reorder_map, projection_column_count, join_column_count, deduplicate, local_join_duplicates, local_join_inserts);
+    as_all_to_all_left_join_buffer_helper(m_trie, prefix, join_buffer, input0_buffer, input0_buffer_width, input1_buffer_width, ra_id, buckets, output_sub_bucket_count, output_sub_bucket_rank, reorder_map, join_column_count, deduplicate, local_join_duplicates, local_join_inserts);
 
 }
 
 
 
-void google_relation::as_all_to_all_left_join_buffer_helper(google_relation*& cur_trie, std::vector<u64> cur_path, all_to_all_buffer& join_buffer, u64 *input0_buffer, int input0_buffer_width, int input1_buffer_width, int ra_id, u32 buckets, u32* output_sub_bucket_count, u32** output_sub_bucket_rank, std::vector<int> reorder_map, int projection_column_count, int join_column_count, google_relation& deduplicate, u32* local_join_duplicates, u32* local_join_inserts)
+void google_relation::as_all_to_all_left_join_buffer_helper(google_relation*& cur_trie, std::vector<u64> cur_path, all_to_all_buffer& join_buffer, u64 *input0_buffer, int input0_buffer_width, int input1_buffer_width, int ra_id, u32 buckets, u32* output_sub_bucket_count, u32** output_sub_bucket_rank, std::vector<int> reorder_map, int join_column_count, google_relation& deduplicate, u32* local_join_duplicates, u32* local_join_inserts)
 {
     if(cur_trie->is_end)
     {
+#if 0
         u64 projected_path[join_buffer.width[ra_id]];
         for (int i = 0; i < input0_buffer_width; i++)
         {
@@ -317,22 +351,19 @@ void google_relation::as_all_to_all_left_join_buffer_helper(google_relation*& cu
                 continue;
             projected_path[reorder_map[input0_buffer_width + (i-join_column_count)]] = cur_path[i];
         }
+#endif
 
-#if 0
-        u64 reordered_cur_path[join_buffer.width[ra_id] + projection_column_count];
+        u64 projected_path[join_buffer.width[ra_id]];
+        u64 reordered_cur_path[input0_buffer_width + input1_buffer_width - join_column_count];
         for (int i = 0; i < input0_buffer_width; i++)
             reordered_cur_path[i] = input0_buffer[i];
 
         for (int i = join_column_count; i < input1_buffer_width; i++)
             reordered_cur_path[input0_buffer_width + (i - join_column_count)] = cur_path[i];
 
-        for (u32 i =0; i < cur_path.size() + input0_buffer_width - join_column_count; i++)
-        {
-            if (reorder_map[i] == -1)
-                continue;
-            projected_path[reorder_map[i]] = reordered_cur_path[i];
-        }
-#endif
+        for (int i =0; i < join_buffer.width[ra_id]; i++)
+            projected_path[i] = reordered_cur_path[reorder_map[i]];
+
 
         if (deduplicate.insert_tuple_from_array(projected_path, join_buffer.width[ra_id]) == true)
         {
@@ -359,7 +390,7 @@ void google_relation::as_all_to_all_left_join_buffer_helper(google_relation*& cu
         u64 nxt_node = nxt.first;
         google_relation *nxt_trie = nxt.second;
         cur_path.push_back(nxt_node);
-        as_all_to_all_left_join_buffer_helper(nxt_trie, cur_path, join_buffer, input0_buffer, input0_buffer_width, input1_buffer_width, ra_id, buckets, output_sub_bucket_count, output_sub_bucket_rank, reorder_map, projection_column_count, join_column_count, deduplicate, local_join_duplicates, local_join_inserts);
+        as_all_to_all_left_join_buffer_helper(nxt_trie, cur_path, join_buffer, input0_buffer, input0_buffer_width, input1_buffer_width, ra_id, buckets, output_sub_bucket_count, output_sub_bucket_rank, reorder_map, join_column_count, deduplicate, local_join_duplicates, local_join_inserts);
         cur_path.pop_back();
     }
 }

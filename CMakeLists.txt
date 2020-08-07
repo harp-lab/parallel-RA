@@ -23,8 +23,10 @@ set (tests_dir "${PROJECT_SOURCE_DIR}/tests")
 #file (GLOB source_files_tctp "${source_dir}/parallel_RA_inc.h" "${source_dir}/log/logger.cpp" "${source_dir}/hash/hash.h" "${source_dir}/buffer/vector_buffer.cpp" "${source_dir}/comm/comm.cpp" "${source_dir}/relation/google_btree_relation.cpp" "${source_dir}/comm/all_to_all_comm.cpp" "${source_dir}/IO/parallel_io.cpp" "${source_dir}/RA/parallel_join.cpp" "${source_dir}/comm/intra_bucket_comm.cpp" "${source_dir}/RA/parallel_copy.cpp" "${source_dir}/RA/parallel_copy_filter.cpp" "${source_dir}/RA/parallel_RA.h" "${source_dir}/RA/parallel_acopy.cpp" "${source_dir}/relation/balanced_hash_relation.cpp" "${source_dir}/relation/relation_load_balancer.cpp" "${source_dir}/RAM/RA_tasks.cpp" "${source_dir}/lie/lie.cpp" "${tests_dir}/transitive_closure_task_parallel.cpp")
 
 file (GLOB source_files_tc "${source_dir}/parallel_RA_inc.h" "${source_dir}/log/logger.cpp" "${source_dir}/hash/hash.h" "${source_dir}/buffer/vector_buffer.cpp" "${source_dir}/comm/comm.cpp" "${source_dir}/relation/google_btree_relation.cpp" "${source_dir}/comm/all_to_all_comm.cpp" "${source_dir}/IO/parallel_io.cpp" "${source_dir}/RA/parallel_join.cpp" "${source_dir}/comm/intra_bucket_comm.cpp" "${source_dir}/RA/parallel_copy.cpp" "${source_dir}/RA/parallel_copy_filter.cpp" "${source_dir}/RA/parallel_RA.h" "${source_dir}/RA/parallel_acopy.cpp" "${source_dir}/relation/balanced_hash_relation.cpp" "${source_dir}/relation/relation_load_balancer.cpp" "${source_dir}/RAM/RA_tasks.cpp" "${source_dir}/lie/lie.cpp" "${source_dir}/lie/lie_multi_task.cpp" "${tests_dir}/transitive_closure.cpp")
-
 file (GLOB source_files_fv "${source_dir}/parallel_RA_inc.h" "${source_dir}/log/logger.cpp" "${source_dir}/hash/hash.h" "${source_dir}/buffer/vector_buffer.cpp" "${source_dir}/comm/comm.cpp" "${source_dir}/relation/google_btree_relation.cpp" "${source_dir}/comm/all_to_all_comm.cpp" "${source_dir}/IO/parallel_io.cpp" "${source_dir}/RA/parallel_join.cpp" "${source_dir}/comm/intra_bucket_comm.cpp" "${source_dir}/RA/parallel_copy.cpp" "${source_dir}/RA/parallel_copy_filter.cpp" "${source_dir}/RA/parallel_RA.h" "${source_dir}/RA/parallel_acopy.cpp" "${source_dir}/relation/balanced_hash_relation.cpp" "${source_dir}/relation/relation_load_balancer.cpp" "${source_dir}/RAM/RA_tasks.cpp" "${source_dir}/lie/lie.cpp" "${source_dir}/lie/lie_multi_task.cpp" "${tests_dir}/freevars.cpp")
+file (GLOB source_files_kcfa "${source_dir}/parallel_RA_inc.h" "${source_dir}/log/logger.cpp" "${source_dir}/hash/hash.h" "${source_dir}/buffer/vector_buffer.cpp" "${source_dir}/comm/comm.cpp" "${source_dir}/relation/google_btree_relation.cpp" "${source_dir}/comm/all_to_all_comm.cpp" "${source_dir}/IO/parallel_io.cpp" "${source_dir}/RA/parallel_join.cpp" "${source_dir}/comm/intra_bucket_comm.cpp" "${source_dir}/RA/parallel_copy.cpp" "${source_dir}/RA/parallel_copy_filter.cpp" "${source_dir}/RA/parallel_RA.h" "${source_dir}/RA/parallel_acopy.cpp" "${source_dir}/relation/balanced_hash_relation.cpp" "${source_dir}/relation/relation_load_balancer.cpp" "${source_dir}/RAM/RA_tasks.cpp" "${source_dir}/lie/lie.cpp" "${source_dir}/lie/lie_multi_task.cpp" "${tests_dir}/kcfa-tiny.cpp")
+
+file (GLOB source_files_tiny "${source_dir}/parallel_RA_inc.h" "${source_dir}/log/logger.cpp" "${source_dir}/hash/hash.h" "${source_dir}/buffer/vector_buffer.cpp" "${source_dir}/comm/comm.cpp" "${source_dir}/relation/google_btree_relation.cpp" "${source_dir}/comm/all_to_all_comm.cpp" "${source_dir}/IO/parallel_io.cpp" "${source_dir}/RA/parallel_join.cpp" "${source_dir}/comm/intra_bucket_comm.cpp" "${source_dir}/RA/parallel_copy.cpp" "${source_dir}/RA/parallel_copy_filter.cpp" "${source_dir}/RA/parallel_RA.h" "${source_dir}/RA/parallel_acopy.cpp" "${source_dir}/relation/balanced_hash_relation.cpp" "${source_dir}/relation/relation_load_balancer.cpp" "${source_dir}/RAM/RA_tasks.cpp" "${source_dir}/lie/lie.cpp" "${source_dir}/lie/lie_multi_task.cpp" "${tests_dir}/tiny.cpp")
 
 
 
@@ -33,6 +35,9 @@ file (GLOB source_files_fv "${source_dir}/parallel_RA_inc.h" "${source_dir}/log/
 #INCLUDE_DIRECTORIES(${MPI_INCLUDE_PATH})
 #TARGET_LINK_LIBRARIES(TCtp ${MPI_LIBRARIES})
 
+add_executable(tiny ${source_files_tiny})
+INCLUDE_DIRECTORIES(${MPI_INCLUDE_PATH})
+TARGET_LINK_LIBRARIES(tiny ${MPI_LIBRARIES})
 
 add_executable(TC ${source_files_tc})
 INCLUDE_DIRECTORIES(${MPI_INCLUDE_PATH})
@@ -42,3 +47,8 @@ TARGET_LINK_LIBRARIES(TC ${MPI_LIBRARIES})
 add_executable(freevars ${source_files_fv})
 INCLUDE_DIRECTORIES(${MPI_INCLUDE_PATH})
 TARGET_LINK_LIBRARIES(freevars ${MPI_LIBRARIES})
+
+
+add_executable(kcfa ${source_files_kcfa})
+INCLUDE_DIRECTORIES(${MPI_INCLUDE_PATH})
+TARGET_LINK_LIBRARIES(kcfa ${MPI_LIBRARIES})

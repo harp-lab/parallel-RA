@@ -65,6 +65,8 @@ void comm_compaction_all_to_all(all_to_all_buffer compute_buffer, int **recv_buf
 {
     u32 RA_count = compute_buffer.ra_count;
     int nprocs = compute_buffer.nprocs;
+    int rank;
+    MPI_Comm_rank(comm, &rank);
 
     *recv_buffer_offset_size = new int[RA_count * nprocs];
     memset(*recv_buffer_offset_size, 0, RA_count * nprocs * sizeof(int));
@@ -84,7 +86,9 @@ void comm_compaction_all_to_all(all_to_all_buffer compute_buffer, int **recv_buf
     u32 boffset = 0;
     for(int i = 0; i < nprocs; i++)
     {
-        if (i > 1)
+        recv_counts[i] = 0;
+
+        if (i >= 1)
             send_disp[i] = send_disp[i - 1] + compute_buffer.cumulative_tuple_process_map[i - 1];
 
         for (u32 r = 0; r < RA_count; r++)
@@ -96,10 +100,21 @@ void comm_compaction_all_to_all(all_to_all_buffer compute_buffer, int **recv_buf
             recv_counts[i] = recv_counts[i] + (*recv_buffer_offset_size)[i*RA_count + r];
         }
 
-        if (i > 1)
+        if (i >= 1)
             recv_displacements[i] = recv_displacements[i - 1] + recv_counts[i - 1];
         outer_hash_buffer_size = outer_hash_buffer_size + recv_counts[i];
+
+        //if (rank == 7)
+        //    std::cout << "Rank " << rank
+        //              << " TEST " << i << " " << compute_buffer.cumulative_tuple_process_map[i]
+        //              << " recv_counts " << recv_counts[i]
+        //              << std::endl;
     }
+    //std::cout << "Rank " << rank
+    //          << "L " << compute_buffer.local_compute_output_size_total
+    //          << "R " << send_disp[nprocs - 1] + compute_buffer.cumulative_tuple_process_map[nprocs - 1]
+    //          << std::endl;
+
     assert(compute_buffer.local_compute_output_size_total == send_disp[nprocs - 1] + compute_buffer.cumulative_tuple_process_map[nprocs - 1]);
 
     *recv_buffer = new u64[outer_hash_buffer_size];

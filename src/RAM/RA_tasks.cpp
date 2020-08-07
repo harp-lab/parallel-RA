@@ -8,6 +8,14 @@
 #include "../parallel_RA_inc.h"
 
 
+RAM::RAM (bool ic, int r_id)
+{
+    if (ic==false)
+        iteration_count=1;
+    ram_id = r_id;
+}
+
+
 RAM::RAM (bool ic)
 {
     if (ic==false)
@@ -40,13 +48,17 @@ void RAM::set_comm(mpi_comm& mcomm)
 
 void RAM::print_all_relation()
 {
-    u32 rel_count=0;
     for (std::unordered_map<relation*, bool>::iterator it = ram_relations.begin() ; it != ram_relations.end(); ++it)
     {
-        std::cout << "Relation " << rel_count++ << std::endl;
-
         relation* current_r = it->first;
-        current_r->print();
+
+        //if (current_r->get_debug_id() == "rel_inter_body27_3_1_2_3" ||
+        //        current_r->get_debug_id() == "rel_args_1_0" ||
+        //        current_r->get_debug_id() == "rel_inter_body25_3_2")
+        //{
+        //    std::cout << ram_id << " Relation " << current_r->get_debug_id() << std::endl;
+            current_r->print();
+        //}
 
         std::cout << std::endl;
     }
@@ -122,6 +134,8 @@ u64 RAM::intra_bucket_comm_execute()
     u32 RA_count = RA_list.size();
 
     intra_bucket_buf_output_size = new u64[RA_count];
+    memset(intra_bucket_buf_output_size, 0, RA_count * sizeof(u64));
+
     intra_bucket_buf_output = new u64*[RA_count];
 
     for (std::vector<parallel_RA*>::iterator it = RA_list.begin() ; it != RA_list.end(); ++it)
@@ -159,7 +173,7 @@ u64 RAM::intra_bucket_comm_execute()
             {
                 /// QWERTY
                 /// Pick the relation with smaller size to be transmitted for intra-bucket communication
-                if (input0->get_delta_element_count() <= input1->get_delta_element_count())
+                if (input0->get_global_delta_element_count() <= input1->get_global_delta_element_count())
                     intra_bucket_comm(get_bucket_count(),
                                       input0->get_delta(),
                                       input0->get_distinct_sub_bucket_rank_count(), input0->get_distinct_sub_bucket_rank(), input0->get_bucket_map(),
@@ -180,7 +194,8 @@ u64 RAM::intra_bucket_comm_execute()
             else if (current_ra->get_join_input0_graph_type() == DELTA && current_ra->get_join_input1_graph_type() == FULL)
             {
                 /// Pick the relation with smaller size to be transmitted for intra-bucket communication
-                if (input0->get_delta_element_count() <= input1->get_full_element_count())
+                std::cout << "TEST " << input0->get_global_delta_element_count() << " " << input1->get_global_full_element_count() << std::endl;
+                if (input0->get_global_delta_element_count() <= input1->get_global_full_element_count())
                     intra_bucket_comm(get_bucket_count(),
                                       input0->get_delta(),
                                       input0->get_distinct_sub_bucket_rank_count(), input0->get_distinct_sub_bucket_rank(), input0->get_bucket_map(),
@@ -202,7 +217,7 @@ u64 RAM::intra_bucket_comm_execute()
             else if (current_ra->get_join_input0_graph_type() == FULL && current_ra->get_join_input1_graph_type() == DELTA)
             {
                 /// Pick the relation with smaller size to be transmitted for intra-bucket communication
-                if (input0->get_full_element_count() <= input1->get_delta_element_count())
+                if (input0->get_global_full_element_count() <= input1->get_global_delta_element_count())
                     intra_bucket_comm(get_bucket_count(),
                                       input0->get_full(),
                                       input0->get_distinct_sub_bucket_rank_count(), input0->get_distinct_sub_bucket_rank(), input0->get_bucket_map(),
@@ -212,6 +227,27 @@ u64 RAM::intra_bucket_comm_execute()
                 else
                     intra_bucket_comm(get_bucket_count(),
                                       input1->get_delta(),
+                                      input1->get_distinct_sub_bucket_rank_count(), input1->get_distinct_sub_bucket_rank(), input1->get_bucket_map(),
+                                      input0->get_distinct_sub_bucket_rank_count(), input0->get_distinct_sub_bucket_rank(), input0->get_bucket_map(),
+                                      &intra_bucket_buf_output_size[counter], &intra_bucket_buf_output[counter],
+                                      mcomm.get_local_comm());
+                total_data_moved = total_data_moved + intra_bucket_buf_output_size[counter];
+            }
+
+            /// Join between full and full
+            else if (current_ra->get_join_input0_graph_type() == FULL && current_ra->get_join_input1_graph_type() == FULL)
+            {
+                /// Pick the relation with smaller size to be transmitted for intra-bucket communication
+                if (input0->get_global_full_element_count() <= input1->get_global_full_element_count())
+                    intra_bucket_comm(get_bucket_count(),
+                                      input0->get_full(),
+                                      input0->get_distinct_sub_bucket_rank_count(), input0->get_distinct_sub_bucket_rank(), input0->get_bucket_map(),
+                                      input1->get_distinct_sub_bucket_rank_count(), input1->get_distinct_sub_bucket_rank(), input1->get_bucket_map(),
+                                      &intra_bucket_buf_output_size[counter], &intra_bucket_buf_output[counter],
+                                      mcomm.get_local_comm());
+                else
+                    intra_bucket_comm(get_bucket_count(),
+                                      input1->get_full(),
                                       input1->get_distinct_sub_bucket_rank_count(), input1->get_distinct_sub_bucket_rank(), input1->get_bucket_map(),
                                       input0->get_distinct_sub_bucket_rank_count(), input0->get_distinct_sub_bucket_rank(), input0->get_bucket_map(),
                                       &intra_bucket_buf_output_size[counter], &intra_bucket_buf_output[counter],
@@ -323,22 +359,22 @@ u32 RAM::local_compute()
             if (current_ra->get_copy_filter_input0_graph_type() == DELTA)
             {
                 current_ra->local_copy_filter(get_bucket_count(),
-                                       input_relation->get_delta(), input_relation->get_bucket_map(),
-                                       output_relation,
-                                       reorder_map_array,
-                                       input_relation->get_arity(),
-                                       input_relation->get_join_column_count(),
-                                       compute_buffer, counter);
+                                              input_relation->get_delta(), input_relation->get_bucket_map(),
+                                              output_relation,
+                                              reorder_map_array,
+                                              input_relation->get_arity(),
+                                              input_relation->get_join_column_count(),
+                                              compute_buffer, counter);
             }
             if (current_ra->get_copy_filter_input0_graph_type() == FULL)
             {
                 current_ra->local_copy_filter(get_bucket_count(),
-                                       input_relation->get_full(), input_relation->get_bucket_map(),
-                                       output_relation,
-                                       reorder_map_array,
-                                       input_relation->get_arity(),
-                                       input_relation->get_join_column_count(),
-                                       compute_buffer, counter);
+                                              input_relation->get_full(), input_relation->get_bucket_map(),
+                                              output_relation,
+                                              reorder_map_array,
+                                              input_relation->get_arity(),
+                                              input_relation->get_join_column_count(),
+                                              compute_buffer, counter);
             }
         }
 
@@ -382,11 +418,13 @@ u32 RAM::local_compute()
             current_ra->get_join_projection_index(&reorder_map_array);
             relation* input0 = current_ra->get_join_input0();
             relation* input1 = current_ra->get_join_input1();
+            relation* output = current_ra->get_join_output();
+            assert(output->get_arity() == reorder_map_array.size());
             int join_column_count = input0->get_join_column_count();
 
             if (current_ra->get_join_input0_graph_type() == DELTA && current_ra->get_join_input1_graph_type() == DELTA)
             {
-                if (input0->get_delta_element_count() <= input1->get_delta_element_count())
+                if (input0->get_global_delta_element_count() <= input1->get_global_delta_element_count())
                     current_ra->local_join(LEFT,
                                            get_bucket_count(),
                                            intra_bucket_buf_output_size[counter], input0->get_arity()+1, intra_bucket_buf_output[counter],
@@ -415,7 +453,7 @@ u32 RAM::local_compute()
             }
             else if (current_ra->get_join_input0_graph_type() == DELTA && current_ra->get_join_input1_graph_type() == FULL)
             {
-                if (input0->get_delta_element_count() <= input1->get_full_element_count())
+                if (input0->get_global_delta_element_count() <= input1->get_global_full_element_count())
                     current_ra->local_join(LEFT,
                                            get_bucket_count(),
                                            intra_bucket_buf_output_size[counter], input0->get_arity()+1, intra_bucket_buf_output[counter],
@@ -445,7 +483,7 @@ u32 RAM::local_compute()
             }
             else if (current_ra->get_join_input0_graph_type() == FULL && current_ra->get_join_input1_graph_type() == DELTA)
             {
-                if (input0->get_full_element_count() <= input1->get_delta_element_count())
+                if (input0->get_global_full_element_count() <= input1->get_global_delta_element_count())
                     current_ra->local_join(LEFT,
                                            get_bucket_count(),
                                            intra_bucket_buf_output_size[counter], input0->get_arity()+1, intra_bucket_buf_output[counter],
@@ -471,6 +509,35 @@ u32 RAM::local_compute()
                                            &join_tuples);
                 total_join_tuples = total_join_tuples + join_tuples;
             }
+            else if (current_ra->get_join_input0_graph_type() == FULL && current_ra->get_join_input1_graph_type() == FULL)
+            {
+                if (input0->get_global_full_element_count() <= input1->get_global_full_element_count())
+                    current_ra->local_join(LEFT,
+                                           get_bucket_count(),
+                                           intra_bucket_buf_output_size[counter], input0->get_arity()+1, intra_bucket_buf_output[counter],
+                                           input1->get_full(), input1->get_full_element_count(), input1->get_arity()+1,
+                                           reorder_map_array,
+                                           output_relation,
+                                           compute_buffer,
+                                           counter,
+                                           join_column_count,
+                                           &join_tuples_duplicates,
+                                           &join_tuples);
+                else
+                    current_ra->local_join(RIGHT,
+                                           get_bucket_count(),
+                                           intra_bucket_buf_output_size[counter], input1->get_arity()+1, intra_bucket_buf_output[counter],
+                                           input0->get_full(), input0->get_full_element_count(), input0->get_arity()+1,
+                                           reorder_map_array,
+                                           output_relation,
+                                           compute_buffer,
+                                           counter,
+                                           join_column_count,
+                                           &join_tuples_duplicates,
+                                           &join_tuples);
+                total_join_tuples = total_join_tuples + join_tuples;
+            }
+
         }
         counter++;
     }
@@ -480,7 +547,10 @@ u32 RAM::local_compute()
     {
         parallel_RA* current_ra = *it;
         if (current_ra->get_RA_type() == JOIN)
-            delete[] intra_bucket_buf_output[counter];
+        {
+            if (intra_bucket_buf_output_size[counter] != 0)
+                delete[] intra_bucket_buf_output[counter];
+        }
         counter++;
     }
 
@@ -545,10 +615,9 @@ void RAM::local_insert_in_newt(std::unordered_map<u64, u64>& intern_map)
 
             for (u32 x = starting; x < starting + elements_to_read; x = x + width)
             {
-                /// QWERTY: check against newt
                 if (output->find_in_full(cumulative_all_to_all_buffer + x, width) == false &&
-                    output->find_in_delta(cumulative_all_to_all_buffer + x, width) == false &&
-                    output->find_in_newt(cumulative_all_to_all_buffer + x, width) == false)
+                        output->find_in_delta(cumulative_all_to_all_buffer + x, width) == false &&
+                        output->find_in_newt(cumulative_all_to_all_buffer + x, width) == false)
                 {
                     u64 tuple[width + 1];
                     for (u32 i = 0; i < width; i++)
@@ -597,6 +666,9 @@ void RAM::local_insert_in_newt(std::unordered_map<u64, u64>& intern_map)
 
     delete[] cumulative_all_to_all_recv_process_size_array;
     delete[] cumulative_all_to_all_buffer;
+
+    /// 1000000100000000000000000001111111111111111111111111110
+    /// 1000000100000000010000001111111111111111111111111111110
 }
 
 
@@ -608,6 +680,9 @@ void RAM::local_insert_in_full()
         relation* current_r = it->first;
         current_r->insert_delta_in_full();
         current_r->local_insert_in_delta();
+
+        //if (current_r->get_debug_id() == 11)
+        //    current_r->print();
     }
     return;
 }
@@ -639,37 +714,61 @@ void RAM::execute_in_batches(int batch_size, std::vector<u32>& history, std::uno
 
     while (batch_size != 0)
     {
+        if (mcomm.get_local_rank() == 0)
+            std::cout << "Init" << std::endl;
+
         double intra_start = MPI_Wtime();
         intra_bucket_comm_execute();
         double intra_end = MPI_Wtime();
+
+        if (mcomm.get_local_rank() == 0)
+            std::cout << "Intrabucket comm" << std::endl;
 
         double allocate_buffers_start = MPI_Wtime();
         allocate_compute_buffers();
         double allocate_buffers_end = MPI_Wtime();
 
+        if (mcomm.get_local_rank() == 0)
+            std::cout << "Allocate compute buffers" << std::endl;
+
         double compute_start = MPI_Wtime();
         local_compute();
         double compute_end = MPI_Wtime();
+
+        if (mcomm.get_local_rank() == 0)
+            std::cout << "Local compute" << std::endl;
 
         double all_to_all_start = MPI_Wtime();
         all_to_all();
         double all_to_all_end = MPI_Wtime();
 
+        if (mcomm.get_local_rank() == 0)
+            std::cout << "All to all" << std::endl;
+
         double free_buffers_start = MPI_Wtime();
         free_compute_buffers();
         double free_buffers_end = MPI_Wtime();
+
+        if (mcomm.get_local_rank() == 0)
+            std::cout << "Free compute buffers" << std::endl;
 
         double insert_in_newt_start = MPI_Wtime();
         local_insert_in_newt(intern_map);
         double insert_in_newt_end = MPI_Wtime();
 
+        if (mcomm.get_local_rank() == 0)
+            std::cout << "Local insert in newt" << std::endl;
+
         double insert_in_full_start = MPI_Wtime();
         local_insert_in_full();
         double insert_in_full_end = MPI_Wtime();
 
+        if (mcomm.get_local_rank() == 0)
+            std::cout << "Local insert in full" << std::endl;
+
         running_time = running_time + (intra_end - intra_start) + (compute_end - compute_start) + (all_to_all_end - all_to_all_start) + (insert_in_newt_end - insert_in_newt_start) + (insert_in_full_end - insert_in_full_start);
 
-
+#if 1
         if (mcomm.get_rank() == 0)
             std::cout << "INNER [" << inner_loop << "] "
                       << " Intra " << (intra_end - intra_start)
@@ -683,12 +782,13 @@ void RAM::execute_in_batches(int batch_size, std::vector<u32>& history, std::uno
                       << " [ "
                       << running_time
                       << " ]" << std::endl;
+#endif
 
         batch_size--;
         inner_loop++;
 
-         if (iteration_count == 1)
-             break;
+        if (iteration_count == 1)
+            break;
     }
 
     check_for_fixed_point(history);

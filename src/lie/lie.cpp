@@ -81,6 +81,17 @@ void LIE::add_scc_dependance (RAM* src_task, RAM* destination_task)
 }
 
 
+void LIE::print_all_relation()
+{
+    u64 total_facts=0;
+    for (std::unordered_set<relation*>::iterator it = lie_relations.begin() ; it != lie_relations.end(); ++it)
+    {
+        std::cout << (*it)->get_debug_id() << ": {" << (*it)->get_arity() << "}. (" << (*it)->get_full_element_count() << " total facts)" << std::endl;
+        total_facts = total_facts + (*it)->get_full_element_count();
+    }
+    std::cout << "Total facts across all relations " << total_facts << std::endl;
+}
+
 
 bool LIE::execute ()
 {
@@ -119,18 +130,41 @@ bool LIE::execute ()
 
         /// if case is for rules (acopy and copy) that requires only one iteration
         /// else case is for join rules
+
+        int counter = 0;
+        //std::cout << "-------------------B------------------" << std::endl;
+        current_task->print_all_relation();
         if (current_task->get_iteration_count() == 1)
+        {
+            if (mcomm.get_local_rank() == 0)
+                std::cout << "-------------------" << current_task->get_id() << " ITERATION " << counter << " ------------------" << std::endl;
             current_task->execute_in_batches(batch_size, history, intern_map);
+
+        }
         else
         {
             u64 delta_in_scc = 0;
             do
             {
+                if (mcomm.get_local_rank() == 0)
+                    std::cout << "-------------------" << current_task->get_id() << " ITERATION " << counter << " ------------------" << std::endl;
+
                 current_task->execute_in_batches(batch_size, history, intern_map);
                 delta_in_scc = history[history.size()-2];
+                counter++;
+
+
+                //if (current_task->get_id() == 1)
+                //    current_task->print_all_relation();
             }
             while (delta_in_scc != 0);
         }
+
+        current_task->local_insert_in_full();
+        //std::cout << "Number of iterations in scc " << current_task->get_id() << " " << counter << std::endl;
+
+        //std::cout << "-------------------A------------------" << std::endl;
+        //current_task->print_all_relation();
 
         /// marks executable_task as finished
         update_task_graph(executable_task);

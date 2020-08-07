@@ -13,6 +13,8 @@ class parallel_join: public parallel_RA {
 
 private:
 
+    std::string name;
+
     relation* join_input0_table;
     int join_input0_graph_type;
 
@@ -32,6 +34,11 @@ public:
 
     parallel_join(relation* output, relation* G, int G_type, relation* T, int T_type, std::vector<int> projection_reorder_index_array)
         : join_input0_table(G), join_input0_graph_type(G_type), join_input1_table(T), join_input1_graph_type(T_type), join_output_table(output), projection_reorder_index_array(projection_reorder_index_array)  {
+        RA_type = JOIN;
+    }
+
+    parallel_join(std::string lname, relation* output, relation* G, int G_type, relation* T, int T_type, std::vector<int> projection_reorder_index_array)
+        : name(lname), join_input0_table(G), join_input0_graph_type(G_type), join_input1_table(T), join_input1_graph_type(T_type), join_output_table(output), projection_reorder_index_array(projection_reorder_index_array)  {
         RA_type = JOIN;
     }
 

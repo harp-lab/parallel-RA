@@ -37,7 +37,7 @@ void parallel_io::parallel_read_input_relation_from_file_to_local_buffer(const c
     MPI_Bcast(&global_row_count, 1, MPI_INT, 0, lcomm);
     MPI_Bcast(&col_count, 1, MPI_INT, 0, lcomm);
 
-    std::cout << "Filename " << meta_data_filename << " Row Count " << global_row_count << " Column count " << col_count << std::endl;
+    //std::cout << "Filename " << meta_data_filename << " Row Count " << global_row_count << " Column count " << col_count << std::endl;
 
     /* Read all data in parallel */
     u32 read_offset;
@@ -54,12 +54,15 @@ void parallel_io::parallel_read_input_relation_from_file_to_local_buffer(const c
     else
         entry_count = (u32) ceil((float)global_row_count / nprocs);
 
+    //std::cout << "Filename " << file_name << " Entry Count " << entry_count << " Column Count " << col_count << std::endl;
+
     if (entry_count == 0)
         return;
 
     char data_filename[1024];
     sprintf(data_filename, "%s", file_name);
     int fp = open(data_filename, O_RDONLY);
+
 
     input_buffer = new u64[entry_count * col_count];
     u32 rb_size = pread(fp, input_buffer, entry_count * col_count * sizeof(u64), read_offset * col_count * sizeof(u64));
@@ -69,6 +72,16 @@ void parallel_io::parallel_read_input_relation_from_file_to_local_buffer(const c
         MPI_Abort(lcomm, -1);
     }
     close(fp);
+
+    /*
+    for (u32 u = 0; u < entry_count * col_count; u = u+col_count)
+    {
+        for (u32 v = 0; v < col_count; v++)
+            std::cout << input_buffer[u+v] << " " ;
+        std::cout << std::endl;
+    }
+    */
+
 
     return;
 }
@@ -105,9 +118,9 @@ void parallel_io::buffer_data_to_hash_buffer_col(u32 arity, u32 join_column_coun
         for (u32 j = 0; j < col_count; j++)
         {
             val[j] = input_buffer[i + j];
-            std::cout << "V " << val[j] << " ";
+            //std::cout << "V " << val[j] << " ";
         }
-        std::cout << std::endl;
+        //std::cout << std::endl;
 
 
         process_data_vector[index].vector_buffer_append((unsigned char *) val, sizeof(u64)*(col_count));

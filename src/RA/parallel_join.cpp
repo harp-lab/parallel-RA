@@ -19,15 +19,14 @@ void parallel_join::local_join(int join_order,
                                u32* local_join_duplicates,
                                u32* local_join_inserts)
 {
-    int projection_column_count = 0;
-    for (int x : reorder_map_array)
-        if (x == -1)
-            projection_column_count++;
-    join_buffer.width[counter] = input0_buffer_width + input1_buffer_width - join_column_count - projection_column_count;
+    join_buffer.width[counter] = reorder_map_array.size();//input0_buffer_width + input1_buffer_width - join_column_count - projection_column_count;
+
 
     google_relation deduplicate;
     u32* output_sub_bucket_count = output->get_sub_bucket_per_bucket_count();
     u32** output_sub_bucket_rank = output->get_sub_bucket_rank();
+
+
 
     if (join_order == LEFT)
     {
@@ -39,7 +38,10 @@ void parallel_join::local_join(int join_order,
 
             u64 bucket_id = tuple_hash(input0_buffer + k1, join_column_count) % buckets;
 
-            input1[bucket_id].as_all_to_all_left_join_buffer(prefix, join_buffer, input0_buffer + k1, input0_buffer_width, input1_buffer_width, counter, buckets, output_sub_bucket_count, output_sub_bucket_rank, reorder_map_array, projection_column_count, join_column_count, deduplicate, local_join_duplicates, local_join_inserts);
+            //if (name == "test")
+            //    std::cout << "LEFT Testing Join " << prefix[0] <<  std::endl;
+
+            input1[bucket_id].as_all_to_all_left_join_buffer(prefix, join_buffer, input0_buffer + k1, input0_buffer_width, input1_buffer_width, counter, buckets, output_sub_bucket_count, output_sub_bucket_rank, reorder_map_array, join_column_count, deduplicate, local_join_duplicates, local_join_inserts);
         }
     }
 
@@ -53,7 +55,19 @@ void parallel_join::local_join(int join_order,
 
             u64 bucket_id = tuple_hash(input0_buffer + k1, join_column_count) % buckets;
 
-            input1[bucket_id].as_all_to_all_right_join_buffer(prefix, join_buffer, input0_buffer + k1, input0_buffer_width, input1_buffer_width, counter, buckets, output_sub_bucket_count, output_sub_bucket_rank, reorder_map_array, projection_column_count, join_column_count, deduplicate, local_join_duplicates, local_join_inserts);
+#if 0
+            if (name == "test")
+                std::cout << "RIGHT Testing Join Rel 1 length "
+                          << input0_buffer_width << ", Rel 2 length "
+                          << input1_buffer_width << ", VAL "
+                          << input0_buffer[k1] << ", "
+                          << input0_buffer[k1 + 1] << ", "
+                          << input0_buffer[k1 + 2] << ", "
+                          << input0_buffer[k1 + 3]
+                          <<  std::endl;
+#endif
+
+            input1[bucket_id].as_all_to_all_right_join_buffer(prefix, join_buffer, input0_buffer + k1, input0_buffer_width, input1_buffer_width, counter, buckets, output_sub_bucket_count, output_sub_bucket_rank, reorder_map_array, join_column_count, deduplicate, local_join_duplicates, local_join_inserts, "test");
         }
     }
 

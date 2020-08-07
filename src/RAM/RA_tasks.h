@@ -15,6 +15,7 @@ class RAM
 
 private:
 
+    int ram_id;
     bool init_status=false;
 
     std::string name;                                       /// Name of this task (for debugging only)
@@ -42,6 +43,7 @@ private:
 public:
 
     RAM()   {}
+    RAM (bool ic, int ram_id);
     RAM (bool ic);
     RAM (bool ic, std::string name);
 
@@ -52,6 +54,10 @@ public:
 
     /// For debugging purpose
     std::string get_name() {return name;}
+
+
+    /// For debugging purpose
+    int get_id() {return ram_id;}
 
 
     /// add relations pertaining to this SCC

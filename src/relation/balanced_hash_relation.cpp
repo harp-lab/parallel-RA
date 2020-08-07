@@ -7,6 +7,22 @@
 
 #include "../parallel_RA_inc.h"
 
+u32 relation::get_global_delta_element_count()
+{
+    u32 global_delta_element_count;
+    MPI_Allreduce(&delta_element_count, &global_delta_element_count, 1, MPI_INT, MPI_SUM, mcomm.get_local_comm());
+    return global_delta_element_count;
+}
+
+
+u32 relation::get_global_full_element_count()
+{
+    u32 global_full_element_count;
+    MPI_Allreduce(&full_element_count, &global_full_element_count, 1, MPI_INT, MPI_SUM, mcomm.get_local_comm());
+    return global_full_element_count;
+}
+
+
 
 
 void relation::print()
@@ -22,9 +38,11 @@ void relation::print()
             std::vector<u64> prefix = {};
             full[i].as_vector_buffer_recursive(&(vb_full[i]), prefix);
 
-            std::cout << vb_full[i].size/sizeof(u64) << " arity " << arity + 1 << std::endl;
+            std::cout << vb_full[i].size/(sizeof(u64) * (arity + 1)) << " arity " << arity + 1 << std::endl;
             for (u32 j=0; j < vb_full[i].size/sizeof(u64); j = j + arity+1)
             {
+                if (j % (arity+1) == 0)
+                    std::cout << "F [" << j/(arity+1) << "] ";
                 for (u32 k = 0; k < arity+1; k++)
                 {
                     u64 temp;
@@ -50,6 +68,9 @@ void relation::print()
             std::cout << vb_delta[i].size/sizeof(u64) << " arity " << arity+1 << std::endl;
             for (u32 j=0; j < vb_delta[i].size/sizeof(u64); j = j + arity+1)
             {
+                if (j % (arity+1) == 0)
+                    std::cout << "D ";
+
                 for (u32 k = 0; k < arity+1; k++)
                 {
                     u64 temp;
@@ -75,6 +96,9 @@ void relation::print()
             std::cout << vb_newt[i].size/sizeof(u64) << " arity " << arity+1 << std::endl;
             for (u32 j=0; j < vb_newt[i].size/sizeof(u64); j = j + arity+1)
             {
+                if (j % (arity+1) == 0)
+                    std::cout << "N ";
+
                 for (u32 k = 0; k < arity+1; k++)
                 {
                     u64 temp;

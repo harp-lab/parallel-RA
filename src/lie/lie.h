@@ -27,6 +27,7 @@ private:
 
 public:
 
+    void print_all_relation();
 
     /// Sets the communicator object
     void set_comm(mpi_comm comm)   { mcomm = comm;  }

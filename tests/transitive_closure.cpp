@@ -7,44 +7,47 @@ int main(int argc, char **argv)
     mcomm.create(argc, argv);    
 
 
-    //relation* rel_path_2_1_2 = new relation(2, 2, 257, "D_path_2_1_2", FULL);
-    //relation* rel_edge_2_1_2 = new relation(2, 2, 256, "D_edge_2_1_2", FULL);
-    //relation* rel_path_2_1 = new relation(1, 2, 257, "D_path_2_1", FULL);
-    //relation* rel_edge_2_2 = new relation(1, 2, 256, "D_edge_2_2", FULL);
+    relation* rel_path_2_1_2 = new relation(2, 2, 257, "rel_path_2_1_2", "/var/tmp/g13236/path_2_1_2", FULL);
+    relation* rel_edge_2_1_2 = new relation(2, 2, 256, "rel_edge_2_1_2", "/var/tmp/g13236/edge_2_1_2", FULL);
+    relation* rel_path_2_1 = new relation(1, 2, 257, "rel_path_2_1", "/var/tmp/g13236/path_2_1", FULL);
+    relation* rel_edge_2_2 = new relation(1, 2, 256, "rel_edge_2_2", "/var/tmp/g13236/edge_2_2", FULL);
 
-    relation* rel_path_2_1_2 = new relation(2, 2, 257, "/var/tmp/g5032/path_2_1_2", FULL);
-    relation* rel_edge_2_1_2 = new relation(2, 2, 256, "/var/tmp/g5032/edge_2_1_2", FULL);
-    relation* rel_path_2_1 = new relation(1, 2, 257, "/var/tmp/g5032/path_2_1", FULL);
-    relation* rel_edge_2_2 = new relation(1, 2, 256, "/var/tmp/g5032/edge_2_2", FULL);
+    RAM* scc13237 = new RAM(true, 1);
+    scc13237->add_relation(rel_edge_2_2, false);
+    scc13237->add_relation(rel_path_2_1, true);
+    scc13237->add_relation(rel_path_2_1_2, true);
+    scc13237->add_rule(new parallel_acopy(rel_path_2_1, rel_path_2_1_2, DELTA, {0, 2, 1}));
+    scc13237->add_rule(new parallel_join(rel_path_2_1_2, rel_path_2_1, DELTA, rel_edge_2_2, FULL, {4, 2}));
 
+    RAM* scc13238 = new RAM(false, 3);
+    scc13238->add_relation(rel_edge_2_2, true);
+    scc13238->add_relation(rel_edge_2_1_2, true);
+    scc13238->add_rule(new parallel_acopy(rel_edge_2_2, rel_edge_2_1_2, DELTA, {1, 2, 0}));
 
-    RAM* scc5026 = new RAM(false);
-    scc5026->add_relation(rel_edge_2_1_2, false);
-    scc5026->add_relation(rel_path_2_1_2, true);
-    scc5026->add_rule(new parallel_copy(rel_path_2_1_2, rel_edge_2_1_2, FULL, {0, 1, -1}));
+    RAM* scc13239 = new RAM(false, 2);
+    scc13239->add_relation(rel_edge_2_1_2, false);
+    scc13239->add_relation(rel_path_2_1_2, true);
+    scc13239->add_rule(new parallel_copy(rel_path_2_1_2, rel_edge_2_1_2, FULL, {0, 1}));
 
-    RAM* scc5027 = new RAM(true);
-    scc5027->add_relation(rel_edge_2_2, false);
-    scc5027->add_relation(rel_path_2_1, true);
-    scc5027->add_relation(rel_path_2_1_2, true);
-    scc5027->add_rule(new parallel_acopy(rel_path_2_1, rel_path_2_1_2, DELTA, {0, 2, 1}));
-    scc5027->add_rule(new parallel_join(rel_path_2_1_2, rel_path_2_1, DELTA, rel_edge_2_2, FULL, {-1, -1, 1, -1, 0}));
+    // body (rel_edge_2_1_2)
+    // 0    1   2 (source)
+    // 1    2   0 (nominal)
 
-    RAM* scc5028 = new RAM(false);
-    scc5028->add_relation(rel_edge_2_2, true);
-    scc5028->add_relation(rel_edge_2_1_2, true);
-    scc5028->add_rule(new parallel_acopy(rel_edge_2_2, rel_edge_2_1_2, DELTA, {2, 0, 1}));
+    // head (rel_edge_2_2)
+    // 0    1   2 (destination)
+    // 2    0   1 (nominal)
 
     LIE* lie = new LIE();
     lie->add_relation(rel_path_2_1_2);
     lie->add_relation(rel_edge_2_1_2);
     lie->add_relation(rel_path_2_1);
     lie->add_relation(rel_edge_2_2);
-    lie->add_scc(scc5026);
-    lie->add_scc(scc5027);
-    lie->add_scc(scc5028);
-    lie->add_scc_dependance(scc5026, scc5027);
-    lie->add_scc_dependance(scc5028, scc5027);
+    lie->add_scc(scc13237);
+    lie->add_scc(scc13238);
+    lie->add_scc(scc13239);
+    lie->add_scc_dependance(scc13238, scc13237);
+    lie->add_scc_dependance(scc13239, scc13237);
+
 
 
     lie->set_comm(mcomm);
@@ -53,11 +56,10 @@ int main(int argc, char **argv)
 
     lie->execute();
 
-    rel_path_2_1->print();
+    //rel_edge_2_1_2->print();
+    //rel_path_2_1_2->print();
+    //rel_edge_2_2->print();
 
-    delete scc5026;
-    delete scc5027;
-    delete scc5028;
 
     mcomm.destroy();
     return 0;

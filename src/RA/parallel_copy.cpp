@@ -13,20 +13,14 @@ void parallel_copy::local_copy(u32 buckets, google_relation* input, u32* input_b
     u32* output_sub_bucket_count = output->get_sub_bucket_per_bucket_count();
     u32** output_sub_bucket_rank = output->get_sub_bucket_rank();
 
-    int projection_column_count=0;
-    for (int x : reorder_map)
-        if (x == -1)
-            projection_column_count++;
-
-    //copy_buffer.width[ra_counter] = (output->get_arity() + 1) - projection_column_count;
-    copy_buffer.width[ra_counter] = reorder_map.size() - projection_column_count;
+    copy_buffer.width[ra_counter] = reorder_map.size();
     assert(copy_buffer.width[ra_counter] == (int)output->get_arity());
 
     for (u32 i = 0; i < buckets; i++)
     {
         if (input_bucket_map[i] == 1)
         {
-            input[i].as_all_to_all_copy_buffer(copy_buffer, {}, reorder_map, ra_counter, buckets, output_sub_bucket_count, output_sub_bucket_rank, (arity), join_column_count);
+            input[i].as_all_to_all_copy_buffer(copy_buffer, {}, reorder_map, ra_counter, buckets, output_sub_bucket_count, output_sub_bucket_rank, arity, join_column_count);
         }
     }
 
