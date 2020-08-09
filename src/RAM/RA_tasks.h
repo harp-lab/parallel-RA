@@ -39,9 +39,11 @@ private:
 
     mpi_comm mcomm;                                         /// comm related
 
+    u32 loop_count_tracker;
 
 public:
 
+    ~RAM();
     RAM()   {}
     RAM (bool ic, int ram_id);
     RAM (bool ic);
@@ -130,6 +132,8 @@ public:
     /// insert delta in full, copy newt pointer to delta
     void local_insert_in_full();
 
+
+    void insert_delta_in_full();
 
     /// has fixed point reached
     void check_for_fixed_point(std::vector<u32>& history);

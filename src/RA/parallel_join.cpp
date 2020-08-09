@@ -19,13 +19,11 @@ void parallel_join::local_join(int join_order,
                                u32* local_join_duplicates,
                                u32* local_join_inserts)
 {
-    join_buffer.width[counter] = reorder_map_array.size();//input0_buffer_width + input1_buffer_width - join_column_count - projection_column_count;
-
+    join_buffer.width[counter] = reorder_map_array.size();
 
     google_relation deduplicate;
     u32* output_sub_bucket_count = output->get_sub_bucket_per_bucket_count();
     u32** output_sub_bucket_rank = output->get_sub_bucket_rank();
-
 
 
     if (join_order == LEFT)
@@ -41,7 +39,7 @@ void parallel_join::local_join(int join_order,
             //if (name == "test")
             //    std::cout << "LEFT Testing Join " << prefix[0] <<  std::endl;
 
-            input1[bucket_id].as_all_to_all_left_join_buffer(prefix, join_buffer, input0_buffer + k1, input0_buffer_width, input1_buffer_width, counter, buckets, output_sub_bucket_count, output_sub_bucket_rank, reorder_map_array, join_column_count, deduplicate, local_join_duplicates, local_join_inserts);
+            input1[bucket_id].as_all_to_all_left_join_buffer(prefix, join_buffer, input0_buffer + k1, input0_buffer_width, input1_buffer_width, counter, buckets, output_sub_bucket_count, output_sub_bucket_rank, reorder_map_array, join_column_count, deduplicate, local_join_duplicates, local_join_inserts, output->get_join_column_count(), output->get_is_canonical());
         }
     }
 
@@ -67,7 +65,7 @@ void parallel_join::local_join(int join_order,
                           <<  std::endl;
 #endif
 
-            input1[bucket_id].as_all_to_all_right_join_buffer(prefix, join_buffer, input0_buffer + k1, input0_buffer_width, input1_buffer_width, counter, buckets, output_sub_bucket_count, output_sub_bucket_rank, reorder_map_array, join_column_count, deduplicate, local_join_duplicates, local_join_inserts, "test");
+            input1[bucket_id].as_all_to_all_right_join_buffer(prefix, join_buffer, input0_buffer + k1, input0_buffer_width, input1_buffer_width, counter, buckets, output_sub_bucket_count, output_sub_bucket_rank, reorder_map_array, join_column_count, deduplicate, local_join_duplicates, local_join_inserts, "test", output->get_join_column_count(), output->get_is_canonical());
         }
     }
 

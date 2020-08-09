@@ -8,7 +8,7 @@
 
 
 
-void all_to_all_comm(vector_buffer* vectorized_send_buffer, int vectorized_send_buffer_size, int* send_counts, u64 *recv_buffer_size, u64 **recv_buffer, MPI_Comm comm)
+void all_to_all_comm(vector_buffer* vectorized_send_buffer, int vectorized_send_buffer_size, int* send_counts, int *recv_buffer_size, u64 **recv_buffer, MPI_Comm comm)
 {
     int nprocs;
     MPI_Comm_size(comm, &nprocs);
@@ -103,24 +103,18 @@ void comm_compaction_all_to_all(all_to_all_buffer compute_buffer, int **recv_buf
         if (i >= 1)
             recv_displacements[i] = recv_displacements[i - 1] + recv_counts[i - 1];
         outer_hash_buffer_size = outer_hash_buffer_size + recv_counts[i];
-
-        //if (rank == 7)
-        //    std::cout << "Rank " << rank
-        //              << " TEST " << i << " " << compute_buffer.cumulative_tuple_process_map[i]
-        //              << " recv_counts " << recv_counts[i]
-        //              << std::endl;
     }
-    //std::cout << "Rank " << rank
-    //          << "L " << compute_buffer.local_compute_output_size_total
-    //          << "R " << send_disp[nprocs - 1] + compute_buffer.cumulative_tuple_process_map[nprocs - 1]
-    //          << std::endl;
 
     assert(compute_buffer.local_compute_output_size_total == send_disp[nprocs - 1] + compute_buffer.cumulative_tuple_process_map[nprocs - 1]);
 
     *recv_buffer = new u64[outer_hash_buffer_size];
 
+
     MPI_Alltoallv(send_buffer, compute_buffer.cumulative_tuple_process_map, send_disp, MPI_UNSIGNED_LONG_LONG, *recv_buffer, recv_counts, recv_displacements, MPI_UNSIGNED_LONG_LONG, comm);
 
+    //std::cout << "outer_hash_buffer_size " << outer_hash_buffer_size <<std::endl;
+    //for (int t=0; t < outer_hash_buffer_size; t++)
+    //    std::cout << "AAA " << (*recv_buffer)[t] << std::endl;
 
     delete[] send_buffer;
     delete[] send_disp;

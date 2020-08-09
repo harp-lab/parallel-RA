@@ -4,43 +4,66 @@
  */
 
 
-
 #include "../parallel_RA_inc.h"
 
 
+parallel_io::parallel_io()
+{
+    col_count=0;
+    entry_count=0;
+    hash_buffer_size=0;
+}
 
-void parallel_io::parallel_read_input_relation_from_file_to_local_buffer(const char *fname, MPI_Comm lcomm)
+void parallel_io::parallel_read_input_relation_from_file_to_local_buffer(u32 arity, const char *fname, MPI_Comm lcomm)
 {
     int rank, nprocs;
     MPI_Comm_rank(lcomm, &rank);
     MPI_Comm_size(lcomm, &nprocs);
     file_name = fname;
-    u32 global_row_count;
+    int global_row_count;
 
     /* Read the metadata file containing the total number of rows and columns */
     char meta_data_filename[1024];
+    sprintf(meta_data_filename, "%s.size", file_name);
+
+#if 0
+    FILE *fp_in;
+    fp_in = fopen(meta_data_filename, "r");
+    if (fscanf (fp_in, "%d\n%d", &global_row_count, &col_count) != 2)
+    {
+        printf("Wrong input format (Meta Data)\n");
+        MPI_Abort(lcomm, -1);
+    }
+    fclose(fp_in);
+#endif
+
+    std::string line1;
+    std::string line2;
     if (rank == 0)
     {
-        sprintf(meta_data_filename, "%s.size", file_name);
-
-        FILE *fp_in;
-        fp_in = fopen(meta_data_filename, "r");
-        if (fscanf (fp_in, "%d\n%d", &global_row_count, &col_count) != 2)
+        std::ifstream myfile (meta_data_filename);
+        if (myfile.is_open())
         {
-            printf("Wrong input format (Meta Data)\n");
-            MPI_Abort(lcomm, -1);
+            getline (myfile,line1);
+            global_row_count = std::stoi(line1);
+            getline (myfile,line2);
+            col_count = std::stoi(line2);
+            myfile.close();
         }
-        fclose(fp_in);
     }
+
 
     /* Broadcast the total number of rows and column to all processes */
     MPI_Bcast(&global_row_count, 1, MPI_INT, 0, lcomm);
     MPI_Bcast(&col_count, 1, MPI_INT, 0, lcomm);
 
-    //std::cout << "Filename " << meta_data_filename << " Row Count " << global_row_count << " Column count " << col_count << std::endl;
+
+#if 1
+    if (rank == 1)
+        std::cout << "Filename " << meta_data_filename << " Row Count " << global_row_count << " Column count " << col_count << std::endl;
 
     /* Read all data in parallel */
-    u32 read_offset;
+    int read_offset;
     read_offset = ceil((float)global_row_count / nprocs) * rank;
 
     if (read_offset > global_row_count)
@@ -54,7 +77,7 @@ void parallel_io::parallel_read_input_relation_from_file_to_local_buffer(const c
     else
         entry_count = (u32) ceil((float)global_row_count / nprocs);
 
-    //std::cout << "Filename " << file_name << " Entry Count " << entry_count << " Column Count " << col_count << std::endl;
+    assert((int)arity+1 == col_count);
 
     if (entry_count == 0)
         return;
@@ -63,15 +86,16 @@ void parallel_io::parallel_read_input_relation_from_file_to_local_buffer(const c
     sprintf(data_filename, "%s", file_name);
     int fp = open(data_filename, O_RDONLY);
 
-
     input_buffer = new u64[entry_count * col_count];
     u32 rb_size = pread(fp, input_buffer, entry_count * col_count * sizeof(u64), read_offset * col_count * sizeof(u64));
     if (rb_size != entry_count * col_count * sizeof(u64))
     {
-        std::cout << "Wrong IO: rank: " << rank << " " << rb_size << " " <<  entry_count << " " << col_count << std::endl;
+        std::cout << "Wrong IO: rank: " << rank << " " << rb_size << " " <<  entry_count << " " << col_count << " " << read_offset << std::endl;
         MPI_Abort(lcomm, -1);
     }
     close(fp);
+
+#endif
 
     /*
     for (u32 u = 0; u < entry_count * col_count; u = u+col_count)
@@ -88,7 +112,7 @@ void parallel_io::parallel_read_input_relation_from_file_to_local_buffer(const c
 
 
 
-void parallel_io::buffer_data_to_hash_buffer_col(u32 arity, u32 join_column_count, u32 buckets, u32** sub_bucket_rank, u32* sub_bucket_count, MPI_Comm comm)
+void parallel_io::buffer_data_to_hash_buffer_col(u32 arity, const char *fname, u32 join_column_count, u32 buckets, u32** sub_bucket_rank, u32* sub_bucket_count, MPI_Comm comm)
 {
 
     int nprocs;
@@ -106,7 +130,9 @@ void parallel_io::buffer_data_to_hash_buffer_col(u32 arity, u32 join_column_coun
     int process_data_vector_size=0;
     /* Hashing and buffering data for all to all comm */
     u64 val[col_count];
-    assert(arity+1 == col_count);
+
+
+    assert((int)arity+1 == col_count);
     for (u32 i = 0; i < entry_count * (col_count); i=i+(col_count))
     {
         uint64_t bucket_id = tuple_hash(input_buffer + i, join_column_count) % buckets;
@@ -115,7 +141,7 @@ void parallel_io::buffer_data_to_hash_buffer_col(u32 arity, u32 join_column_coun
         int index = sub_bucket_rank[bucket_id][sub_bucket_id];
         process_size[index] = process_size[index] + (col_count);
 
-        for (u32 j = 0; j < col_count; j++)
+        for (int j = 0; j < col_count; j++)
         {
             val[j] = input_buffer[i + j];
             //std::cout << "V " << val[j] << " ";

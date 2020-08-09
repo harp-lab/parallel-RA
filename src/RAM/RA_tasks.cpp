@@ -7,9 +7,16 @@
 
 #include "../parallel_RA_inc.h"
 
+RAM::~RAM()
+{
+    loop_count_tracker = 0;
+    for (std::vector<parallel_RA*>::iterator it = RA_list.begin() ; it != RA_list.end(); ++it)
+        delete (*it);
+}
 
 RAM::RAM (bool ic, int r_id)
 {
+    loop_count_tracker = 0;
     if (ic==false)
         iteration_count=1;
     ram_id = r_id;
@@ -18,6 +25,7 @@ RAM::RAM (bool ic, int r_id)
 
 RAM::RAM (bool ic)
 {
+    loop_count_tracker = 0;
     if (ic==false)
         iteration_count=1;
 }
@@ -26,6 +34,7 @@ RAM::RAM (bool ic)
 
 RAM::RAM (bool ic, std::string rname)
 {
+    loop_count_tracker = 0;
     name = rname;
     if (ic==false)
         iteration_count=1;
@@ -194,7 +203,7 @@ u64 RAM::intra_bucket_comm_execute()
             else if (current_ra->get_join_input0_graph_type() == DELTA && current_ra->get_join_input1_graph_type() == FULL)
             {
                 /// Pick the relation with smaller size to be transmitted for intra-bucket communication
-                std::cout << "TEST " << input0->get_global_delta_element_count() << " " << input1->get_global_full_element_count() << std::endl;
+                //std::cout << "TEST " << input0->get_global_delta_element_count() << " " << input1->get_global_full_element_count() << std::endl;
                 if (input0->get_global_delta_element_count() <= input1->get_global_full_element_count())
                     intra_bucket_comm(get_bucket_count(),
                                       input0->get_delta(),
@@ -548,7 +557,7 @@ u32 RAM::local_compute()
         parallel_RA* current_ra = *it;
         if (current_ra->get_RA_type() == JOIN)
         {
-            if (intra_bucket_buf_output_size[counter] != 0)
+            //if (intra_bucket_buf_output_size[counter] != 0)
                 delete[] intra_bucket_buf_output[counter];
         }
         counter++;
@@ -647,6 +656,7 @@ void RAM::local_insert_in_newt(std::unordered_map<u64, u64>& intern_map)
         else
         {
             u32 width = output->get_arity() + 1;
+            successful_insert = 0;
             for (u32 x = starting; x < starting + elements_to_read; x = x + width)
             {
                 if (output->find_in_full(cumulative_all_to_all_buffer + x, width) == false && output->find_in_delta(cumulative_all_to_all_buffer + x, width) == false)
@@ -659,8 +669,18 @@ void RAM::local_insert_in_newt(std::unordered_map<u64, u64>& intern_map)
                         successful_insert++;
                 }
             }
-        }
+#if 0
+            google_relation* newt1 = output->get_newt();
+            vector_buffer *vb_delta = new vector_buffer[2];
+            vb_delta[mcomm.get_rank()].vector_buffer_create_empty();
+            std::vector<u64> prefix = {};
+            newt1[mcomm.get_rank()].as_vector_buffer_recursive(&(vb_delta[mcomm.get_rank()]), prefix);
 
+            vb_delta[mcomm.get_rank()].vector_buffer_free();
+
+            delete[] vb_delta;
+#endif
+        }
         starting = starting + elements_to_read;
     }
 
@@ -689,18 +709,34 @@ void RAM::local_insert_in_full()
 
 
 
+void RAM::insert_delta_in_full()
+{
+    for (std::unordered_map<relation*, bool>::iterator it = ram_relations.begin() ; it != ram_relations.end(); ++it)
+    {
+        relation* current_r = it->first;
+        current_r->insert_delta_in_full();
+    }
+    return;
+}
+
+
+
 void RAM::check_for_fixed_point(std::vector<u32>& history)
 {
     int local_delta_sum = 0, local_full_sum = 0, global_delta_sum = 0, global_full_sum = 0;
+
     for (std::unordered_map<relation*, bool>::iterator it = ram_relations.begin() ; it != ram_relations.end(); ++it)
     {
         local_delta_sum = local_delta_sum + ((it)->first)->get_delta_element_count();
         local_full_sum = local_full_sum + ((it)->first)->get_full_element_count();
+
+        //std::cout << mcomm.get_local_rank() << " ---------- Number of tuples in relation " << (it->first)->get_debug_id() << " " << ((it)->first)->get_full_element_count() << std::endl;
     }
 
     MPI_Allreduce(&local_delta_sum, &global_delta_sum, 1, MPI_INT, MPI_SUM, mcomm.get_local_comm());
     MPI_Allreduce(&local_full_sum, &global_full_sum, 1, MPI_INT, MPI_SUM, mcomm.get_local_comm());
 
+    //std::cout << "Global full count " << global_full_sum << std::endl;
     history.push_back(global_delta_sum);
     history.push_back(global_full_sum);
 }
@@ -709,68 +745,67 @@ void RAM::check_for_fixed_point(std::vector<u32>& history)
 
 void RAM::execute_in_batches(int batch_size, std::vector<u32>& history, std::unordered_map<u64, u64>& intern_map)
 {
-    int inner_loop = 0;
     double running_time = 0;
 
     while (batch_size != 0)
     {
-        if (mcomm.get_local_rank() == 0)
-            std::cout << "Init" << std::endl;
+        //if (mcomm.get_local_rank() == 0)
+        //    std::cout << "Init" << std::endl;
 
         double intra_start = MPI_Wtime();
         intra_bucket_comm_execute();
         double intra_end = MPI_Wtime();
 
-        if (mcomm.get_local_rank() == 0)
-            std::cout << "Intrabucket comm" << std::endl;
+        //if (mcomm.get_local_rank() == 0)
+        //    std::cout << "Intrabucket comm" << std::endl;
 
         double allocate_buffers_start = MPI_Wtime();
         allocate_compute_buffers();
         double allocate_buffers_end = MPI_Wtime();
 
-        if (mcomm.get_local_rank() == 0)
-            std::cout << "Allocate compute buffers" << std::endl;
+        //if (mcomm.get_local_rank() == 0)
+        //    std::cout << "Allocate compute buffers" << std::endl;
 
         double compute_start = MPI_Wtime();
         local_compute();
         double compute_end = MPI_Wtime();
 
-        if (mcomm.get_local_rank() == 0)
-            std::cout << "Local compute" << std::endl;
+        //if (mcomm.get_local_rank() == 0)
+        //    std::cout << "Local compute" << std::endl;
 
         double all_to_all_start = MPI_Wtime();
         all_to_all();
         double all_to_all_end = MPI_Wtime();
 
-        if (mcomm.get_local_rank() == 0)
-            std::cout << "All to all" << std::endl;
+        //if (mcomm.get_local_rank() == 0)
+        //    std::cout << "All to all" << std::endl;
 
         double free_buffers_start = MPI_Wtime();
         free_compute_buffers();
         double free_buffers_end = MPI_Wtime();
 
-        if (mcomm.get_local_rank() == 0)
-            std::cout << "Free compute buffers" << std::endl;
+        //if (mcomm.get_local_rank() == 0)
+        //    std::cout << "Free compute buffers" << std::endl;
 
         double insert_in_newt_start = MPI_Wtime();
         local_insert_in_newt(intern_map);
         double insert_in_newt_end = MPI_Wtime();
 
-        if (mcomm.get_local_rank() == 0)
-            std::cout << "Local insert in newt" << std::endl;
+        //if (mcomm.get_local_rank() == 0)
+        //    std::cout << "Local insert in newt" << std::endl;
 
         double insert_in_full_start = MPI_Wtime();
         local_insert_in_full();
         double insert_in_full_end = MPI_Wtime();
 
-        if (mcomm.get_local_rank() == 0)
-            std::cout << "Local insert in full" << std::endl;
+        //if (mcomm.get_local_rank() == 0)
+        //    std::cout << "Local insert in full" << std::endl;
 
         running_time = running_time + (intra_end - intra_start) + (compute_end - compute_start) + (all_to_all_end - all_to_all_start) + (insert_in_newt_end - insert_in_newt_start) + (insert_in_full_end - insert_in_full_start);
 
 #if 1
         if (mcomm.get_rank() == 0)
-            std::cout << "INNER [" << inner_loop << "] "
+            std::cout << "INNER [" << loop_count_tracker << "] "
                       << " Intra " << (intra_end - intra_start)
                       << " Buffer create " << (allocate_buffers_end - allocate_buffers_start)
                       << " compute " << (compute_end - compute_start)
@@ -785,10 +820,11 @@ void RAM::execute_in_batches(int batch_size, std::vector<u32>& history, std::uno
 #endif
 
         batch_size--;
-        inner_loop++;
 
         if (iteration_count == 1)
             break;
+
+        loop_count_tracker++;
     }
 
     check_for_fixed_point(history);
@@ -803,7 +839,6 @@ void RAM::execute_by_wall_clock(double batch_time, std::vector<u32>& history, st
 {
     double running_total = 0;
     double running_time = 0;
-    int inner_loop = 0;
 
     while (running_time <= batch_time)
     {
@@ -842,7 +877,7 @@ void RAM::execute_by_wall_clock(double batch_time, std::vector<u32>& history, st
 
 
         if (mcomm.get_rank() == 0)
-            std::cout << "INNER [" << inner_loop << "] "
+            std::cout << "INNER [" << loop_count_tracker << "] "
                       << " Intra " << (intra_end - intra_start)
                       << " Buffer create " << (allocate_buffers_end - allocate_buffers_start)
                       << " compute " << (compute_end - compute_start)
@@ -854,7 +889,6 @@ void RAM::execute_by_wall_clock(double batch_time, std::vector<u32>& history, st
                       << " [ "
                       << running_time
                       << " ]" << std::endl;
-        inner_loop++;
 
         if (iteration_count == 1)
             break;
@@ -865,6 +899,8 @@ void RAM::execute_by_wall_clock(double batch_time, std::vector<u32>& history, st
         double mint;
         MPI_Allreduce(&running_time, &mint, 1, MPI_DOUBLE, MPI_MAX, mcomm.get_local_comm());
         running_time = mint;
+
+        loop_count_tracker++;
     }
 
     check_for_fixed_point(history);

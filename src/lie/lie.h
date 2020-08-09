@@ -27,6 +27,8 @@ private:
 
 public:
 
+    ~LIE();
+
     void print_all_relation();
 
     /// Sets the communicator object

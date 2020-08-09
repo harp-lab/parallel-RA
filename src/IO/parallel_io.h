@@ -18,22 +18,22 @@ private:
     const char *file_name;
 
     /// arity of the relation
-    u32 col_count;
+    int col_count;
 
     /// total number of rows / nprocs
     u32 entry_count;
     u64* input_buffer;
 
     /// total number of rows after hashing
-    u64 hash_buffer_size;
+    int hash_buffer_size;
     u64* hash_buffer;
 
 public:
 
+    parallel_io();
+
     u64* get_hash_buffer()  {  return hash_buffer;  }
-    u64 get_col_count()  {  return col_count;  }
-    u64 get_row_count()  {  return entry_count;  }
-    u64 get_hash_buffer_size()  {  return hash_buffer_size;  }
+    int get_hash_buffer_size()  {  return hash_buffer_size;  }
 
 
     void delete_raw_buffers()   {   if (entry_count != 0)        delete[] input_buffer;}
@@ -41,11 +41,11 @@ public:
 
 
     /// offset reads (parallel IO)
-    void parallel_read_input_relation_from_file_to_local_buffer(const char *fname, MPI_Comm lcomm);
+    void parallel_read_input_relation_from_file_to_local_buffer(u32 arity, const char *fname, MPI_Comm lcomm);
 
 
     /// move tuples to the appropriate process
-    void buffer_data_to_hash_buffer_col(u32 arity, u32 join_column_count, u32 buckets, u32** sub_bucket_rank, u32* sub_bucket_count, MPI_Comm lcomm);
+    void buffer_data_to_hash_buffer_col(u32 arity, const char *fname, u32 join_column_count, u32 buckets, u32** sub_bucket_rank, u32* sub_bucket_count, MPI_Comm lcomm);
 };
 
 #endif

@@ -7,10 +7,10 @@ int main(int argc, char **argv)
     mcomm.create(argc, argv);    
 
 
-    relation* rel_path_2_1_2 = new relation(2, 2, 257, "rel_path_2_1_2", "/var/tmp/g13236/path_2_1_2", FULL);
-    relation* rel_edge_2_1_2 = new relation(2, 2, 256, "rel_edge_2_1_2", "/var/tmp/g13236/edge_2_1_2", FULL);
-    relation* rel_path_2_1 = new relation(1, 2, 257, "rel_path_2_1", "/var/tmp/g13236/path_2_1", FULL);
-    relation* rel_edge_2_2 = new relation(1, 2, 256, "rel_edge_2_2", "/var/tmp/g13236/edge_2_2", FULL);
+    relation* rel_path_2_1_2 = new relation(2, 2, true, 257, "rel_path_2_1_2", "/var/tmp/g13236/path_2_1_2", FULL);
+    relation* rel_edge_2_1_2 = new relation(2, 2, true, 256, "rel_edge_2_1_2", "/var/tmp/g13236/edge_2_1_2", FULL);
+    relation* rel_path_2_1 = new relation(1, 2, false, 257, "rel_path_2_1", "/var/tmp/g13236/path_2_1", FULL);
+    relation* rel_edge_2_2 = new relation(1, 2, false, 256, "rel_edge_2_2", "/var/tmp/g13236/edge_2_2", FULL);
 
     RAM* scc13237 = new RAM(true, 1);
     scc13237->add_relation(rel_edge_2_2, false);
@@ -55,9 +55,12 @@ int main(int argc, char **argv)
 
 
     lie->execute();
+    lie->print_all_relation();
 
+    //rel_path_2_1->print();
+    delete lie;
     //rel_edge_2_1_2->print();
-    //rel_path_2_1_2->print();
+
     //rel_edge_2_2->print();
 
 

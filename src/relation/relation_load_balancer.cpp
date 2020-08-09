@@ -192,13 +192,13 @@ bool relation::load_balance_merge_full_and_delta(float rf)
 
     memcpy(sub_bucket_per_bucket_count, global_new_sub_bucket, sizeof(u32) * buckets);
 
-    u64 outer_hash_buffer_size = 0;
+    int outer_hash_buffer_size = 0;
     u64* outer_hash_data;
     all_to_all_comm(process_data_vector, process_data_vector_size, process_size, &outer_hash_buffer_size, &outer_hash_data, mcomm.get_local_comm());
     free (process_data_vector);
 
     u64 t[arity];
-    for (u64 in = 0; in < outer_hash_buffer_size; in = in + arity)
+    for (int in = 0; in < outer_hash_buffer_size; in = in + arity)
     {
         for (u32 x=0; x < arity; x++)
             t[x] = outer_hash_data[in + x];
@@ -208,12 +208,12 @@ bool relation::load_balance_merge_full_and_delta(float rf)
     delete[] outer_hash_data;
 
 
-    u64 dt_outer_hash_buffer_size = 0;
+    int dt_outer_hash_buffer_size = 0;
     u64* dt_outer_hash_data;
     all_to_all_comm(process_data_vector_dt, process_data_vector_dt_size, process_size_dt, &dt_outer_hash_buffer_size, &dt_outer_hash_data, mcomm.get_local_comm());
     free (process_data_vector_dt);
 
-    for (u64 in = 0; in < dt_outer_hash_buffer_size; in = in + 2)
+    for (int in = 0; in < dt_outer_hash_buffer_size; in = in + 2)
     {
         for (u32 x=0; x < arity; x++)
             t[x] = dt_outer_hash_data[in + x];
@@ -432,13 +432,13 @@ bool relation::load_balance_split_full_and_delta(float rf)
     memcpy(sub_bucket_per_bucket_count, global_new_sub_bucket, sizeof(u32) * buckets);
 
 
-    u64 outer_hash_buffer_size = 0;
+    int outer_hash_buffer_size = 0;
     u64* outer_hash_data;
     all_to_all_comm(process_data_vector, process_data_vector_size, process_size, &outer_hash_buffer_size, &outer_hash_data, mcomm.get_local_comm());
     free(process_data_vector);
 
     u64 t[2];
-    for (u64 in = 0; in < outer_hash_buffer_size; in = in + arity)
+    for (int in = 0; in < outer_hash_buffer_size; in = in + arity)
     {
         t[0] = outer_hash_data[in];
         t[1] = outer_hash_data[in + 1];
@@ -447,12 +447,12 @@ bool relation::load_balance_split_full_and_delta(float rf)
 
     delete[] outer_hash_data;
 
-    u64 dt_outer_hash_buffer_size = 0;
+    int dt_outer_hash_buffer_size = 0;
     u64* dt_outer_hash_data;
     all_to_all_comm(process_data_vector_dt, process_data_vector_dt_size, process_size_dt, &dt_outer_hash_buffer_size, &dt_outer_hash_data, mcomm.get_local_comm());
     free(process_data_vector_dt);
 
-    for (u64 in = 0; in < dt_outer_hash_buffer_size; in = in + 2)
+    for (int in = 0; in < dt_outer_hash_buffer_size; in = in + 2)
     {
         t[0] = dt_outer_hash_data[in];
         t[1] = dt_outer_hash_data[in + 1];

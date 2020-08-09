@@ -50,6 +50,7 @@ void LIE::update_task_graph(std::unordered_set<RAM*> executable_task)
     {
         tasks.erase(*itg);
         taskgraph1.erase(*itg);
+        delete (*itg);
     }
 }
 
@@ -86,30 +87,36 @@ void LIE::print_all_relation()
     u64 total_facts=0;
     for (std::unordered_set<relation*>::iterator it = lie_relations.begin() ; it != lie_relations.end(); ++it)
     {
-        std::cout << (*it)->get_debug_id() << ": {" << (*it)->get_arity() << "}. (" << (*it)->get_full_element_count() << " total facts)" << std::endl;
-        total_facts = total_facts + (*it)->get_full_element_count();
+        u64 local_facts = (*it)->get_full_element_count();
+        u64 global_total_facts = 0;
+        MPI_Allreduce(&local_facts, &global_total_facts, 1, MPI_UNSIGNED_LONG_LONG, MPI_SUM, mcomm.get_local_comm());
+
+        if (mcomm.get_local_rank() == 0)
+            std::cout << (*it)->get_debug_id() << ": {" << (*it)->get_arity() << "}. (" << global_total_facts << " total facts)" << std::endl;
+
+        total_facts = total_facts + global_total_facts;
     }
-    std::cout << "Total facts across all relations " << total_facts << std::endl;
+    if (mcomm.get_local_rank() == 0)
+        std::cout << "Total facts across all relations " << total_facts << std::endl;
+
 }
 
 
 bool LIE::execute ()
 {
-
     /// Main : Execute : init : start
-
-    mcomm.set_local_comm(mcomm.get_comm());
-
+    mcomm.set_local_comm(MPI_COMM_WORLD);
 
     /// Initialize all relations
     for (std::unordered_set<relation*>::iterator it = lie_relations.begin() ; it != lie_relations.end(); ++it)
         (*it)->initialize_relation(mcomm);
 
-
+#if 1
     /// Executable task
     std::unordered_set<RAM*> executable_task = list_of_runnable_tasks(tasks, taskgraph1);
     assert(executable_task.size() == 1);
 
+    int counter = 0;
     /// Running one task at a time
     while (executable_task.size() != 0)
     {
@@ -124,34 +131,28 @@ bool LIE::execute ()
         {
             relation* rel = it->first;
             rel->initialize_relation_in_scc(it->second);
+            //std::cout << rel->get_debug_id() << std::endl;
         }
 
         std::vector<u32> history;
 
+        MPI_Barrier(mcomm.get_local_comm());
+        if (mcomm.get_local_rank() == 0)
+            std::cout << "-------------------" << current_task->get_id() << " ITERATION " << counter << " ------------------" << std::endl;
+
         /// if case is for rules (acopy and copy) that requires only one iteration
         /// else case is for join rules
-
-        int counter = 0;
-        //std::cout << "-------------------B------------------" << std::endl;
-        current_task->print_all_relation();
+#if 1
         if (current_task->get_iteration_count() == 1)
-        {
-            if (mcomm.get_local_rank() == 0)
-                std::cout << "-------------------" << current_task->get_id() << " ITERATION " << counter << " ------------------" << std::endl;
             current_task->execute_in_batches(batch_size, history, intern_map);
-
-        }
         else
         {
             u64 delta_in_scc = 0;
             do
             {
-                if (mcomm.get_local_rank() == 0)
-                    std::cout << "-------------------" << current_task->get_id() << " ITERATION " << counter << " ------------------" << std::endl;
-
                 current_task->execute_in_batches(batch_size, history, intern_map);
                 delta_in_scc = history[history.size()-2];
-                counter++;
+                //std::cout << current_task->get_id() << " delta_in_scc " << delta_in_scc << " " << history[history.size()-1] << std::endl;
 
 
                 //if (current_task->get_id() == 1)
@@ -159,12 +160,9 @@ bool LIE::execute ()
             }
             while (delta_in_scc != 0);
         }
-
-        current_task->local_insert_in_full();
-        //std::cout << "Number of iterations in scc " << current_task->get_id() << " " << counter << std::endl;
-
-        //std::cout << "-------------------A------------------" << std::endl;
-        //current_task->print_all_relation();
+        counter++;
+        current_task->insert_delta_in_full();
+#endif
 
         /// marks executable_task as finished
         update_task_graph(executable_task);
@@ -172,8 +170,16 @@ bool LIE::execute ()
         /// loads new runnable task
         executable_task = list_of_runnable_tasks(tasks, taskgraph1);
     }
-
+#endif
     return true;
 }
 
 
+LIE::~LIE ()
+{
+    for (std::unordered_set<relation*>::iterator it = lie_relations.begin() ; it != lie_relations.end(); ++it)
+    {
+        (*it)->finalize_relation();
+        delete (*it);
+    }
+}

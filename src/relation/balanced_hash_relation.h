@@ -21,7 +21,9 @@ private:
 
     u32 join_column_count;                      /// Number of join column counts
     u32 arity;                                  /// Arity of relation
+    bool is_canonical;
     u32 intern_tag;                             /// id of relation (to be used for interning)
+
     std::string debug_id;
     int initailization_type = -1;               /// used when task balancing is required
     const char* filename = NULL;                /// Name of file to open
@@ -59,15 +61,15 @@ private:
 
 public:
 
-    relation (u32 jcc, u32 ar, u32 tg, const char* fname, int version)
-        :join_column_count(jcc), arity(ar), intern_tag(tg), initailization_type(version), filename(fname)
+    relation (u32 jcc, u32 ar, bool is_c, u32 tg, const char* fname, int version)
+        :join_column_count(jcc), arity(ar), is_canonical(is_c), intern_tag(tg), initailization_type(version), filename(fname)
     {
         full_element_count=0;
         delta_bucket_element_count=0;
     }
 
-    relation (u32 jcc, u32 ar, u32 tg, const char* did, const char* fname, int version)
-        :join_column_count(jcc), arity(ar), intern_tag(tg), debug_id(did), initailization_type(version), filename(fname)
+    relation (u32 jcc, u32 ar, bool is_c, u32 tg, const char* did, const char* fname, int version)
+        :join_column_count(jcc), arity(ar), is_canonical(is_c), intern_tag(tg), debug_id(did), initailization_type(version), filename(fname)
     {
         full_element_count=0;
         delta_bucket_element_count=0;
@@ -87,10 +89,11 @@ public:
     void set_initailization_type(int x) { initailization_type = x;  }
 
 
+    bool get_is_canonical() {return is_canonical;}
 
 
     u32 get_arity ()    {return arity;}
-    u32 get_join_column_count ()    {return join_column_count;}
+    int get_join_column_count ()    {return (int)join_column_count;}
 
 
     std::string get_debug_id()  {   return debug_id; }
@@ -147,8 +150,8 @@ public:
     /// initialize and finalize relation
     void initialize_relation(mpi_comm& mcomm);
     void initialize_relation_in_scc(bool init_status);
-    void populate_full(u32 buffer_size, u64* buffer);
-    void populate_delta (u32 buffer_size, u64* buffer);
+    void populate_full(int buffer_size, u64* buffer);
+    void populate_delta (int buffer_size, u64* buffer);
     void finalize_relation();
 
 
