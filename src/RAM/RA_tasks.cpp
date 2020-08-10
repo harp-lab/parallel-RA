@@ -713,9 +713,7 @@ void RAM::insert_delta_in_full()
 {
     for (std::unordered_map<relation*, bool>::iterator it = ram_relations.begin() ; it != ram_relations.end(); ++it)
     {
-
         relation* current_r = it->first;
-        std::cout << current_r->get_debug_id()  << " Moving delta to full" << std::endl;
         current_r->insert_delta_in_full();
     }
     return;
