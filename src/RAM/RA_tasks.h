@@ -75,7 +75,15 @@ public:
     {
         //init_status = i_status;
         //ram_relations.insert(G);
-        ram_relations[G] = i_status;
+        //ram_relations[G] = i_status;
+        auto it = ram_relations.find(G);
+        if( it != ram_relations.end() ) {
+            it->second = i_status;
+        }
+        else {
+            ram_relations.insert(std::make_pair(G, i_status));
+        }
+
     }
 
 

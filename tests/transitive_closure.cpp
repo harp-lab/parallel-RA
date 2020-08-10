@@ -49,18 +49,14 @@ int main(int argc, char **argv)
     lie->add_scc_dependance(scc13239, scc13237);
 
 
-
     lie->set_comm(mcomm);
     lie->set_batch_size(1);
-
-
     lie->execute();
     lie->print_all_relation();
 
     //rel_path_2_1->print();
-    delete lie;
+    //delete lie;
     //rel_edge_2_1_2->print();
-
     //rel_edge_2_2->print();
 
 

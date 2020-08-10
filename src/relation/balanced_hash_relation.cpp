@@ -703,8 +703,8 @@ void relation::local_insert_in_delta()
 
     delta = newt;
 
+    /*
     u32 i = mcomm.get_rank();
-
     vector_buffer *vb_delta = new vector_buffer[buckets];
     vb_delta[i].vector_buffer_create_empty();
     std::vector<u64> prefix = {};
@@ -716,6 +716,7 @@ void relation::local_insert_in_delta()
     vb_delta[i].vector_buffer_free();
 
     delete[] vb_delta;
+    */
 
 
     delta_element_count = newt_element_count;

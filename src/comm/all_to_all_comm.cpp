@@ -112,10 +112,6 @@ void comm_compaction_all_to_all(all_to_all_buffer compute_buffer, int **recv_buf
 
     MPI_Alltoallv(send_buffer, compute_buffer.cumulative_tuple_process_map, send_disp, MPI_UNSIGNED_LONG_LONG, *recv_buffer, recv_counts, recv_displacements, MPI_UNSIGNED_LONG_LONG, comm);
 
-    //std::cout << "outer_hash_buffer_size " << outer_hash_buffer_size <<std::endl;
-    //for (int t=0; t < outer_hash_buffer_size; t++)
-    //    std::cout << "AAA " << (*recv_buffer)[t] << std::endl;
-
     delete[] send_buffer;
     delete[] send_disp;
     delete[] recv_displacements;

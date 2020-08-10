@@ -27,7 +27,6 @@ int main(int argc, char **argv)
     scc6123->add_relation(rel_app_2_1_2, true);
     scc6123->add_rule(new parallel_acopy(rel_app_2_1, rel_app_2_1_2, DELTA, {0, 2, 1}));
 
-
     RAM* scc6124 = new RAM(false, 5);
     scc6124->add_relation(rel_args_1_0, true);
     scc6124->add_relation(rel_args_1_1, true);
@@ -62,7 +61,6 @@ int main(int argc, char **argv)
     scc6127->add_relation(rel_free_2_1_2, true);
     scc6127->add_relation(rel_var_ref_1_1, false);
     scc6127->add_rule(new parallel_copy(rel_free_2_1_2, rel_var_ref_1_1, FULL, {0, 1}));
-
 
     RAM* scc6128 = new RAM(false, 6);
     scc6128->add_relation(rel_lambda_2_1_2, true);
@@ -105,11 +103,8 @@ int main(int argc, char **argv)
 
 
 
-
     lie->set_comm(mcomm);
     lie->set_batch_size(1);
-
-
     lie->execute();
     lie->print_all_relation();
 

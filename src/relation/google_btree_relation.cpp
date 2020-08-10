@@ -154,7 +154,6 @@ void google_relation::as_all_to_all_copy_buffer_helper(google_relation*& cur_tri
         buffer.local_compute_output_size[ra_id][index] = buffer.local_compute_output_size[ra_id][index] + buffer.width[ra_id];
         buffer.cumulative_tuple_process_map[index] = buffer.cumulative_tuple_process_map[index] + buffer.width[ra_id];
         buffer.local_compute_output[ra_id][index].vector_buffer_append((const unsigned char*)reordered_cur_path, sizeof(u64)*buffer.width[ra_id]);
-
     }
 
     for (std::pair<u64, google_relation*> nxt: cur_trie->next)

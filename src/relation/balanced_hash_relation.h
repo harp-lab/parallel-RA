@@ -20,8 +20,8 @@ class relation
 private:
 
     u32 join_column_count;                      /// Number of join column counts
-    u32 arity;                                  /// Arity of relation
     bool is_canonical;
+    u32 arity;                                  /// Arity of relation
     u32 intern_tag;                             /// id of relation (to be used for interning)
 
     std::string debug_id;
@@ -61,15 +61,15 @@ private:
 
 public:
 
-    relation (u32 jcc, u32 ar, bool is_c, u32 tg, const char* fname, int version)
-        :join_column_count(jcc), arity(ar), is_canonical(is_c), intern_tag(tg), initailization_type(version), filename(fname)
+    relation (u32 jcc, bool is_c, u32 ar, u32 tg, const char* fname, int version)
+        :join_column_count(jcc), is_canonical(is_c), arity(ar), intern_tag(tg), initailization_type(version), filename(fname)
     {
         full_element_count=0;
         delta_bucket_element_count=0;
     }
 
-    relation (u32 jcc, u32 ar, bool is_c, u32 tg, const char* did, const char* fname, int version)
-        :join_column_count(jcc), arity(ar), is_canonical(is_c), intern_tag(tg), debug_id(did), initailization_type(version), filename(fname)
+    relation (u32 jcc, bool is_c, u32 ar, u32 tg, const char* did, const char* fname, int version)
+        :join_column_count(jcc), is_canonical(is_c), arity(ar), intern_tag(tg), debug_id(did), initailization_type(version), filename(fname)
     {
         full_element_count=0;
         delta_bucket_element_count=0;

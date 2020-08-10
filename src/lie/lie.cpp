@@ -111,6 +111,35 @@ bool LIE::execute ()
     for (std::unordered_set<relation*>::iterator it = lie_relations.begin() ; it != lie_relations.end(); ++it)
         (*it)->initialize_relation(mcomm);
 
+
+#if 0
+    for ( auto itg = tasks.begin(); itg != tasks.end(); ++itg )
+    {
+        RAM* current_task = (*itg);
+        if (current_task->get_id() == 1)
+            continue;
+
+        current_task->set_comm(mcomm);
+
+        /// Initialize all relations
+        std::unordered_map<relation*, bool> scc_relation = current_task->get_RAM_relations();
+        for (std::unordered_map<relation*, bool>::iterator it = scc_relation.begin() ; it != scc_relation.end(); ++it)
+        {
+            relation* rel = it->first;
+            rel->initialize_relation_in_scc(it->second);
+        }
+
+        std::vector<u32> history;
+
+        MPI_Barrier(mcomm.get_local_comm());
+        if (mcomm.get_local_rank() == 0)
+            std::cout << "-------------------" << current_task->get_id() << " ITERATION " << " ------------------" << std::endl;
+
+        current_task->execute_in_batches(batch_size, history, intern_map);
+        current_task->insert_delta_in_full();
+    }
+#endif
+
 #if 1
     /// Executable task
     std::unordered_set<RAM*> executable_task = list_of_runnable_tasks(tasks, taskgraph1);
@@ -131,18 +160,17 @@ bool LIE::execute ()
         {
             relation* rel = it->first;
             rel->initialize_relation_in_scc(it->second);
-            //std::cout << rel->get_debug_id() << std::endl;
         }
 
         std::vector<u32> history;
 
-        MPI_Barrier(mcomm.get_local_comm());
-        if (mcomm.get_local_rank() == 0)
-            std::cout << "-------------------" << current_task->get_id() << " ITERATION " << counter << " ------------------" << std::endl;
+        //MPI_Barrier(mcomm.get_local_comm());
+        //if (mcomm.get_local_rank() == 0)
+        //    std::cout << "-------------------" << current_task->get_id() << " ITERATION " << counter << " ------------------" << std::endl;
 
         /// if case is for rules (acopy and copy) that requires only one iteration
         /// else case is for join rules
-#if 1
+
         if (current_task->get_iteration_count() == 1)
             current_task->execute_in_batches(batch_size, history, intern_map);
         else
@@ -150,19 +178,28 @@ bool LIE::execute ()
             u64 delta_in_scc = 0;
             do
             {
+                //std::cout << std::endl;
+                //for (std::unordered_map<relation*, bool>::iterator it = scc_relation.begin() ; it != scc_relation.end(); ++it)
+                //{
+                //    relation* rel = it->first;
+                //    std::cout << rel->get_debug_id() << " " <<  rel->get_global_delta_element_count() << " " << rel->get_global_full_element_count() << std::endl;
+                //}
                 current_task->execute_in_batches(batch_size, history, intern_map);
+                //for (std::unordered_map<relation*, bool>::iterator it = scc_relation.begin() ; it != scc_relation.end(); ++it)
+                //{
+                //    relation* rel = it->first;
+                //    std::cout << rel->get_debug_id() << " " <<  rel->get_global_delta_element_count() << " " << rel->get_global_full_element_count() << std::endl;
+                //}
+                //std::cout << std::endl;
+
+
                 delta_in_scc = history[history.size()-2];
-                //std::cout << current_task->get_id() << " delta_in_scc " << delta_in_scc << " " << history[history.size()-1] << std::endl;
 
-
-                //if (current_task->get_id() == 1)
-                //    current_task->print_all_relation();
             }
             while (delta_in_scc != 0);
         }
         counter++;
         current_task->insert_delta_in_full();
-#endif
 
         /// marks executable_task as finished
         update_task_graph(executable_task);
