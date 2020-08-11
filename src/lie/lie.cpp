@@ -161,14 +161,15 @@ bool LIE::execute ()
         /// if case is for rules (acopy and copy) that requires only one iteration
         /// else case is for join rules
 
+        double running_time=0;
         if (executable_task->get_iteration_count() == 1)
-            executable_task->execute_in_batches(batch_size, history, intern_map);
+            executable_task->execute_in_batches(batch_size, history, intern_map, &running_time);
         else
         {
             u64 delta_in_scc = 0;
             do
             {
-                executable_task->execute_in_batches(batch_size, history, intern_map);
+                executable_task->execute_in_batches(batch_size, history, intern_map, &running_time);
                 delta_in_scc = history[history.size()-2];
             }
             while (delta_in_scc != 0);

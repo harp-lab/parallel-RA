@@ -315,7 +315,6 @@ u32 RAM::local_compute()
     u32 total_join_tuples = 0;
     u32 counter = 0;
 
-
     for (std::vector<parallel_RA*>::iterator it = RA_list.begin() ; it != RA_list.end(); ++it)
     {
         if ((*it)->get_RA_type() == COPY)
@@ -539,20 +538,24 @@ u32 RAM::local_compute()
                                            &join_tuples);
                 total_join_tuples = total_join_tuples + join_tuples;
             }
-
         }
         counter++;
     }
+
+    int global_total_join_tuples = 0;
+    int global_join_tuples_duplicates = 0;
+    MPI_Allreduce(&total_join_tuples, &global_total_join_tuples, 1, MPI_INT, MPI_SUM, mcomm.get_local_comm());
+    MPI_Allreduce(&join_tuples_duplicates, &global_join_tuples_duplicates, 1, MPI_INT, MPI_SUM, mcomm.get_local_comm());
+    if (mcomm.get_rank() == 0)
+        std::cout << "Joins: " << global_total_join_tuples << " Duplicates " << global_join_tuples_duplicates << " ";
 
     counter = 0;
     for (std::vector<parallel_RA*>::iterator it = RA_list.begin() ; it != RA_list.end(); ++it)
     {
         parallel_RA* current_ra = *it;
         if (current_ra->get_RA_type() == JOIN)
-        {
-            //if (intra_bucket_buf_output_size[counter] != 0)
-                delete[] intra_bucket_buf_output[counter];
-        }
+            delete[] intra_bucket_buf_output[counter];
+
         counter++;
     }
 
@@ -744,9 +747,9 @@ void RAM::check_for_fixed_point(std::vector<u32>& history)
 
 
 
-void RAM::execute_in_batches(int batch_size, std::vector<u32>& history, std::map<u64, u64>& intern_map)
+void RAM::execute_in_batches(int batch_size, std::vector<u32>& history, std::map<u64, u64>& intern_map, double *running_time)
 {
-    double running_time = 0;
+    //double running_time = 0;
 
     while (batch_size != 0)
     {
@@ -802,21 +805,21 @@ void RAM::execute_in_batches(int batch_size, std::vector<u32>& history, std::map
         //if (mcomm.get_local_rank() == 0)
         //    std::cout << "Local insert in full" << std::endl;
 
-        running_time = running_time + (intra_end - intra_start) + (compute_end - compute_start) + (all_to_all_end - all_to_all_start) + (insert_in_newt_end - insert_in_newt_start) + (insert_in_full_end - insert_in_full_start);
+        *running_time = *running_time + (intra_end - intra_start) + (compute_end - compute_start) + (all_to_all_end - all_to_all_start) + (insert_in_newt_end - insert_in_newt_start) + (insert_in_full_end - insert_in_full_start);
 
 #if 1
         if (mcomm.get_rank() == 0)
             std::cout << "INNER [" << loop_count_tracker << "] "
                       << " Intra " << (intra_end - intra_start)
-                      << " Buffer create " << (allocate_buffers_end - allocate_buffers_start)
-                      << " compute " << (compute_end - compute_start)
-                      << " All to all " << (all_to_all_end - all_to_all_start)
-                      << " Buffer free " << (free_buffers_end - free_buffers_start)
-                      << " Insert newt " << (insert_in_newt_end - insert_in_newt_start)
-                      << " Insert full " << (insert_in_full_end - insert_in_full_start)
+                      << " Buf cre " << (allocate_buffers_end - allocate_buffers_start)
+                      << " comp " << (compute_end - compute_start)
+                      << " A2A " << (all_to_all_end - all_to_all_start)
+                      << " Buf free " << (free_buffers_end - free_buffers_start)
+                      << " newt " << (insert_in_newt_end - insert_in_newt_start)
+                      << " full " << (insert_in_full_end - insert_in_full_start)
                       << " Total " << (intra_end - intra_start) + (compute_end - compute_start) + (all_to_all_end - all_to_all_start) + (insert_in_newt_end - insert_in_newt_start) + (insert_in_full_end - insert_in_full_start) + (allocate_buffers_end - allocate_buffers_start) + (free_buffers_end - free_buffers_start)
                       << " [ "
-                      << running_time
+                      << *running_time
                       << " ]" << std::endl;
 #endif
 

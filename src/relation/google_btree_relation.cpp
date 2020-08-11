@@ -278,8 +278,6 @@ void google_relation::as_all_to_all_right_join_buffer_helper(google_relation*& c
         for (int i =0; i < join_buffer.width[ra_id]; i++)
             projected_path[i] = reordered_cur_path[reorder_map[i]];
 
-
-
         if (deduplicate.insert_tuple_from_array(projected_path, join_buffer.width[ra_id]) == true)
         {
             uint64_t bucket_id = tuple_hash(projected_path, head_rel_hash_col_count) % buckets;

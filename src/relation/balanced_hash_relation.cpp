@@ -556,7 +556,7 @@ bool relation::insert_in_delta(u64* t)
     if (is_canonical == false)
         sub_bucket_id = tuple_hash(t + join_column_count, arity-join_column_count) % sub_bucket_per_bucket_count[bucket_id];
 
-    assert((int)bucket_id == mcomm.get_local_rank());
+    //assert((int)bucket_id == mcomm.get_local_rank());
     if (delta[bucket_id].insert_tuple_from_array(t, arity+1) == true)
     {
         delta_element_count++;
@@ -606,7 +606,7 @@ bool relation::insert_in_full(u64* t)
     if (is_canonical == false)
         sub_bucket_id = tuple_hash(t + join_column_count, arity-join_column_count) % sub_bucket_per_bucket_count[bucket_id];
 
-    assert((int)bucket_id == mcomm.get_local_rank());
+    //assert((int)bucket_id == mcomm.get_local_rank());
 
 #if 0
     if (get_debug_id() == "rel_path_2_1")
