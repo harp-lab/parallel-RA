@@ -16,28 +16,27 @@ RAM::~RAM()
 
 RAM::RAM (bool ic, int r_id)
 {
+    ram_relation_count = 0;
+    //ram_relations_key = 0;
     loop_count_tracker = 0;
     if (ic==false)
         iteration_count=1;
     ram_id = r_id;
-}
 
-
-RAM::RAM (bool ic)
-{
-    loop_count_tracker = 0;
-    if (ic==false)
-        iteration_count=1;
+    //ram_relations = {};
+    RA_list = {};
 }
 
 
 
-RAM::RAM (bool ic, std::string rname)
+void RAM::add_relation(relation*& G, bool i_status)
 {
-    loop_count_tracker = 0;
-    name = rname;
-    if (ic==false)
-        iteration_count=1;
+    ram_relations[ram_relation_count] = G;
+    ram_relation_status[ram_relation_count] = i_status;
+    ram_relation_count++;
+
+    //ram_relations.insert(ram_relations_key, std::make_pair(G, i_status));
+    //ram_relations_key++;
 }
 
 
@@ -49,28 +48,20 @@ void RAM::set_comm(mpi_comm& mcomm)
     for (parallel_RA* ra : RA_list)
         ra->set_comm(mcomm);
 
-    for (std::unordered_map<relation*, bool>::iterator it = ram_relations.begin() ; it != ram_relations.end(); ++it)
-        (it->first)->set_mcomm(mcomm);
+    for (u32 i=0; i < ram_relation_count; i++)
+        ram_relations[i]->set_mcomm(mcomm);
+
+    //for (std::map<relation*, bool>::iterator it = ram_relations.begin() ; it != ram_relations.end(); ++it)
+    //    (it->first)->set_mcomm(mcomm);
 }
 
 
 
 void RAM::print_all_relation()
 {
-    for (std::unordered_map<relation*, bool>::iterator it = ram_relations.begin() ; it != ram_relations.end(); ++it)
-    {
-        relation* current_r = it->first;
-
-        //if (current_r->get_debug_id() == "rel_inter_body27_3_1_2_3" ||
-        //        current_r->get_debug_id() == "rel_args_1_0" ||
-        //        current_r->get_debug_id() == "rel_inter_body25_3_2")
-        //{
-        //    std::cout << ram_id << " Relation " << current_r->get_debug_id() << std::endl;
-            current_r->print();
-        //}
-
-        std::cout << std::endl;
-    }
+    //for (std::map<relation*, bool>::iterator it = ram_relations.begin() ; it != ram_relations.end(); ++it)
+    for (u32 i=0; i < ram_relation_count; i++)
+        ram_relations[i]->print();
 }
 
 
@@ -78,9 +69,11 @@ void RAM::print_all_relation()
 
 void RAM::load_balance()
 {
-    for (std::unordered_map<relation*, bool>::iterator it = ram_relations.begin() ; it != ram_relations.end(); ++it)
+    //for (std::map<relation*, bool>::iterator it = ram_relations.begin() ; it != ram_relations.end(); ++it)
+    for (u32 i=0; i < ram_relation_count; i++)
     {
-        relation* current_relation = it->first;
+        //relation* current_relation = it->first;
+        relation* current_relation = ram_relations[i];
         if (current_relation->load_balance_merge_full_and_delta(refinement_factor) == false)
             current_relation->load_balance_split_full_and_delta(refinement_factor);
 
@@ -596,7 +589,7 @@ void RAM::free_compute_buffers()
 
 
 
-void RAM::local_insert_in_newt(std::unordered_map<u64, u64>& intern_map)
+void RAM::local_insert_in_newt(std::map<u64, u64>& intern_map)
 {
     u32 successful_insert = 0, starting = 0;
     int nprocs = mcomm.get_local_nprocs();
@@ -639,7 +632,7 @@ void RAM::local_insert_in_newt(std::unordered_map<u64, u64>& intern_map)
 
                     intern_key = relation_id | bucket_id;
 
-                    std::unordered_map<u64 ,u64>::const_iterator it = intern_map.find(intern_key);
+                    std::map<u64 ,u64>::const_iterator it = intern_map.find(intern_key);
                     if( it == intern_map.end() )
                         intern_value=0;
                     else
@@ -695,9 +688,11 @@ void RAM::local_insert_in_newt(std::unordered_map<u64, u64>& intern_map)
 
 void RAM::local_insert_in_full()
 {
-    for (std::unordered_map<relation*, bool>::iterator it = ram_relations.begin() ; it != ram_relations.end(); ++it)
+    for (u32 i=0; i < ram_relation_count; i++)
+    //for (std::map<relation*, bool>::iterator it = ram_relations.begin() ; it != ram_relations.end(); ++it)
     {
-        relation* current_r = it->first;
+        //relation* current_r = it->first;
+        relation* current_r = ram_relations[i];
         current_r->insert_delta_in_full();
         current_r->local_insert_in_delta();
 
@@ -711,10 +706,11 @@ void RAM::local_insert_in_full()
 
 void RAM::insert_delta_in_full()
 {
-    for (std::unordered_map<relation*, bool>::iterator it = ram_relations.begin() ; it != ram_relations.end(); ++it)
+    //for (std::map<relation*, bool>::iterator it = ram_relations.begin() ; it != ram_relations.end(); ++it)
+    for (u32 i=0; i < ram_relation_count; i++)
     {
-        relation* current_r = it->first;
-        current_r->insert_delta_in_full();
+        //relation* current_r = it->first;
+        ram_relations[i]->insert_delta_in_full();
     }
     return;
 }
@@ -725,10 +721,15 @@ void RAM::check_for_fixed_point(std::vector<u32>& history)
 {
     int local_delta_sum = 0, local_full_sum = 0, global_delta_sum = 0, global_full_sum = 0;
 
-    for (std::unordered_map<relation*, bool>::iterator it = ram_relations.begin() ; it != ram_relations.end(); ++it)
+
+    //for (std::map<relation*, bool>::iterator it = ram_relations.begin() ; it != ram_relations.end(); ++it)
+    //for (std::map<u32, std::map<relation*, bool>>::iterator it = ram_relations.begin() ; it != ram_relations.end(); ++it)
+    for (u32 i=0; i < ram_relation_count; i++)
     {
-        local_delta_sum = local_delta_sum + ((it)->first)->get_delta_element_count();
-        local_full_sum = local_full_sum + ((it)->first)->get_full_element_count();
+        local_delta_sum = local_delta_sum + ram_relations[i]->get_delta_element_count();
+        local_full_sum = local_full_sum + ram_relations[i]->get_full_element_count();
+        //local_delta_sum = local_delta_sum + ((it)->first)->get_delta_element_count();
+        //local_full_sum = local_full_sum + ((it)->first)->get_full_element_count();
 
         //std::cout << mcomm.get_local_rank() << " ---------- Number of tuples in relation " << (it->first)->get_debug_id() << " " << ((it)->first)->get_full_element_count() << std::endl;
     }
@@ -743,7 +744,7 @@ void RAM::check_for_fixed_point(std::vector<u32>& history)
 
 
 
-void RAM::execute_in_batches(int batch_size, std::vector<u32>& history, std::unordered_map<u64, u64>& intern_map)
+void RAM::execute_in_batches(int batch_size, std::vector<u32>& history, std::map<u64, u64>& intern_map)
 {
     double running_time = 0;
 
@@ -835,7 +836,7 @@ void RAM::execute_in_batches(int batch_size, std::vector<u32>& history, std::uno
 
 
 
-void RAM::execute_by_wall_clock(double batch_time, std::vector<u32>& history, std::unordered_map<u64, u64>& intern_map)
+void RAM::execute_by_wall_clock(double batch_time, std::vector<u32>& history, std::map<u64, u64>& intern_map)
 {
     double running_total = 0;
     double running_time = 0;

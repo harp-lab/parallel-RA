@@ -3,6 +3,7 @@
 
 int main(int argc, char **argv)
 {
+#if 1
     mpi_comm mcomm;
     mcomm.create(argc, argv);
 
@@ -184,7 +185,7 @@ int main(int argc, char **argv)
     scc11860->add_rule(new parallel_join(rel_inter_body66_6_1_2_3_4_5_6, rel_ReachesCfg_3_2_3, FULL, rel_inter_body73_5_5_3, DELTA, {3, 5, 6, 1, 7, 0}));
     scc11860->add_rule(new parallel_acopy(rel_AEval_6_, rel_AEval_6_1_2_3_4_5_6, DELTA, {6, 0, 1, 2, 3, 4, 5}));
 
-    LIE* lie = new LIE(1);
+    LIE* lie = new LIE();
     lie->add_relation(rel_AEval_6_6_5_3_2);
     lie->add_relation(rel_Time_2_);
     lie->add_relation(rel_inter_body68_6_3);
@@ -269,4 +270,5 @@ int main(int argc, char **argv)
 
     mcomm.destroy();
     return 0;
+#endif
 }

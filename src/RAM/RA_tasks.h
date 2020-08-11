@@ -18,7 +18,7 @@ private:
     int ram_id;
     bool init_status=false;
 
-    std::string name;                                       /// Name of this task (for debugging only)
+    //std::string name;                                       /// Name of this task (for debugging only)
     int iteration_count = -1;                               /// Number of iterations in a fixed point
 
     bool logging = false;                                   /// If logging is enabled or not
@@ -26,7 +26,14 @@ private:
     double refinement_factor = 4;                           /// For spatial balancing, a bucket is broken into 4 sub-buckets
 
 
-    std::unordered_map<relation*, bool> ram_relations;            /// All relations of this SCC
+    u32 ram_relation_count;
+    relation *ram_relations[64];
+    bool ram_relation_status[64];
+
+    //u32 ram_relations_key;
+    //std::map<u32, std::map<relation*, bool>> ram_relations;                /// All relations of this SCC
+
+
     std::vector<parallel_RA*> RA_list;                      /// All relations of this SCC
 
     u64 *intra_bucket_buf_output_size;                      /// results of intra-bucket comm
@@ -44,18 +51,12 @@ private:
 public:
 
     ~RAM();
-    RAM()   {}
     RAM (bool ic, int ram_id);
-    RAM (bool ic);
-    RAM (bool ic, std::string name);
+
 
 
     /// Set local task-level communicator
     void set_comm(mpi_comm& mcomm);
-
-
-    /// For debugging purpose
-    std::string get_name() {return name;}
 
 
     /// For debugging purpose
@@ -67,24 +68,13 @@ public:
 
 
 
-    std::unordered_map<relation*, bool> get_RAM_relations()   {return ram_relations;}
+    //std::map<u32, std::map<relation*, bool>> get_RAM_relations()   {return ram_relations;}
+    relation** get_RAM_relations()   {return ram_relations;}
+    bool* get_RAM_relations_status()   {return ram_relation_status;}
 
 
     /// add relations pertaining to this SCC
-    void add_relation(relation* G, bool i_status)
-    {
-        //init_status = i_status;
-        //ram_relations.insert(G);
-        //ram_relations[G] = i_status;
-        auto it = ram_relations.find(G);
-        if( it != ram_relations.end() ) {
-            it->second = i_status;
-        }
-        else {
-            ram_relations.insert(std::make_pair(G, i_status));
-        }
-
-    }
+    void add_relation(relation*& G, bool i_status);
 
 
     /// add rule to the SCC
@@ -107,6 +97,9 @@ public:
 
     /// the buckets over which the SCC is spread across
     u32 get_bucket_count() {return mcomm.get_local_nprocs();}
+
+
+    u32 get_ram_relation_count() {return ram_relation_count;}
 
 
     /// Spatial balancing of all relations
@@ -134,7 +127,7 @@ public:
 
 
     /// Update the head relation with new tuples
-    void local_insert_in_newt(std::unordered_map<u64, u64>& intern_map);
+    void local_insert_in_newt(std::map<u64, u64>& intern_map);
 
 
     /// insert delta in full, copy newt pointer to delta
@@ -148,11 +141,11 @@ public:
 
 
     /// Start running this SCC (task) for "batck_size" iterations
-    void execute_in_batches(int batch_size, std::vector<u32>& history, std::unordered_map<u64, u64>& intern_map);
+    void execute_in_batches(int batch_size, std::vector<u32>& history, std::map<u64, u64>& intern_map);
 
 
     /// Start running this SCC (task) for "batck_time" seconds
-    void execute_by_wall_clock(double batch_time, std::vector<u32>& history, std::unordered_map<u64, u64>& intern_map);
+    void execute_by_wall_clock(double batch_time, std::vector<u32>& history, std::map<u64, u64>& intern_map);
 };
 
 #endif

@@ -75,7 +75,7 @@ void parallel_io::parallel_read_input_relation_from_file_to_local_buffer(u32 ari
     if (read_offset + ceil((float)global_row_count / nprocs) > global_row_count)
         entry_count = global_row_count - read_offset;
     else
-        entry_count = (u32) ceil((float)global_row_count / nprocs);
+        entry_count = (int) ceil((float)global_row_count / nprocs);
 
     assert((int)arity+1 == col_count);
 
@@ -88,12 +88,18 @@ void parallel_io::parallel_read_input_relation_from_file_to_local_buffer(u32 ari
 
     input_buffer = new u64[entry_count * col_count];
     u32 rb_size = pread(fp, input_buffer, entry_count * col_count * sizeof(u64), read_offset * col_count * sizeof(u64));
+    //std::cout << "Correct IO: rank: " << rank << " " << rb_size << " " <<  entry_count << " " << col_count << " " << read_offset << std::endl;
     if (rb_size != entry_count * col_count * sizeof(u64))
     {
-        std::cout << "Wrong IO: rank: " << rank << " " << rb_size << " " <<  entry_count << " " << col_count << " " << read_offset << std::endl;
+        std::cout << data_filename <<  " Wrong IO: rank: " << rank << " " << rb_size << " " <<  entry_count << " " << col_count << " " << read_offset << std::endl;
         MPI_Abort(lcomm, -1);
     }
     close(fp);
+
+    //u32 rb_g_size = 0;
+    //MPI_Allreduce(&rb_size, &rb_g_size, 1, MPI_INT, MPI_SUM, lcomm);
+    //if (rank == 0)
+    //    std::cout << "Tuples in file " << file_name << " " << rb_g_size/(sizeof(u64) * (arity+1)) << std::endl;
 
 #endif
 
@@ -115,8 +121,9 @@ void parallel_io::parallel_read_input_relation_from_file_to_local_buffer(u32 ari
 void parallel_io::buffer_data_to_hash_buffer_col(u32 arity, const char *fname, u32 join_column_count, u32 buckets, u32** sub_bucket_rank, u32* sub_bucket_count, MPI_Comm comm)
 {
 
-    int nprocs;
+    int nprocs, rank;
     MPI_Comm_size(comm, &nprocs);
+    MPI_Comm_rank(comm, &rank);
 
     /* process_size[i] stores the number of samples to be sent to process with rank i */
     int* process_size = new int[nprocs];
@@ -133,7 +140,7 @@ void parallel_io::buffer_data_to_hash_buffer_col(u32 arity, const char *fname, u
 
 
     assert((int)arity+1 == col_count);
-    for (u32 i = 0; i < entry_count * (col_count); i=i+(col_count))
+    for (int i = 0; i < entry_count * (col_count); i=i+(col_count))
     {
         uint64_t bucket_id = tuple_hash(input_buffer + i, join_column_count) % buckets;
         uint64_t sub_bucket_id = tuple_hash(input_buffer + i+ (join_column_count), arity+1-join_column_count) % sub_bucket_count[bucket_id];
@@ -157,6 +164,10 @@ void parallel_io::buffer_data_to_hash_buffer_col(u32 arity, const char *fname, u
     /* Transmit the packaged data process_data_vector to all processes */
     all_to_all_comm(process_data_vector, process_data_vector_size, process_size, &hash_buffer_size, &hash_buffer, comm);
 
+    //u32 g_hash_buffer_size = 0;
+    //MPI_Allreduce(&hash_buffer_size, &g_hash_buffer_size, 1, MPI_INT, MPI_SUM, comm);
+    //if (rank == 0)
+    //    std::cout << "After Comm " << fname << " " << g_hash_buffer_size/((arity+1)) << std::endl;
 
     /* Free the data buffer after all to all */
     free (process_data_vector);

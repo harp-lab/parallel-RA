@@ -18,16 +18,40 @@ private:
     double batch_time;                                              /// Wallclock time between two fixed-point checks
     mpi_comm mcomm;                                                 /// MPI class
 
-    std::unordered_set<relation*> lie_relations;                    /// List of all relations
-    std::unordered_set<RAM*> tasks;                                 /// List of all tasks
-    std::unordered_map<RAM*, std::unordered_set<RAM*>> taskgraph1;  /// List of all edges in a task (this is an adjacency list)
+    u32 lie_relation_count;
+    relation *lie_relations[64];
 
-    std::unordered_map<u64, u64> intern_map;                        /// Intern table
+    //u32 lie_relations_key;
+    //std::map<u32, relation*> lie_relations;                    /// List of all relations
+
+    u32 lie_sccs_count;
+    RAM *lie_sccs[64];
+
+    //u32 lie_sccs_key;
+    //std::map<u32, RAM*> lie_sccs;                                 /// List of all tasks
+
+    std::map<RAM*, std::set<RAM*>> taskgraph;  /// List of all edges in a task (this is an adjacency list)
+
+    std::map<u64, u64> intern_map;                        /// Intern table
 
 
 public:
 
     ~LIE();
+
+    LIE()
+    {
+        lie_relation_count = 0;
+        //lie_relations_key = 0;
+        //lie_relations = {{},{}};
+
+        lie_sccs_count = 0;
+        //lie_sccs_key = 0;
+        //lie_sccs = {{},{}};
+
+        taskgraph = {{},{}};
+        intern_map = {{},{}};
+    }
 
     void print_all_relation();
 
@@ -46,26 +70,26 @@ public:
 
 
     /// Adds a new relation to the LIE
-    void add_relation(relation* rel)    {    lie_relations.insert(rel);    }
+    void add_relation(relation* rel);
 
 
     /// Adds a new SCC to the LIE
-    void add_scc(RAM* ra)    {    tasks.insert(ra);    }
+    void add_scc(RAM* ra);
 
 
     /// Returns a list of infiished tasks
-    std::unordered_set<RAM*> list_of_runnable_tasks(std::unordered_set<RAM*> tasks, std::unordered_map<RAM*, std::unordered_set<RAM*>> taskgraph1);
+    RAM* one_runnable_tasks();
 
 
     /// Removes tasks from the task edge list and tas list
-    void update_task_graph(std::unordered_set<RAM*> removable_tasks);
+    void update_task_graph(RAM* removable_tasks);
 
 
     /// Populates the adjacency list of tasks
     void add_scc_dependance (RAM* src_task, RAM* destination_task);
 
 
-    /// Runs all tasks within the LIE, following the dependence as set by taskgraph1
+    /// Runs all tasks within the LIE, following the dependence as set by taskgraph
     bool execute();
 };
 

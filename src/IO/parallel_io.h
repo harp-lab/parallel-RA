@@ -21,7 +21,7 @@ private:
     int col_count;
 
     /// total number of rows / nprocs
-    u32 entry_count;
+    int entry_count;
     u64* input_buffer;
 
     /// total number of rows after hashing

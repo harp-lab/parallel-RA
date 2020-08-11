@@ -3,6 +3,7 @@
 
 int main(int argc, char **argv)
 {
+#if 0
     mpi_comm mcomm;
     mcomm.create(argc, argv);
 
@@ -125,4 +126,5 @@ int main(int argc, char **argv)
 
     mcomm.destroy();
     return 0;
+#endif
 }

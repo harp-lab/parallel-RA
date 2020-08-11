@@ -9,8 +9,9 @@
 
 u32 relation::get_global_delta_element_count()
 {
-    u32 global_delta_element_count;
-    MPI_Allreduce(&delta_element_count, &global_delta_element_count, 1, MPI_INT, MPI_SUM, mcomm.get_local_comm());
+    int dec = (int)delta_element_count;
+    int global_delta_element_count;
+    MPI_Allreduce(&dec, &global_delta_element_count, 1, MPI_INT, MPI_SUM, mcomm.get_local_comm());
     return global_delta_element_count;
 }
 
@@ -259,7 +260,13 @@ void relation::initialize_relation(mpi_comm& mcomm)
         else if (initailization_type == FULL)
             populate_full(file_io.get_hash_buffer_size(), file_io.get_hash_buffer());
 
+        //int f_size = get_full_element_count();
+        //u32 g_f_size = 0;
+        //MPI_Allreduce(&f_size, &g_f_size, 1, MPI_INT, MPI_SUM, mcomm.get_local_comm());
+        //if (rank == 0)
+        //    std::cout << "After Init " << filename << " " << g_f_size << std::endl;
         //std::cout << "Writing " << file_io.get_hash_buffer_size() << " bytes" << std::endl;
+
         file_io.delete_hash_buffers();
     }
 }
@@ -269,8 +276,9 @@ void relation::initialize_relation_in_scc(bool init_status)
 {
     if (init_status == true)
     {
+        //if (mcomm.get_local_rank() == 0)
+        //    std::cout << "Shift will take place for " << get_debug_id() << std::endl;
         insert_full_in_delta();
-        //flush_full();
     }
 }
 
@@ -674,6 +682,7 @@ int relation::insert_full_in_delta()
         {
             std::vector<u64> prefix = {};
             full[i].as_vector_buffer_recursive(&(input_buffer[i]), prefix);
+            //std::cout << debug_id << " SIZE OF BUFFER " << (&input_buffer[i])->size << std::endl;
             for (u64 j = 0; j < (&input_buffer[i])->size / sizeof(u64); j=j+(arity+1))
             {
                 if (insert_in_delta ( (u64*)( (input_buffer[i].buffer) + (j*sizeof(u64)) )) == true)

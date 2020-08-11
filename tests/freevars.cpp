@@ -6,21 +6,22 @@ int main(int argc, char **argv)
     mpi_comm mcomm;
     mcomm.create(argc, argv);
 
-    relation* rel_inter_body27_3_1_2_3 = new relation(3, 3, true, 258, "rel_inter_body27_3_1_2_3", "/var/tmp/g6122/inter-body27_3_1_2_3", FULL);
-    relation* rel_var_ref_1_1 = new relation(1, 1, true, 257, "rel_var_ref_1_1", "/var/tmp/g6122/var-ref_1_1", FULL);
-    relation* rel_app_2_1_2 = new relation(2, 2, true, 256, "rel_app_2_1_2", "/var/tmp/g6122/app_2_1_2", FULL);
-    relation* rel_args_1_1 = new relation(1, 1, true, 262, "rel_args_1_1", "/var/tmp/g6122/args_1_1", FULL);
-    relation* rel_app_2_1 = new relation(1, 2, false, 256, "rel_app_2_1", "/var/tmp/g6122/app_2_1", FULL);
-    relation* rel_app_2_2 = new relation(1, 2, false, 256, "rel_app_2_2", "/var/tmp/g6122/app_2_2", FULL);
-    relation* rel_lambda_2_2 = new relation(1, 2, false, 261, "rel_lambda_2_2", "/var/tmp/g6122/lambda_2_2", FULL);
-    relation* rel_inter_body25_3_2 = new relation(1, 3, false, 259, "rel_inter_body25_3_2", "/var/tmp/g6122/inter-body25_3_2", FULL);
-    relation* rel_lambda_2_1_2 = new relation(2, 2, true, 261, "rel_lambda_2_1_2", "/var/tmp/g6122/lambda_2_1_2", FULL);
-    relation* rel_inter_body27_3_3_2 = new relation(2, 3, false, 258, "rel_inter_body27_3_3_2", "/var/tmp/g6122/inter-body27_3_3_2", FULL);
-    relation* rel_free_2_1_2 = new relation(2, 2, true, 260, "rel_free_2_1_2", "/var/tmp/g6122/free_2_1_2", FULL);
-    relation* rel_args_1_0 = new relation(1, 1, true, 262, "rel_args_1_0", "/var/tmp/g6122/args_1_0", FULL);
-    relation* rel_free_2_2 = new relation(1, 2, false, 260, "rel_free_2_2", "/var/tmp/g6122/free_2_2", FULL);
-    relation* rel_inter_body25_3_1_2_3 = new relation(3, 3, true, 259, "rel_inter_body25_3_1_2_3", "/var/tmp/g6122/inter-body25_3_1_2_3", FULL);
-    relation* rel_var_ref_1_ = new relation(0, 1, false, 257, "rel_var_ref_1_", "/var/tmp/g6122/var-ref_1_", FULL);
+#if 1
+    relation* rel_inter_body27_3_1_2_3 = new relation(3, true, 3, 258, "rel_inter_body27_3_1_2_3", "/var/tmp/g6122/inter-body27_3_1_2_3", FULL);
+    relation* rel_var_ref_1_1 = new relation(1, true, 1, 257, "rel_var_ref_1_1", "/var/tmp/g6122/var-ref_1_1", FULL);
+    relation* rel_app_2_1_2 = new relation(2, true, 2, 256, "rel_app_2_1_2", "/var/tmp/g6122/app_2_1_2", FULL);
+    relation* rel_args_1_1 = new relation(1, true, 1, 262, "rel_args_1_1", "/var/tmp/g6122/args_1_1", FULL);
+    relation* rel_app_2_1 = new relation(1, false, 2, 256, "rel_app_2_1", "/var/tmp/g6122/app_2_1", FULL);
+    relation* rel_app_2_2 = new relation(1, false, 2, 256, "rel_app_2_2", "/var/tmp/g6122/app_2_2", FULL);
+    relation* rel_lambda_2_2 = new relation(1, false, 2, 261, "rel_lambda_2_2", "/var/tmp/g6122/lambda_2_2", FULL);
+    relation* rel_inter_body25_3_2 = new relation(1, false, 3 , 259, "rel_inter_body25_3_2", "/var/tmp/g6122/inter-body25_3_2", FULL);
+    relation* rel_lambda_2_1_2 = new relation(2, true, 2 , 261, "rel_lambda_2_1_2", "/var/tmp/g6122/lambda_2_1_2", FULL);
+    relation* rel_inter_body27_3_3_2 = new relation(2, false, 3 , 258, "rel_inter_body27_3_3_2", "/var/tmp/g6122/inter-body27_3_3_2", FULL);
+    relation* rel_free_2_1_2 = new relation(2, true, 2, 260, "rel_free_2_1_2", "/var/tmp/g6122/free_2_1_2", FULL);
+    relation* rel_args_1_0 = new relation(1, true, 1, 262, "rel_args_1_0", "/var/tmp/g6122/args_1_0", FULL);
+    relation* rel_free_2_2 = new relation(1, false, 2 , 260, "rel_free_2_2", "/var/tmp/g6122/free_2_2", FULL);
+    relation* rel_inter_body25_3_1_2_3 = new relation(3, true, 3 , 259, "rel_inter_body25_3_1_2_3", "/var/tmp/g6122/inter-body25_3_1_2_3", FULL);
+    relation* rel_var_ref_1_ = new relation(0, false, 1 , 257, "rel_var_ref_1_", "/var/tmp/g6122/var-ref_1_", FULL);
 
     RAM* scc6123 = new RAM(false, 1);
     scc6123->add_relation(rel_app_2_1, true);
@@ -119,4 +120,5 @@ int main(int argc, char **argv)
     delete lie;
     mcomm.destroy();
     return 0;
+#endif
 }
