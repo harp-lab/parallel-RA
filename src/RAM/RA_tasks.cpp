@@ -196,7 +196,6 @@ u64 RAM::intra_bucket_comm_execute()
             else if (current_ra->get_join_input0_graph_type() == DELTA && current_ra->get_join_input1_graph_type() == FULL)
             {
                 /// Pick the relation with smaller size to be transmitted for intra-bucket communication
-                //std::cout << "TEST " << input0->get_global_delta_element_count() << " " << input1->get_global_full_element_count() << std::endl;
                 if (input0->get_global_delta_element_count() <= input1->get_global_full_element_count())
                     intra_bucket_comm(get_bucket_count(),
                                       input0->get_delta(),
