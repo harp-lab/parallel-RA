@@ -115,7 +115,7 @@ public:
 
 
     /// Join/compy/acopy
-    u32 local_compute();
+    u32 local_compute(int* offset);
 
 
     //// Comm compaction
@@ -138,6 +138,9 @@ public:
 
     /// has fixed point reached
     void check_for_fixed_point(std::vector<u32>& history);
+
+
+    void execute_in_batches_with_threshold(int batch_size, std::vector<u32>& history, std::map<u64, u64>& intern_map, double *running_time);
 
 
     /// Start running this SCC (task) for "batck_size" iterations

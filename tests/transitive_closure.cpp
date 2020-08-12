@@ -30,6 +30,7 @@ int main(int argc, char **argv)
     scc13239->add_relation(rel_path_2_1_2, true);
     scc13239->add_rule(new parallel_copy(rel_path_2_1_2, rel_edge_2_1_2, FULL, {0, 1}));
 #endif
+
     // body (rel_edge_2_1_2)
     // 0    1   2 (source)
     // 1    2   0 (nominal)
@@ -48,7 +49,6 @@ int main(int argc, char **argv)
     lie->add_scc(scc13239);
     lie->add_scc_dependance(scc13238, scc13237);
     lie->add_scc_dependance(scc13239, scc13237);
-
 
     lie->set_comm(mcomm);
     lie->set_batch_size(1);

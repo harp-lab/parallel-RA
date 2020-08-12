@@ -308,12 +308,14 @@ u32 RAM::allocate_compute_buffers()
 
 
 
-u32 RAM::local_compute()
+u32 RAM::local_compute(int* offset)
 {
+    bool join_completed = true;
     u32 join_tuples = 0;
     u32 join_tuples_duplicates = 0;
     u32 total_join_tuples = 0;
     u32 counter = 0;
+    int threshold = 10;
 
     for (std::vector<parallel_RA*>::iterator it = RA_list.begin() ; it != RA_list.end(); ++it)
     {
@@ -426,7 +428,8 @@ u32 RAM::local_compute()
             if (current_ra->get_join_input0_graph_type() == DELTA && current_ra->get_join_input1_graph_type() == DELTA)
             {
                 if (input0->get_global_delta_element_count() <= input1->get_global_delta_element_count())
-                    current_ra->local_join(LEFT,
+                    join_completed = join_completed & current_ra->local_join(threshold, &(offset[counter]),
+                                           LEFT,
                                            get_bucket_count(),
                                            intra_bucket_buf_output_size[counter], input0->get_arity()+1, intra_bucket_buf_output[counter],
                                            input1->get_delta(), input1->get_delta_element_count(), input1->get_arity()+1,
@@ -438,7 +441,8 @@ u32 RAM::local_compute()
                                            &join_tuples_duplicates,
                                            &join_tuples);
                 else
-                    current_ra->local_join(RIGHT,
+                    join_completed = join_completed & current_ra->local_join(threshold, &(offset[counter]),
+                                           RIGHT,
                                            get_bucket_count(),
                                            intra_bucket_buf_output_size[counter], input1->get_arity()+1, intra_bucket_buf_output[counter],
                                            input0->get_delta(), input0->get_delta_element_count(), input0->get_arity()+1,
@@ -455,7 +459,9 @@ u32 RAM::local_compute()
             else if (current_ra->get_join_input0_graph_type() == DELTA && current_ra->get_join_input1_graph_type() == FULL)
             {
                 if (input0->get_global_delta_element_count() <= input1->get_global_full_element_count())
-                    current_ra->local_join(LEFT,
+                {
+                    join_completed = join_completed & current_ra->local_join(threshold, &(offset[counter]),
+                                           LEFT,
                                            get_bucket_count(),
                                            intra_bucket_buf_output_size[counter], input0->get_arity()+1, intra_bucket_buf_output[counter],
                                            input1->get_full(), input1->get_full_element_count(), input1->get_arity()+1,
@@ -466,10 +472,13 @@ u32 RAM::local_compute()
                                            join_column_count,
                                            &join_tuples_duplicates,
                                            &join_tuples);
+                    //std::cout << counter << " OUTER LOOP " << offset[counter] << std::endl;
+                }
 
 
                 else
-                    current_ra->local_join(RIGHT,
+                    join_completed = join_completed & current_ra->local_join(threshold, &(offset[counter]),
+                                           RIGHT,
                                            get_bucket_count(),
                                            intra_bucket_buf_output_size[counter], input1->get_arity()+1, intra_bucket_buf_output[counter],
                                            input0->get_delta(), input0->get_delta_element_count(), input0->get_arity()+1,
@@ -485,7 +494,8 @@ u32 RAM::local_compute()
             else if (current_ra->get_join_input0_graph_type() == FULL && current_ra->get_join_input1_graph_type() == DELTA)
             {
                 if (input0->get_global_full_element_count() <= input1->get_global_delta_element_count())
-                    current_ra->local_join(LEFT,
+                    join_completed = join_completed & current_ra->local_join(threshold, &(offset[counter]),
+                                           LEFT,
                                            get_bucket_count(),
                                            intra_bucket_buf_output_size[counter], input0->get_arity()+1, intra_bucket_buf_output[counter],
                                            input1->get_delta(), input1->get_delta_element_count(), input1->get_arity()+1,
@@ -497,7 +507,8 @@ u32 RAM::local_compute()
                                            &join_tuples_duplicates,
                                            &join_tuples);
                 else
-                    current_ra->local_join(RIGHT,
+                    join_completed = join_completed & current_ra->local_join(threshold, &(offset[counter]),
+                                           RIGHT,
                                            get_bucket_count(),
                                            intra_bucket_buf_output_size[counter], input1->get_arity()+1, intra_bucket_buf_output[counter],
                                            input0->get_full(), input0->get_full_element_count(), input0->get_arity()+1,
@@ -513,7 +524,8 @@ u32 RAM::local_compute()
             else if (current_ra->get_join_input0_graph_type() == FULL && current_ra->get_join_input1_graph_type() == FULL)
             {
                 if (input0->get_global_full_element_count() <= input1->get_global_full_element_count())
-                    current_ra->local_join(LEFT,
+                    join_completed = join_completed & current_ra->local_join(threshold, &(offset[counter]),
+                                           LEFT,
                                            get_bucket_count(),
                                            intra_bucket_buf_output_size[counter], input0->get_arity()+1, intra_bucket_buf_output[counter],
                                            input1->get_full(), input1->get_full_element_count(), input1->get_arity()+1,
@@ -525,7 +537,8 @@ u32 RAM::local_compute()
                                            &join_tuples_duplicates,
                                            &join_tuples);
                 else
-                    current_ra->local_join(RIGHT,
+                    join_completed = join_completed & current_ra->local_join(threshold, &(offset[counter]),
+                                           RIGHT,
                                            get_bucket_count(),
                                            intra_bucket_buf_output_size[counter], input1->get_arity()+1, intra_bucket_buf_output[counter],
                                            input0->get_full(), input0->get_full_element_count(), input0->get_arity()+1,
@@ -549,21 +562,33 @@ u32 RAM::local_compute()
     if (mcomm.get_rank() == 0)
         std::cout << "Joins: " << global_total_join_tuples << " Duplicates " << global_join_tuples_duplicates << " ";
 
-    counter = 0;
-    for (std::vector<parallel_RA*>::iterator it = RA_list.begin() ; it != RA_list.end(); ++it)
+#if 1
+    int global_synchronizer = 0;
+    int synchronizer = 0;
+    if (join_completed == true)
+        synchronizer = 1;
+
+    MPI_Allreduce(&synchronizer, &global_synchronizer, 1, MPI_INT, MPI_BAND, mcomm.get_comm());
+    if (global_synchronizer == 1)
     {
-        parallel_RA* current_ra = *it;
-        if (current_ra->get_RA_type() == JOIN)
-            delete[] intra_bucket_buf_output[counter];
+        counter = 0;
+        for (std::vector<parallel_RA*>::iterator it = RA_list.begin() ; it != RA_list.end(); ++it)
+        {
+            parallel_RA* current_ra = *it;
+            if (current_ra->get_RA_type() == JOIN)
+                delete[] intra_bucket_buf_output[counter];
 
-        counter++;
+            offset[counter] = 0;
+            counter++;
+        }
+
+        delete[] intra_bucket_buf_output_size;
+        delete[] intra_bucket_buf_output;
+        return true;
     }
-
-    delete[] intra_bucket_buf_output_size;
-    delete[] intra_bucket_buf_output;
-
-
-    return join_tuples;
+    else
+        return false;
+#endif
 }
 
 
@@ -682,9 +707,6 @@ void RAM::local_insert_in_newt(std::map<u64, u64>& intern_map)
 
     delete[] cumulative_all_to_all_recv_process_size_array;
     delete[] cumulative_all_to_all_buffer;
-
-    /// 1000000100000000000000000001111111111111111111111111110
-    /// 1000000100000000010000001111111111111111111111111111110
 }
 
 
@@ -709,12 +731,9 @@ void RAM::local_insert_in_full()
 
 void RAM::insert_delta_in_full()
 {
-    //for (std::map<relation*, bool>::iterator it = ram_relations.begin() ; it != ram_relations.end(); ++it)
     for (u32 i=0; i < ram_relation_count; i++)
-    {
-        //relation* current_r = it->first;
         ram_relations[i]->insert_delta_in_full();
-    }
+
     return;
 }
 
@@ -725,16 +744,10 @@ void RAM::check_for_fixed_point(std::vector<u32>& history)
     int local_delta_sum = 0, local_full_sum = 0, global_delta_sum = 0, global_full_sum = 0;
 
 
-    //for (std::map<relation*, bool>::iterator it = ram_relations.begin() ; it != ram_relations.end(); ++it)
-    //for (std::map<u32, std::map<relation*, bool>>::iterator it = ram_relations.begin() ; it != ram_relations.end(); ++it)
     for (u32 i=0; i < ram_relation_count; i++)
     {
         local_delta_sum = local_delta_sum + ram_relations[i]->get_delta_element_count();
         local_full_sum = local_full_sum + ram_relations[i]->get_full_element_count();
-        //local_delta_sum = local_delta_sum + ((it)->first)->get_delta_element_count();
-        //local_full_sum = local_full_sum + ((it)->first)->get_full_element_count();
-
-        //std::cout << mcomm.get_local_rank() << " ---------- Number of tuples in relation " << (it->first)->get_debug_id() << " " << ((it)->first)->get_full_element_count() << std::endl;
     }
 
     MPI_Allreduce(&local_delta_sum, &global_delta_sum, 1, MPI_INT, MPI_SUM, mcomm.get_local_comm());
@@ -746,11 +759,115 @@ void RAM::check_for_fixed_point(std::vector<u32>& history)
 }
 
 
+void RAM::execute_in_batches_with_threshold(int batch_size, std::vector<u32>& history, std::map<u64, u64>& intern_map, double *running_time)
+{
+    int inner_loop = 0;
+    bool local_join_status = true;
+    u32 RA_count = RA_list.size();
 
+    int *offset = new int[RA_count];
+    for (u32 i =0; i < RA_count; i++)
+        offset[i] = 0;
+
+    while (batch_size != 0)
+    {
+        //if (mcomm.get_local_rank() == 0)
+        //    std::cout << "Init" << std::endl;
+
+        double intra_start = MPI_Wtime();
+        if (local_join_status == true)
+            intra_bucket_comm_execute();
+        double intra_end = MPI_Wtime();
+
+        //if (mcomm.get_local_rank() == 0)
+        //    std::cout << "Intrabucket comm" << std::endl;
+
+        double allocate_buffers_start = MPI_Wtime();
+        allocate_compute_buffers();
+        double allocate_buffers_end = MPI_Wtime();
+
+        //if (mcomm.get_local_rank() == 0)
+        //    std::cout << "Allocate compute buffers" << std::endl;
+
+        double compute_start = MPI_Wtime();
+        local_join_status = local_compute(offset);
+        if (local_join_status == true)
+        {
+            batch_size--;
+            loop_count_tracker++;
+            inner_loop = 0;
+        }
+        double compute_end = MPI_Wtime();
+
+        //if (mcomm.get_local_rank() == 0)
+        //    std::cout << "Local compute" << std::endl;
+
+        double all_to_all_start = MPI_Wtime();
+        all_to_all();
+        double all_to_all_end = MPI_Wtime();
+
+        //if (mcomm.get_local_rank() == 0)
+        //    std::cout << "All to all" << std::endl;
+
+        double free_buffers_start = MPI_Wtime();
+        free_compute_buffers();
+        double free_buffers_end = MPI_Wtime();
+
+        //if (mcomm.get_local_rank() == 0)
+        //    std::cout << "Free compute buffers" << std::endl;
+
+        double insert_in_newt_start = MPI_Wtime();
+        local_insert_in_newt(intern_map);
+        double insert_in_newt_end = MPI_Wtime();
+
+        //if (mcomm.get_local_rank() == 0)
+        //    std::cout << "Local insert in newt" << std::endl;
+
+        double insert_in_full_start = MPI_Wtime();
+        if (local_join_status == true)
+            local_insert_in_full();
+        double insert_in_full_end = MPI_Wtime();
+
+        //if (mcomm.get_local_rank() == 0)
+        //    std::cout << "Local insert in full" << std::endl;
+
+        *running_time = *running_time + (intra_end - intra_start) + (compute_end - compute_start) + (all_to_all_end - all_to_all_start) + (insert_in_newt_end - insert_in_newt_start) + (insert_in_full_end - insert_in_full_start);
+
+#if 1
+        if (mcomm.get_rank() == 0)
+            std::cout << "INNER [" << loop_count_tracker << " " << inner_loop << "] "
+                      << " Intra " << (intra_end - intra_start)
+                      << " Buf cre " << (allocate_buffers_end - allocate_buffers_start)
+                      << " comp " << (compute_end - compute_start)
+                      << " A2A " << (all_to_all_end - all_to_all_start)
+                      << " Buf free " << (free_buffers_end - free_buffers_start)
+                      << " newt " << (insert_in_newt_end - insert_in_newt_start)
+                      << " full " << (insert_in_full_end - insert_in_full_start)
+                      << " Total " << (intra_end - intra_start) + (compute_end - compute_start) + (all_to_all_end - all_to_all_start) + (insert_in_newt_end - insert_in_newt_start) + (insert_in_full_end - insert_in_full_start) + (allocate_buffers_end - allocate_buffers_start) + (free_buffers_end - free_buffers_start)
+                      << " [ "
+                      << *running_time
+                      << " ]" << std::endl;
+#endif
+
+        inner_loop++;
+        if (iteration_count == 1)
+            break;
+
+
+    }
+
+    delete[] offset;
+
+    check_for_fixed_point(history);
+
+    if (logging == true)
+        print_all_relation();
+}
+
+
+#if 0
 void RAM::execute_in_batches(int batch_size, std::vector<u32>& history, std::map<u64, u64>& intern_map, double *running_time)
 {
-    //double running_time = 0;
-
     while (batch_size != 0)
     {
         //if (mcomm.get_local_rank() == 0)
@@ -912,3 +1029,4 @@ void RAM::execute_by_wall_clock(double batch_time, std::vector<u32>& history, st
     if (logging == true)
         print_all_relation();
 }
+#endif
