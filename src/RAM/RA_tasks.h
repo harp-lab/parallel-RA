@@ -144,7 +144,7 @@ public:
 
 
     /// Start running this SCC (task) for "batck_size" iterations
-    void execute_in_batches(int batch_size, std::vector<u32>& history, std::map<u64, u64>& intern_map, double* total_time);
+    void execute_in_batches_with_threshold(int batch_size, std::vector<u32>& history, std::map<u64, u64>& intern_map, double *running_time, double *running_intra_bucket_comm, double *running_buffer_allocate, double *running_local_compute, double *running_all_to_all, double *running_buffer_free, double *running_insert_newt, double *running_insert_in_full);
 
 
     /// Start running this SCC (task) for "batck_time" seconds

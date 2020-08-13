@@ -101,6 +101,7 @@ void LIE::add_scc_dependance (RAM* src_task, RAM* destination_task)
 }
 
 
+#if 0
 void LIE::print_all_relation()
 {
     u64 total_facts=0;
@@ -119,6 +120,34 @@ void LIE::print_all_relation()
     if (mcomm.get_local_rank() == 0)
         std::cout << "Total facts across all relations " << total_facts << std::endl;
 }
+#endif
+
+
+
+void LIE::print_all_relation()
+{
+    u64 total_facts=0;
+    u64 local_facts[lie_relation_count];
+    for (u32 i = 0 ; i < lie_relation_count; i++)
+    {
+        relation* curr_relation = lie_relations[i];
+        local_facts[i] = curr_relation->get_full_element_count();
+    }
+
+    u64 global_total_facts[lie_relation_count];
+    MPI_Allreduce(local_facts, global_total_facts, lie_relation_count, MPI_UNSIGNED_LONG_LONG, MPI_SUM, mcomm.get_local_comm());
+    for (u32 i = 0 ; i < lie_relation_count; i++)
+    {
+        relation* curr_relation = lie_relations[i];
+        if (mcomm.get_local_rank() == 0)
+            std::cout << curr_relation->get_debug_id() << ": {" << curr_relation->get_arity() << "}. (" << global_total_facts[i] << " total facts)" << std::endl;
+        total_facts = total_facts + global_total_facts[i];
+    }
+
+    if (mcomm.get_local_rank() == 0)
+        std::cout << "Total facts across all relations " << total_facts << std::endl;
+}
+
 
 
 bool LIE::execute ()
@@ -162,16 +191,27 @@ bool LIE::execute ()
         /// else case is for join rules
 
         double running_time=0;
+        double running_intra_bucket_comm=0;
+        double running_buffer_allocate=0;
+        double running_local_compute=0;
+        double running_all_to_all=0;
+        double running_buffer_free=0;
+        double running_insert_newt=0;
+        double running_insert_in_full=0;
+
         if (executable_task->get_iteration_count() == 1)
-            executable_task->execute_in_batches_with_threshold(batch_size, history, intern_map, &running_time);
+            executable_task->execute_in_batches_with_threshold(batch_size, history, intern_map, &running_time, &running_intra_bucket_comm, &running_buffer_allocate, &running_local_compute, &running_all_to_all, &running_buffer_free, &running_insert_newt, &running_insert_in_full);
         else
         {
             u64 delta_in_scc = 0;
             do
             {
-                executable_task->execute_in_batches_with_threshold(batch_size, history, intern_map, &running_time);
+                executable_task->execute_in_batches_with_threshold(batch_size, history, intern_map, &running_time, &running_intra_bucket_comm, &running_buffer_allocate, &running_local_compute, &running_all_to_all, &running_buffer_free, &running_insert_newt, &running_insert_in_full);
+
                 delta_in_scc = history[history.size()-2];
 
+                print_all_relation();
+#if 0
                 for (u32 i = 0 ; i < lie_relation_count; i++)
                 {
                     relation* curr_relation = lie_relations[i];
@@ -184,10 +224,8 @@ bool LIE::execute ()
                         if (mcomm.get_local_rank() == 0)
                             std::cout << curr_relation->get_debug_id() << ": {" << curr_relation->get_arity() << "}. (" << global_total_facts << " total facts)" << std::endl;
                     }
-
-
                 }
-
+#endif
             }
             while (delta_in_scc != 0);
         }
