@@ -356,7 +356,7 @@ u32 RAM::local_compute(int* offset)
     u32 join_tuples_duplicates = 0;
     u32 total_join_tuples = 0;
     u32 counter = 0;
-    int threshold = 10000;
+    int threshold = 8192;
 
     for (std::vector<parallel_RA*>::iterator it = RA_list.begin() ; it != RA_list.end(); ++it)
     {

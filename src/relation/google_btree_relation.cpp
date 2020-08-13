@@ -197,6 +197,8 @@ void google_relation::as_all_to_all_copy_filter_buffer_helper(google_relation*& 
         u64 cur_path_array[cur_path.size()];
         cur_path_array[0] = cur_path[0];
         cur_path_array[1] = cur_path[1];
+        //cur_path_array[0] = cur_path[reorder_map[0]];
+        //cur_path_array[1] = cur_path[reorder_map[1]];
         if (lambda(cur_path_array) == true)
         {
             for (u32 j =0; j < reorder_map.size(); j++)
@@ -214,7 +216,6 @@ void google_relation::as_all_to_all_copy_filter_buffer_helper(google_relation*& 
             buffer.local_compute_output_size[ra_id][index] = buffer.local_compute_output_size[ra_id][index] + buffer.width[ra_id];
             buffer.cumulative_tuple_process_map[index] = buffer.cumulative_tuple_process_map[index] + buffer.width[ra_id];
             buffer.local_compute_output[ra_id][index].vector_buffer_append((const unsigned char*)reordered_cur_path, sizeof(u64)*buffer.width[ra_id]);
-
         }
     }
 

@@ -19,12 +19,10 @@ void parallel_copy_filter::local_copy_filter(u32 buckets, google_relation* input
 
 
     for (u32 i = 0; i < buckets; i++)
-    {
         if (input_bucket_map[i] == 1)
-        {
             input[i].as_all_to_all_copy_filter_buffer(copy_filter_buffer, {}, reorder_map, ra_counter, buckets, output_sub_bucket_count, output_sub_bucket_rank, (arity), join_column_count, lambda, output->get_join_column_count(), output->get_is_canonical());
-        }
-    }
+
+
 
     return;
 }

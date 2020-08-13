@@ -171,6 +171,23 @@ bool LIE::execute ()
             {
                 executable_task->execute_in_batches_with_threshold(batch_size, history, intern_map, &running_time);
                 delta_in_scc = history[history.size()-2];
+
+                for (u32 i = 0 ; i < lie_relation_count; i++)
+                {
+                    relation* curr_relation = lie_relations[i];
+                    if (curr_relation->get_debug_id() == "rel_Step_12_1_2_3_4_5_6_7_8_9_10_11_12")
+                    {
+                        u64 local_facts = curr_relation->get_full_element_count();
+                        u64 global_total_facts = 0;
+                        MPI_Allreduce(&local_facts, &global_total_facts, 1, MPI_UNSIGNED_LONG_LONG, MPI_SUM, mcomm.get_local_comm());
+
+                        if (mcomm.get_local_rank() == 0)
+                            std::cout << curr_relation->get_debug_id() << ": {" << curr_relation->get_arity() << "}. (" << global_total_facts << " total facts)" << std::endl;
+                    }
+
+
+                }
+
             }
             while (delta_in_scc != 0);
         }

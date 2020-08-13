@@ -148,18 +148,18 @@ bool relation::load_balance_merge_full_and_delta(float rf)
             temp_buffer.vector_buffer_create_empty();
             full[b].as_vector_buffer_recursive(&temp_buffer, prefix);
 
-            for (u32 s = 0; s < temp_buffer.size / sizeof(u64); s=s+arity)
+            for (u32 s = 0; s < temp_buffer.size / sizeof(u64); s=s+(arity+1))
             {
-                u64 reordered_cur_path[arity];
-                for (u32 j =0; j < arity; j++)
+                u64 reordered_cur_path[(arity+1)];
+                for (u32 j =0; j < (arity+1); j++)
                     memcpy(reordered_cur_path, (&temp_buffer)->buffer + ((s + j) * sizeof(u64)), sizeof(u64));
 
                 uint64_t bucket_id = tuple_hash(reordered_cur_path, join_column_count) % buckets;
-                uint64_t sub_bucket_id = tuple_hash(reordered_cur_path+join_column_count, arity-join_column_count) % global_new_sub_bucket[bucket_id];
+                uint64_t sub_bucket_id = tuple_hash(reordered_cur_path+join_column_count, (arity+1)-join_column_count) % global_new_sub_bucket[bucket_id];
                 int index = sub_bucket_rank[bucket_id][sub_bucket_id];
 
-                process_size[index] = process_size[index] + arity;
-                process_data_vector[index].vector_buffer_append((const unsigned char*)reordered_cur_path, sizeof(u64)*arity);
+                process_size[index] = process_size[index] + (arity+1);
+                process_data_vector[index].vector_buffer_append((const unsigned char*)reordered_cur_path, sizeof(u64)*(arity+1));
 
                 process_data_vector_size = process_data_vector_size + (arity + 1);
             }
@@ -169,18 +169,18 @@ bool relation::load_balance_merge_full_and_delta(float rf)
             temp_buffer.vector_buffer_create_empty();
             delta[b].as_vector_buffer_recursive(&temp_buffer, prefix);
 
-            for (u32 s = 0; s < temp_buffer.size / sizeof(u64); s=s+arity)
+            for (u32 s = 0; s < temp_buffer.size / sizeof(u64); s=s+(arity+1))
             {
-                u64 reordered_cur_path[arity];
-                for (u32 j =0; j < arity; j++)
+                u64 reordered_cur_path[(arity+1)];
+                for (u32 j =0; j < (arity+1); j++)
                     memcpy(reordered_cur_path, (&temp_buffer)->buffer + ((s + j) * sizeof(u64)), sizeof(u64));
 
                 uint64_t bucket_id = tuple_hash(reordered_cur_path, join_column_count) % buckets;
-                uint64_t sub_bucket_id = tuple_hash(reordered_cur_path+join_column_count, arity-join_column_count) % global_new_sub_bucket[bucket_id];
+                uint64_t sub_bucket_id = tuple_hash(reordered_cur_path+join_column_count, (arity+1)-join_column_count) % global_new_sub_bucket[bucket_id];
                 int index = sub_bucket_rank[bucket_id][sub_bucket_id];
 
-                process_size_dt[index] = process_size_dt[index] + arity;
-                process_data_vector_dt[index].vector_buffer_append((const unsigned char*)reordered_cur_path, sizeof(u64)*arity);
+                process_size_dt[index] = process_size_dt[index] + (arity+1);
+                process_data_vector_dt[index].vector_buffer_append((const unsigned char*)reordered_cur_path, sizeof(u64)*(arity+1));
 
                 process_data_vector_dt_size = process_data_vector_dt_size + (arity + 1);
             }
@@ -197,10 +197,10 @@ bool relation::load_balance_merge_full_and_delta(float rf)
     all_to_all_comm(process_data_vector, process_data_vector_size, process_size, &outer_hash_buffer_size, &outer_hash_data, mcomm.get_local_comm());
     free (process_data_vector);
 
-    u64 t[arity];
-    for (int in = 0; in < outer_hash_buffer_size; in = in + arity)
+    u64 t[(arity+1)];
+    for (int in = 0; in < outer_hash_buffer_size; in = in + (arity+1))
     {
-        for (u32 x=0; x < arity; x++)
+        for (u32 x=0; x < (arity+1); x++)
             t[x] = outer_hash_data[in + x];
 
         insert_in_full(t);
@@ -213,9 +213,9 @@ bool relation::load_balance_merge_full_and_delta(float rf)
     all_to_all_comm(process_data_vector_dt, process_data_vector_dt_size, process_size_dt, &dt_outer_hash_buffer_size, &dt_outer_hash_data, mcomm.get_local_comm());
     free (process_data_vector_dt);
 
-    for (int in = 0; in < dt_outer_hash_buffer_size; in = in + 2)
+    for (int in = 0; in < dt_outer_hash_buffer_size; in = in + (arity+1))
     {
-        for (u32 x=0; x < arity; x++)
+        for (u32 x=0; x < (arity+1); x++)
             t[x] = dt_outer_hash_data[in + x];
 
         insert_in_delta(t);
@@ -315,8 +315,6 @@ bool relation::load_balance_split_full_and_delta(float rf)
             std::cout << "[YES] G RF " << rf << " Bucket Split -- Global Min " << global_min << " Average bucket size " << average_sub_bucket_size << " Global Max [" << global_global_max << " " << average_global_max/buckets  << "] OLD " << old_total_sub_buckets << " NEW " << new_total_sub_buckets << std::endl;
     }
 
-
-
     int rcount =  get_last_rank();
     int process_size[nprocs];
     memset(process_size, 0, nprocs * sizeof(int));
@@ -387,18 +385,18 @@ bool relation::load_balance_split_full_and_delta(float rf)
             std::vector<u64> prefix = {};
             full[b].as_vector_buffer_recursive(&temp_buffer, prefix);
 
-            for (u32 s = 0; s < temp_buffer.size / sizeof(u64); s=s+arity)
+            for (u32 s = 0; s < temp_buffer.size / sizeof(u64); s=s+(arity+1))
             {
-                u64 reordered_cur_path[arity];
-                for (u32 j =0; j < arity; j++)
+                u64 reordered_cur_path[(arity+1)];
+                for (u32 j =0; j < (arity+1); j++)
                     memcpy(reordered_cur_path, (&temp_buffer)->buffer + ((s + j) * sizeof(u64)), sizeof(u64));
 
                 uint64_t bucket_id = tuple_hash(reordered_cur_path, join_column_count) % buckets;
-                uint64_t sub_bucket_id = tuple_hash(reordered_cur_path+join_column_count, arity-join_column_count) % global_new_sub_bucket[bucket_id];
+                uint64_t sub_bucket_id = tuple_hash(reordered_cur_path+join_column_count, (arity+1)-join_column_count) % global_new_sub_bucket[bucket_id];
                 int index = sub_bucket_rank[bucket_id][sub_bucket_id];
 
-                process_size[index] = process_size[index] + arity;
-                process_data_vector[index].vector_buffer_append((const unsigned char*)reordered_cur_path, sizeof(u64)*arity);
+                process_size[index] = process_size[index] + (arity+1);
+                process_data_vector[index].vector_buffer_append((const unsigned char*)reordered_cur_path, sizeof(u64)*(arity+1));
 
                 process_data_vector_size = process_data_vector_size + (arity+1);
             }
@@ -409,18 +407,18 @@ bool relation::load_balance_split_full_and_delta(float rf)
             temp_buffer.vector_buffer_create_empty();
             delta[b].as_vector_buffer_recursive(&temp_buffer, prefix);
 
-            for (u32 s = 0; s < temp_buffer.size / sizeof(u64); s=s+arity)
+            for (u32 s = 0; s < temp_buffer.size / sizeof(u64); s=s+(arity+1))
             {
-                u64 reordered_cur_path[arity];
-                for (u32 j =0; j < arity; j++)
+                u64 reordered_cur_path[(arity+1)];
+                for (u32 j =0; j < (arity+1); j++)
                     memcpy(reordered_cur_path, (&temp_buffer)->buffer + ((s + j) * sizeof(u64)), sizeof(u64));
 
                 uint64_t bucket_id = tuple_hash(reordered_cur_path, join_column_count) % buckets;
-                uint64_t sub_bucket_id = tuple_hash(reordered_cur_path + join_column_count, (arity-join_column_count)) % global_new_sub_bucket[bucket_id];
+                uint64_t sub_bucket_id = tuple_hash(reordered_cur_path + join_column_count, ((arity+1)-join_column_count)) % global_new_sub_bucket[bucket_id];
                 int index = sub_bucket_rank[bucket_id][sub_bucket_id];
 
-                process_size_dt[index] = process_size_dt[index] + arity;
-                process_data_vector_dt[index].vector_buffer_append((const unsigned char*)reordered_cur_path, sizeof(u64)*arity);
+                process_size_dt[index] = process_size_dt[index] + (arity+1);
+                process_data_vector_dt[index].vector_buffer_append((const unsigned char*)reordered_cur_path, sizeof(u64)*(arity+1));
 
                 process_data_vector_dt_size = process_data_vector_dt_size + (arity+1);
             }
@@ -437,14 +435,13 @@ bool relation::load_balance_split_full_and_delta(float rf)
     all_to_all_comm(process_data_vector, process_data_vector_size, process_size, &outer_hash_buffer_size, &outer_hash_data, mcomm.get_local_comm());
     free(process_data_vector);
 
-    u64 t[2];
-    for (int in = 0; in < outer_hash_buffer_size; in = in + arity)
+    u64 t[arity + 1];
+    for (int in = 0; in < outer_hash_buffer_size; in = in + arity+1)
     {
-        t[0] = outer_hash_data[in];
-        t[1] = outer_hash_data[in + 1];
+        for (u32 j=0; j < (arity+1); j++)
+            t[j] = outer_hash_data[in + j];
         insert_in_full(t);
     }
-
     delete[] outer_hash_data;
 
     int dt_outer_hash_buffer_size = 0;
@@ -452,12 +449,13 @@ bool relation::load_balance_split_full_and_delta(float rf)
     all_to_all_comm(process_data_vector_dt, process_data_vector_dt_size, process_size_dt, &dt_outer_hash_buffer_size, &dt_outer_hash_data, mcomm.get_local_comm());
     free(process_data_vector_dt);
 
-    for (int in = 0; in < dt_outer_hash_buffer_size; in = in + 2)
+    for (int in = 0; in < dt_outer_hash_buffer_size; in = in + arity+1)
     {
-        t[0] = dt_outer_hash_data[in];
-        t[1] = dt_outer_hash_data[in + 1];
+        for (u32 j=0; j < (arity+1); j++)
+            t[j] = dt_outer_hash_data[in + j];
         insert_in_delta(t);
     }
+    delete[] dt_outer_hash_data;
 
     return true;
 }
