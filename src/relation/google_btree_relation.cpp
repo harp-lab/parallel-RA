@@ -139,14 +139,6 @@ void google_relation::as_all_to_all_copy_buffer_helper(google_relation*& cur_tri
         if (canonical == false)
             sub_bucket_id = tuple_hash(reordered_cur_path + head_rel_hash_col_count, arity-head_rel_hash_col_count) % output_sub_bucket_count[bucket_id];
 
-        //int rank;
-        //MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-        //if (reordered_cur_path[0] == 18436611242983423 && reordered_cur_path[1] == 49)
-        //{
-        //    u64 bid = tuple_hash(reordered_cur_path, head_rel_hash_col_count) % buckets;
-        //    std::cout << "-----------------Rank " << rank << " " << reordered_cur_path[0] << " " << reordered_cur_path[1] << bid << std::endl;
-        //}
-
         int index = output_sub_bucket_rank[bucket_id][sub_bucket_id];
         buffer.local_compute_output_size_total = buffer.local_compute_output_size_total + buffer.width[ra_id];
         buffer.local_compute_output_size_flat[index * buffer.ra_count + ra_id] = buffer.local_compute_output_size_flat[index * buffer.ra_count + ra_id] + buffer.width[ra_id];

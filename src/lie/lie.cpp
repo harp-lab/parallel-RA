@@ -124,7 +124,7 @@ void LIE::print_all_relation()
 
 
 
-void LIE::print_all_relation()
+void LIE::print_all_relation_size()
 {
     u64 total_facts=0;
     u64 local_facts[lie_relation_count];
@@ -145,7 +145,7 @@ void LIE::print_all_relation()
     }
 
     if (mcomm.get_local_rank() == 0)
-        std::cout << "Total facts across all relations " << total_facts << std::endl;
+        std::cout << "Total facts across all relations " << total_facts << std::endl << std::endl;
 }
 
 
@@ -156,11 +156,19 @@ bool LIE::execute ()
     mcomm.set_local_comm(MPI_COMM_WORLD);
 
     /// Initialize all relations
-    //for (std::map<u32, relation*>::iterator it = lie_relations.begin() ; it != lie_relations.end(); ++it)
-    //    (it->second)->initialize_relation(mcomm);
-
     for (u32 i = 0 ; i < lie_relation_count; i++)
+    {
         lie_relations[i]->initialize_relation(mcomm);
+
+#if DEBUG_OUTPUT
+        lie_relations[i]->print();
+#endif
+    }
+
+#if DEBUG_OUTPUT
+    if (mcomm.get_local_rank() == 0)
+        std::cout << "----------------- Initialization Complete ---------------------" << std::endl << std::endl;
+#endif
 
 
     /// Executable task
@@ -178,14 +186,16 @@ bool LIE::execute ()
         u32 scc_relation_count = executable_task->get_ram_relation_count();
         for (u32 i=0; i < scc_relation_count; i++)
         {
-            relation* rel = scc_relation[i];
-            rel->initialize_relation_in_scc(scc_relation_status[i]);
+            if (scc_relation_status[i] == true)
+                scc_relation[i]->insert_full_in_delta();
         }
-#if 1
+
         std::vector<u32> history;
 
+#if DEBUG_OUTPUT
         if (mcomm.get_local_rank() == 0)
-            std::cout << "-------------------" << executable_task->get_id() << " ITERATION " << counter << " ------------------" << std::endl;
+            std::cout << "-------------------Executing SCC " << executable_task->get_id() << "------------------" << std::endl;
+#endif
 
         /// if case is for rules (acopy and copy) that requires only one iteration
         /// else case is for join rules
@@ -199,39 +209,38 @@ bool LIE::execute ()
         double running_insert_newt=0;
         double running_insert_in_full=0;
 
+        /// For SCCs that runs for only one iteration
         if (executable_task->get_iteration_count() == 1)
-            executable_task->execute_in_batches_with_threshold(batch_size, history, intern_map, &running_time, &running_intra_bucket_comm, &running_buffer_allocate, &running_local_compute, &running_all_to_all, &running_buffer_free, &running_insert_newt, &running_insert_in_full);
+        {
+            executable_task->execute_in_batches(batch_size, history, intern_map, &running_time, &running_intra_bucket_comm, &running_buffer_allocate, &running_local_compute, &running_all_to_all, &running_buffer_free, &running_insert_newt, &running_insert_in_full);
+
+#if DEBUG_OUTPUT
+            for (u32 i = 0 ; i < scc_relation_count; i++)
+                scc_relation[i]->print();
+            print_all_relation_size();
+#endif
+        }
+
+        /// For SCCs that runs till fixed point is reached
         else
         {
             u64 delta_in_scc = 0;
             do
             {
-                executable_task->execute_in_batches_with_threshold(batch_size, history, intern_map, &running_time, &running_intra_bucket_comm, &running_buffer_allocate, &running_local_compute, &running_all_to_all, &running_buffer_free, &running_insert_newt, &running_insert_in_full);
-
+                executable_task->execute_in_batches(batch_size, history, intern_map, &running_time, &running_intra_bucket_comm, &running_buffer_allocate, &running_local_compute, &running_all_to_all, &running_buffer_free, &running_insert_newt, &running_insert_in_full);
                 delta_in_scc = history[history.size()-2];
 
-                print_all_relation();
-#if 0
-                for (u32 i = 0 ; i < lie_relation_count; i++)
-                {
-                    relation* curr_relation = lie_relations[i];
-                    if (curr_relation->get_debug_id() == "rel_Step_12_1_2_3_4_5_6_7_8_9_10_11_12")
-                    {
-                        u64 local_facts = curr_relation->get_full_element_count();
-                        u64 global_total_facts = 0;
-                        MPI_Allreduce(&local_facts, &global_total_facts, 1, MPI_UNSIGNED_LONG_LONG, MPI_SUM, mcomm.get_local_comm());
-
-                        if (mcomm.get_local_rank() == 0)
-                            std::cout << curr_relation->get_debug_id() << ": {" << curr_relation->get_arity() << "}. (" << global_total_facts << " total facts)" << std::endl;
-                    }
-                }
+#if DEBUG_OUTPUT
+                for (u32 i = 0 ; i < scc_relation_count; i++)
+                    scc_relation[i]->print();
+                print_all_relation_size();
 #endif
             }
             while (delta_in_scc != 0);
         }
         counter++;
         executable_task->insert_delta_in_full();
-#endif
+
         /// marks executable_task as finished
         update_task_graph(executable_task);
 

@@ -28,6 +28,22 @@ public:
         RA_type = ACOPY;
     }
 
+    /// Example: scc13237->add_rule(new parallel_acopy(rel_path_2_1, rel_path_2_1_2, DELTA, {0, 2, 1}));
+    /// rel_edge_2_1: destination relation
+    /// rel_path_2_1_2: source relation (copy from DELTA of source)
+    /// {0, 2, 1}:
+    ///             rel_edge_2_1[0] = rel_edge_2_1_2[0]
+    ///             rel_edge_2_1[1] = rel_edge_2_1_2[2]
+    ///             rel_edge_2_1[2] = rel_edge_2_1_2[1]
+    ///
+    ///
+    /// Example: scc13238->add_rule(new parallel_acopy(rel_edge_2_2, rel_edge_2_1_2, DELTA, {1, 2, 0}));
+    /// rel_edge_2_2: destination relation
+    /// rel_edge_2_1_2: source relation (copy from DELTA of source)
+    /// {0, 2, 1}:
+    ///             rel_edge_2_1[0] = rel_edge_2_1_2[1]
+    ///             rel_edge_2_1[1] = rel_edge_2_1_2[2]
+    ///             rel_edge_2_1[2] = rel_edge_2_1_2[0]
     parallel_acopy(relation* dest, relation* src, int src_version, std::vector<int> reorder_index_array)
         : acopy_input0_table(src), acopy_input0_graph_type(src_version), acopy_output_table(dest), acopy_reorder_index_array(reorder_index_array)
     {

@@ -51,6 +51,8 @@ typedef wchar_t c16;
 #error No compat declarations for this compiler
 #endif
 
+#define DEBUG_OUTPUT 1
+
 #include "log/logger.h"
 #include "hash/hash.h"
 #include "comm/comm.h"

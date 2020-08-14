@@ -247,13 +247,9 @@ int main(int argc, char **argv)
     lie->add_scc_dependance(scc207268, scc207260);
 
 
-
-
-
     lie->set_comm(mcomm);
     lie->set_batch_size(1);
     lie->execute();
-    lie->print_all_relation();
 
     delete lie;
 

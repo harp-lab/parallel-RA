@@ -102,12 +102,9 @@ int main(int argc, char **argv)
     lie->add_scc_dependance(scc6128, scc6126);
     lie->add_scc_dependance(scc6129, scc6126);
 
-
-
     lie->set_comm(mcomm);
     lie->set_batch_size(1);
     lie->execute();
-    lie->print_all_relation();
 
 
     //rel_free_2_2->print();

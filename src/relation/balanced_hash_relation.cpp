@@ -29,18 +29,16 @@ u32 relation::get_global_full_element_count()
 void relation::print()
 {
     u32 buckets = get_bucket_count();
-    //if (mcomm.get_rank() == 0)
+    if (mcomm.get_rank() == 0)
     {
         vector_buffer *vb_full = new vector_buffer[buckets];
-        //std::cout << "FULL ";
         for (u32 i=0; i < buckets; i++)
         {
             vb_full[i].vector_buffer_create_empty();
             std::vector<u64> prefix = {};
             full[i].as_vector_buffer_recursive(&(vb_full[i]), prefix);
 
-            //std::cout << get_debug_id() << " " << mcomm.get_rank() << " FULL " << vb_full[i].size/(sizeof(u64) * (arity + 1)) << " XXXX arity " << arity + 1 << std::endl;
-
+            std::cout << get_debug_id() << " " << mcomm.get_rank() << " FULL Rows " << vb_full[i].size/(sizeof(u64) * (arity + 1)) << " columns " << arity + 1 << std::endl;
             for (u32 j=0; j < vb_full[i].size/sizeof(u64); j = j + arity+1)
             {
                 if (j % (arity+1) == 0)
@@ -60,14 +58,13 @@ void relation::print()
 
 
         vector_buffer *vb_delta = new vector_buffer[buckets];
-
         u32 i = mcomm.get_rank();
         {
             vb_delta[i].vector_buffer_create_empty();
             std::vector<u64> prefix = {};
             delta[i].as_vector_buffer_recursive(&(vb_delta[i]), prefix);
 
-            std::cout << get_debug_id() << " " << mcomm.get_rank() << " DELTA " << vb_delta[i].size/(sizeof(u64) * (arity + 1)) << " arity " << arity + 1 << std::endl;
+            std::cout << get_debug_id() << " " << mcomm.get_rank() << " DELTA Rows " << vb_delta[i].size/(sizeof(u64) * (arity + 1)) << " columns " << arity + 1 << std::endl;
 
             for (u32 j=0; j < vb_delta[i].size/sizeof(u64); j = j + arity+1)
             {
@@ -271,16 +268,6 @@ void relation::initialize_relation(mpi_comm& mcomm)
     }
 }
 
-
-void relation::initialize_relation_in_scc(bool init_status)
-{
-    if (init_status == true)
-    {
-        //if (mcomm.get_local_rank() == 0)
-        //    std::cout << "Shift will take place for " << get_debug_id() << std::endl;
-        insert_full_in_delta();
-    }
-}
 
 
 

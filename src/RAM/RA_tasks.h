@@ -18,7 +18,6 @@ private:
     int ram_id;
     bool init_status=false;
 
-    //std::string name;                                       /// Name of this task (for debugging only)
     int iteration_count = -1;                               /// Number of iterations in a fixed point
 
     bool logging = false;                                   /// If logging is enabled or not
@@ -29,9 +28,6 @@ private:
     u32 ram_relation_count;
     relation *ram_relations[64];
     bool ram_relation_status[64];
-
-    //u32 ram_relations_key;
-    //std::map<u32, std::map<relation*, bool>> ram_relations;                /// All relations of this SCC
 
 
     std::vector<parallel_RA*> RA_list;                      /// All relations of this SCC
@@ -144,11 +140,11 @@ public:
 
 
     /// Start running this SCC (task) for "batck_size" iterations
-    void execute_in_batches_with_threshold(int batch_size, std::vector<u32>& history, std::map<u64, u64>& intern_map, double *running_time, double *running_intra_bucket_comm, double *running_buffer_allocate, double *running_local_compute, double *running_all_to_all, double *running_buffer_free, double *running_insert_newt, double *running_insert_in_full);
+    void execute_in_batches(int batch_size, std::vector<u32>& history, std::map<u64, u64>& intern_map, double *running_time, double *running_intra_bucket_comm, double *running_buffer_allocate, double *running_local_compute, double *running_all_to_all, double *running_buffer_free, double *running_insert_newt, double *running_insert_in_full);
 
 
     /// Start running this SCC (task) for "batck_time" seconds
-    void execute_by_wall_clock(double batch_time, std::vector<u32>& history, std::map<u64, u64>& intern_map);
+    void execute_by_wall_clock(double batch_time, std::vector<u32>& history, std::map<u64, u64>& intern_map, double *running_time, double *running_intra_bucket_comm, double *running_buffer_allocate, double *running_local_compute, double *running_all_to_all, double *running_buffer_free, double *running_insert_newt, double *running_insert_in_full);
 };
 
 #endif

@@ -13,8 +13,6 @@ class parallel_join: public parallel_RA {
 
 private:
 
-    std::string name;
-
     relation* join_input0_table;
     int join_input0_graph_type;
 
@@ -32,13 +30,31 @@ public:
         RA_type = JOIN;
     }
 
+    /// Example scc13237->add_rule(new parallel_join(rel_path_2_1_2, rel_path_2_1, DELTA, rel_edge_2_2, FULL, {4, 2}));
+    /// rel_path_2_1_2: destination relation
+    /// rel_edge_2_1_2 has an arity of 2 (it therefore has three columns, one column is the intern column), this relation is hashed on its first (1) and second (2) column, if you look at the constructor it says it is hased on 2 columns as well. The name of the relation tells which order of column the relation is hashed in.
+    ///
+    /// rel_path_2_1: source 1 relation for join
+    /// DELTA: source 1
+    /// rel_path_2_1 has an arity of 2 (it therefore has three columns, one column is the intern column), this relation is hashed on its first (1) column
+    /// In memory, in the nested b-tree the ordering is 1sr column, 2nd column, intern id column
+    ///
+    /// rel_edge_2_2: source 2 relation for join
+    /// FULL: source 2
+    /// rel_edge_2_2 has an arity of 2 (it therefore has three columns, one column is the intern column), this relation is hashed on its second (2) column
+    /// In memory, in the nested b-tree the ordering is 2nd column, 1st column, intern id column
+    ///
+    ///
+    /// Now, join between rel_path_2_1 (b, c, id) and rel_edge_2_2  (a, b, id)
+    ///                   Example:     (2, 1, id1)                  (1, 2, id3)
+    ///                                (3, 2, id2)                  (2, 3, id4)
+    ///
+    ///                   Join         (2, 1, id2, 3, id4), we want to get down to Join output:(3, 1)
+    ///                                (1, 2, 3,   4, 5) ---> index
+    /// we use the index {4, 2} to get the corect join output (3, 1), the id column is added in the later stage
+    ///
     parallel_join(relation* output, relation* G, int G_type, relation* T, int T_type, std::vector<int> projection_reorder_index_array)
         : join_input0_table(G), join_input0_graph_type(G_type), join_input1_table(T), join_input1_graph_type(T_type), join_output_table(output), projection_reorder_index_array(projection_reorder_index_array)  {
-        RA_type = JOIN;
-    }
-
-    parallel_join(std::string lname, relation* output, relation* G, int G_type, relation* T, int T_type, std::vector<int> projection_reorder_index_array)
-        : name(lname), join_input0_table(G), join_input0_graph_type(G_type), join_input1_table(T), join_input1_graph_type(T_type), join_output_table(output), projection_reorder_index_array(projection_reorder_index_array)  {
         RA_type = JOIN;
     }
 

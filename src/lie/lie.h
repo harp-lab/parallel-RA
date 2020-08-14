@@ -53,7 +53,7 @@ public:
         intern_map = {{},{}};
     }
 
-    void print_all_relation();
+    void print_all_relation_size();
 
     /// Sets the communicator object
     void set_comm(mpi_comm comm)   { mcomm = comm;  }

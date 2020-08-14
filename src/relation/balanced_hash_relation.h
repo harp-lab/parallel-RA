@@ -61,6 +61,14 @@ private:
 
 public:
 
+    /// Example: relation* rel_path_2_1_2 = new relation(2, true, 2, 257, "rel_path_2_1_2", "../data/g5955/path_2_1_2", FULL);
+    /// 2: arity (Internally one extra id (intern id) column is added to every relation)
+    /// true: arity == join column count
+    /// 2: join column count
+    /// 257: index id
+    /// "rel_path_2_1_2": name of relation
+    /// "/var/tmp/g13236/path_2_1_2": location of data file that gets loaded in the relation
+    /// FULL: load in FULL (other option is to loadin DELTA, but we alwys load in FULL)
     relation (u32 jcc, bool is_c, u32 ar, u32 tg, const char* fname, int version)
         :join_column_count(jcc), is_canonical(is_c), arity(ar), intern_tag(tg), initailization_type(version), filename(fname)
     {
@@ -149,7 +157,6 @@ public:
 
     /// initialize and finalize relation
     void initialize_relation(mpi_comm& mcomm);
-    void initialize_relation_in_scc(bool init_status);
     void populate_full(int buffer_size, u64* buffer);
     void populate_delta (int buffer_size, u64* buffer);
     void finalize_relation();

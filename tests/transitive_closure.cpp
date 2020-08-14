@@ -6,13 +6,20 @@ int main(int argc, char **argv)
     mpi_comm mcomm;
     mcomm.create(argc, argv);    
 
-
-    relation* rel_path_2_1_2 = new relation(2, true, 2, 257, "rel_path_2_1_2", "/var/tmp/g13236/path_2_1_2", FULL);
-    relation* rel_edge_2_1_2 = new relation(2, true, 2, 256, "rel_edge_2_1_2", "/var/tmp/g13236/edge_2_1_2", FULL);
-    relation* rel_path_2_1 = new relation(1, false, 2, 257, "rel_path_2_1", "/var/tmp/g13236/path_2_1", FULL);
-    relation* rel_edge_2_2 = new relation(1, false, 2, 256, "rel_edge_2_2", "/var/tmp/g13236/edge_2_2", FULL);
-
 #if 1
+    relation* rel_path_2_1_2 = new relation(2, true, 2, 257, "rel_path_2_1_2", "../data/g5955/path_2_1_2", FULL);
+    relation* rel_edge_2_1_2 = new relation(2, true, 2, 256, "rel_edge_2_1_2", "../data/g5955/edge_2_1_2", FULL);
+    relation* rel_path_2_1 = new relation(1, false, 2, 257, "rel_path_2_1", "../data/g5955/path_2_1", FULL);
+    relation* rel_edge_2_2 = new relation(1, false, 2, 256, "rel_edge_2_2", "../data/g5955/edge_2_2", FULL);
+#endif
+
+#if 0
+    relation* rel_path_2_1_2 = new relation(2, true, 2, 257, "rel_path_2_1_2", "../data/g13236/path_2_1_2", FULL);
+    relation* rel_edge_2_1_2 = new relation(2, true, 2, 256, "rel_edge_2_1_2", "../data/g13236/edge_2_1_2", FULL);
+    relation* rel_path_2_1 = new relation(1, false, 2, 257, "rel_path_2_1", "../data/g13236/path_2_1", FULL);
+    relation* rel_edge_2_2 = new relation(1, false, 2, 256, "rel_edge_2_2", "../data/g13236/edge_2_2", FULL);
+#endif
+
     RAM* scc13237 = new RAM(true, 1);
     scc13237->add_relation(rel_edge_2_2, false);
     scc13237->add_relation(rel_path_2_1, true);
@@ -29,15 +36,6 @@ int main(int argc, char **argv)
     scc13239->add_relation(rel_edge_2_1_2, false);
     scc13239->add_relation(rel_path_2_1_2, true);
     scc13239->add_rule(new parallel_copy(rel_path_2_1_2, rel_edge_2_1_2, FULL, {0, 1}));
-#endif
-
-    // body (rel_edge_2_1_2)
-    // 0    1   2 (source)
-    // 1    2   0 (nominal)
-
-    // head (rel_edge_2_2)
-    // 0    1   2 (destination)
-    // 2    0   1 (nominal)
 
     LIE* lie = new LIE();
     lie->add_relation(rel_path_2_1_2);
@@ -53,12 +51,9 @@ int main(int argc, char **argv)
     lie->set_comm(mcomm);
     lie->set_batch_size(1);
     lie->execute();
-    lie->print_all_relation();
 
-    //rel_path_2_1->print();
+
     delete lie;
-    //rel_edge_2_1_2->print();
-    //rel_edge_2_2->print();
 
 
     mcomm.destroy();
