@@ -38,7 +38,8 @@ void relation::print()
             std::vector<u64> prefix = {};
             full[i].as_vector_buffer_recursive(&(vb_full[i]), prefix);
 
-            std::cout << get_debug_id() << " " << mcomm.get_rank() << " FULL Rows " << vb_full[i].size/(sizeof(u64) * (arity + 1)) << " columns " << arity + 1 << std::endl;
+            if (vb_full[i].size != 0)
+                std::cout << get_debug_id() << " " << mcomm.get_rank() << " FULL Rows " << vb_full[i].size/(sizeof(u64) * (arity + 1)) << " columns " << arity + 1 << std::endl;
             for (u32 j=0; j < vb_full[i].size/sizeof(u64); j = j + arity+1)
             {
                 if (j % (arity+1) == 0)
@@ -58,13 +59,14 @@ void relation::print()
 
 
         vector_buffer *vb_delta = new vector_buffer[buckets];
-        u32 i = mcomm.get_rank();
+        for (u32 i=0; i < buckets; i++)
         {
             vb_delta[i].vector_buffer_create_empty();
             std::vector<u64> prefix = {};
             delta[i].as_vector_buffer_recursive(&(vb_delta[i]), prefix);
 
-            std::cout << get_debug_id() << " " << mcomm.get_rank() << " DELTA Rows " << vb_delta[i].size/(sizeof(u64) * (arity + 1)) << " columns " << arity + 1 << std::endl;
+            if (vb_delta[i].size != 0)
+                std::cout << get_debug_id() << " " << mcomm.get_rank() << " DELTA Rows " << vb_delta[i].size/(sizeof(u64) * (arity + 1)) << " columns " << arity + 1 << std::endl;
 
             for (u32 j=0; j < vb_delta[i].size/sizeof(u64); j = j + arity+1)
             {

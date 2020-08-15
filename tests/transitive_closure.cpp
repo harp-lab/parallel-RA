@@ -48,13 +48,14 @@ int main(int argc, char **argv)
     lie->add_scc_dependance(scc13238, scc13237);
     lie->add_scc_dependance(scc13239, scc13237);
 
+
     lie->set_comm(mcomm);
     lie->set_batch_size(1);
     lie->execute();
+    lie->print_all_relation_size();
 
 
     delete lie;
-
 
     mcomm.destroy();
     return 0;

@@ -59,8 +59,8 @@ void parallel_io::parallel_read_input_relation_from_file_to_local_buffer(u32 ari
 
 
 #if 1
-    if (rank == 1)
-        std::cout << "Filename " << meta_data_filename << " Row Count " << global_row_count << " Column count " << col_count << std::endl;
+    //if (rank == 1)
+    //    std::cout << "Filename " << meta_data_filename << " Row Count " << global_row_count << " Column count " << col_count << std::endl;
 
     /* Read all data in parallel */
     int read_offset;
