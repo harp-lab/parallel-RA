@@ -20,14 +20,14 @@ Currently the input file to TC is baked in the code. Look at line number 10-13 o
 
 ./tsv_to_bin input_tsv output
 
-This will create a folder called output with the data written in binary format along with a metadata file that tells the total number of rows and columns. The utillity adds an extra column and therefore you will see 3 for total number of columns.
+This will create a file (output) with data written in binary along with a metadata file (output.size) that tells the total number of rows and columns. The utillity adds an extra column and therefore you will see 3 for total number of columns.
 Once you have the data folder. Replace the data path location in line number 11 to the path to the generated output file. For example:
 
 relation* rel_edge_2_1_2 = new relation(2, true, 2, 256, "rel_edge_2_1_2", "../data/g13236/edge_2_1_2", FULL);
 
 to--->
 
-relation* rel_edge_2_1_2 = new relation(2, true, 2, 256, "rel_edge_2_1_2", "path to the binary file (not the directory, you need point to the binary file in the output folder", FULL);
+relation* rel_edge_2_1_2 = new relation(2, true, 2, 256, "rel_edge_2_1_2", "path to the binary file", FULL);
 
 With these changes you can use TC to compute transitive closure (in parallel) of any given graph.
 
