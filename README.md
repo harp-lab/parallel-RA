@@ -16,7 +16,7 @@ This will create three executable TC, freevars, kcfa. TC stands for transitive c
 ## Running instructions
 mpirun -n 5 ./TC <input_file>
 
-We have two example data files in data folder 
+We have two example input files in the data folder 
 
 ../data/g13236/edge_2_1_2 (this has 60 edges and the output TC generates 573 edges)
 
