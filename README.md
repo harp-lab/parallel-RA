@@ -25,7 +25,8 @@ We have two example input files in the data folder
 
 Utility binary_parser can be used to print the content of the input file. Usage:
 
-bin_parser ../data/g5955/edge_2_1_2
+./bin_parser ../data/g5955/edge_2_1_2
+
 Filename ../data/g5955/edge_2_1_2.size Row Count 4 Column count 3
 
 3 4 18014398777917437 
