@@ -14,29 +14,37 @@ make
 This will create three executable TC, freevars, kcfa. TC stands for transitive closure
 
 ## Running instructions
-mpirun -n 5 ./TC
+mpirun -n 5 ./TC <input_file>
 
-Currently the input file to TC is baked in the code. Look at line number 10-13 or 17-20 in tests/transitive_closure.cpp. The path to input file is baked in the code. This can be very easily changed to any user specific input file. If you have your own input graph that you want to compute the transitive closure of, then use the utility tsv_to_bin to generate data format that could be fed to the code. The utility can be run as follows:
+We have two example data files in data folder 
+
+../data/g13236/edge_2_1_2 (this has 60 edges and the output TC generates 573 edges)
+
+../data/g5955/edge_2_1_2 (this has 4 edges and the output TC generates 28 edges)
+
+
+Utility binary_parser can be used to print the content of the input file. Usage:
+
+bin_parser ../data/g5955/edge_2_1_2
+Filename ../data/g5955/edge_2_1_2.size Row Count 4 Column count 3
+
+3 4 18014398777917437 
+
+2 3 18014398777917439 
+
+1 2 18014398777917436 
+
+0 1 18014398777917438 
+
+The third column is the id column which we add for any input dataset.
+
+
+
+If you have your own input graph for which you want to compute the transitive closure, then use the utility tsv_to_bin to generate data format that could be fed to the code. The utility can be run as follows:
 
 ./tsv_to_bin input_tsv output
 
-This will create a file (output) with data written in binary along with a metadata file (output.size) that tells the total number of rows and columns. The utillity adds an extra column and therefore you will see 3 for total number of columns.
-Once you have the data folder. Replace the data path location in line number 11 to the path to the generated output file. For example:
-
-relation* rel_edge_2_1_2 = new relation(2, true, 2, 256, "rel_edge_2_1_2", "../data/g13236/edge_2_1_2", FULL);
-
-to--->
-
-relation* rel_edge_2_1_2 = new relation(2, true, 2, 256, "rel_edge_2_1_2", "path to the binary file", FULL);
-
-With these changes you can use TC to compute transitive closure (in parallel) of any given graph.
-
-
-Utility binary_parser can be used to read the input binary file. Usage:
-
-bin_parser ../data/g5955/edge_2_1_2
-
-This will print the content of the binary file.
+This will create a file (output) with data written in binary along with a metadata file (output.size) that tells the total number of rows and columns. The utillity adds an extra column and therefore you will see 3 for total number of columns. Once you have the data in the correct format, you can use it with TC.
 
 ## How do I see the output:
 
