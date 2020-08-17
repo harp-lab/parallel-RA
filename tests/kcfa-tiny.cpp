@@ -252,11 +252,11 @@ int main(int argc, char **argv)
 
 
 
-    ../data/->set_comm(mcomm);
-    ../data/->set_batch_size(1);
-    ../data/->execute();
+    lie->set_comm(mcomm);
+    lie->set_batch_size(1);
+    lie->execute();
 
-    delete ../data/;
+    delete lie;
 
     mcomm.destroy();
     return 0;
