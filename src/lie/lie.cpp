@@ -215,8 +215,8 @@ bool LIE::execute ()
             executable_task->execute_in_batches(batch_size, history, intern_map, &running_time, &running_intra_bucket_comm, &running_buffer_allocate, &running_local_compute, &running_all_to_all, &running_buffer_free, &running_insert_newt, &running_insert_in_full);
 
 #if DEBUG_OUTPUT
-            for (u32 i = 0 ; i < scc_relation_count; i++)
-                scc_relation[i]->print();
+            //for (u32 i = 0 ; i < scc_relation_count; i++)
+            //    scc_relation[i]->print();
             print_all_relation_size();
 #endif
         }
@@ -231,8 +231,8 @@ bool LIE::execute ()
                 delta_in_scc = history[history.size()-2];
 
 #if DEBUG_OUTPUT
-                for (u32 i = 0 ; i < scc_relation_count; i++)
-                    scc_relation[i]->print();
+                //for (u32 i = 0 ; i < scc_relation_count; i++)
+                //    scc_relation[i]->print();
                 print_all_relation_size();
 #endif
             }
