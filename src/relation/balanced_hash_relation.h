@@ -150,6 +150,9 @@ public:
     void print();
 
 
+    void serial_IO(const char* filename_template);
+
+
     /// used for initialization of dynamic relations
     //void flush_full();
     //void read_from_relation(relation* input, int full_deta);

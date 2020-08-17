@@ -34,6 +34,8 @@ private:
 
     std::map<u64, u64> intern_map;                        /// Intern table
 
+    bool enable_io;
+
 
 public:
 
@@ -41,17 +43,15 @@ public:
 
     LIE()
     {
+        enable_io = false;
         lie_relation_count = 0;
-        //lie_relations_key = 0;
-        //lie_relations = {{},{}};
-
         lie_sccs_count = 0;
-        //lie_sccs_key = 0;
-        //lie_sccs = {{},{}};
-
         taskgraph = {{},{}};
         intern_map = {{},{}};
     }
+
+    void enable_IO()    {enable_io = true;}
+
 
     void print_all_relation_size();
 

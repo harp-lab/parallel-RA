@@ -653,6 +653,40 @@ void RAM::check_for_fixed_point(std::vector<u32>& history)
 }
 
 
+
+void RAM::io_all_relation(int status)
+{
+
+    char scc_name[1024];
+
+    if (status == 1)
+    {
+        sprintf(scc_name, "output/scc-%d-iteration_%d", ram_id, loop_count_tracker);
+        mkdir(scc_name, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+
+        for (u32 i = 0 ; i < ram_relation_count; i++)
+            ram_relations[i]->serial_IO(scc_name);
+    }
+    else if (status == 0)
+    {
+        sprintf(scc_name, "output/scc-%d-initial-facts", ram_id);
+        mkdir(scc_name, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+
+        for (u32 i = 0 ; i < ram_relation_count; i++)
+            ram_relations[i]->serial_IO(scc_name);
+    }
+    else if (status == 2)
+    {
+        sprintf(scc_name, "output/scc-%d-output-facts", ram_id);
+        mkdir(scc_name, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+
+        for (u32 i = 0 ; i < ram_relation_count; i++)
+            ram_relations[i]->serial_IO(scc_name);
+    }
+}
+
+
+
 void RAM::execute_in_batches(int batch_size, std::vector<u32>& history, std::map<u64, u64>& intern_map, double *running_time, double *running_intra_bucket_comm, double *running_buffer_allocate, double *running_local_compute, double *running_all_to_all, double *running_buffer_free, double *running_insert_newt, double *running_insert_in_full)
 {
     int inner_loop = 0;
@@ -667,8 +701,8 @@ void RAM::execute_in_batches(int batch_size, std::vector<u32>& history, std::map
 #if DEBUG_OUTPUT
         if (mcomm.get_rank() == 0)
             std::cout << "--------------FIXED POINT ITERATION " << loop_count_tracker << "--------------" << std::endl;
-
 #endif
+
         double intra_start = MPI_Wtime();
         intra_bucket_comm_execute();
         double intra_end = MPI_Wtime();

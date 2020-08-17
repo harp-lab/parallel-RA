@@ -91,6 +91,9 @@ public:
     void print_all_relation();
 
 
+    void io_all_relation(int status);
+
+
     /// the buckets over which the SCC is spread across
     u32 get_bucket_count() {return mcomm.get_local_nprocs();}
 

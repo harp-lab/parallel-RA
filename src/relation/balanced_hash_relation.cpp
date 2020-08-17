@@ -26,6 +26,84 @@ u32 relation::get_global_full_element_count()
 
 
 
+void relation::serial_IO(const char* filename_template)
+{
+    char full_rel_name[1024];
+    sprintf(full_rel_name, "%s/%s_full", filename_template, get_debug_id().c_str());
+
+    char delta_rel_name[1024];
+    sprintf(delta_rel_name, "%s/%s_delta", filename_template, get_debug_id().c_str());
+
+    char meta_data_delta_filename[1024];
+    sprintf(meta_data_delta_filename, "%s/%s_delta.size", filename_template, get_debug_id().c_str());
+
+    char meta_data_full_filename[1024];
+    sprintf(meta_data_full_filename, "%s/%s_full.size", filename_template, get_debug_id().c_str());
+
+
+    u32 buckets = get_bucket_count();
+    assert(buckets == 1);
+    if (mcomm.get_rank() == 0)
+    {
+        vector_buffer *vb_full = new vector_buffer[buckets];
+        for (u32 i=0; i < buckets; i++)
+        {
+            vb_full[i].vector_buffer_create_empty();
+            std::vector<u64> prefix = {};
+            full[i].as_vector_buffer_recursive(&(vb_full[i]), prefix);
+
+            int fp = open(full_rel_name, O_CREAT | O_WRONLY, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+            u32 write_size = write(fp, vb_full[i].buffer, vb_full[i].size);
+            if (write_size != vb_full[i].size)
+            {
+                std::cout << full_rel_name <<  " Wrong IO: rank: " << " " << vb_full[i].size  << std::endl;
+                MPI_Abort(mcomm.get_local_comm(), -1);
+            }
+            close(fp);
+
+            FILE *fp_outt1;
+            fp_outt1 = fopen(meta_data_full_filename, "w");
+            fprintf (fp_outt1, "%d\n%d", (int)(vb_full[i].size/((arity+1)*sizeof(u64))), (int)arity+1);
+            fclose(fp_outt1);
+
+            vb_full[i].vector_buffer_free();
+        }
+        delete[] vb_full;
+
+
+
+
+        vector_buffer *vb_delta = new vector_buffer[buckets];
+        for (u32 i=0; i < buckets; i++)
+        {
+            vb_delta[i].vector_buffer_create_empty();
+            std::vector<u64> prefix = {};
+            delta[i].as_vector_buffer_recursive(&(vb_delta[i]), prefix);
+
+            int fp = open(delta_rel_name, O_CREAT | O_WRONLY, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+            u32 write_size = write(fp, vb_delta[i].buffer, vb_delta[i].size);
+            if (write_size != vb_delta[i].size)
+            {
+                std::cout << delta_rel_name <<  " Wrong IO: rank: " << vb_full[i].size  << std::endl;
+                MPI_Abort(mcomm.get_local_comm(), -1);
+            }
+            close(fp);
+
+            FILE *fp_outt2;
+            fp_outt2 = fopen(meta_data_delta_filename, "w");
+            fprintf (fp_outt2, "%d\n%d", (int)(vb_delta[i].size/((arity+1)*sizeof(u64))), (int)arity+1);
+            fclose(fp_outt2);
+
+            vb_delta[i].vector_buffer_free();
+        }
+        delete[] vb_delta;
+
+
+    }
+}
+
+
+
 void relation::print()
 {
     u32 buckets = get_bucket_count();

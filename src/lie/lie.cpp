@@ -165,6 +165,18 @@ bool LIE::execute ()
 #endif
     }
 
+    if (enable_io == true)
+    {
+        const char* output_name = "output";
+        mkdir(output_name, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+
+        const char* initial = "output/initial-facts";
+        mkdir(initial, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+
+        for (u32 i = 0 ; i < lie_relation_count; i++)
+            lie_relations[i]->serial_IO(initial);
+    }
+
 #if DEBUG_OUTPUT
     if (mcomm.get_local_rank() == 0)
         std::cout << "----------------- Initialization Complete ---------------------" << std::endl << std::endl;
@@ -190,6 +202,9 @@ bool LIE::execute ()
                 scc_relation[i]->insert_full_in_delta();
         }
 
+        if (enable_io == true)
+            executable_task->io_all_relation(0);
+
         std::vector<u32> history;
 
 #if DEBUG_OUTPUT
@@ -214,6 +229,9 @@ bool LIE::execute ()
         {
             executable_task->execute_in_batches(batch_size, history, intern_map, &running_time, &running_intra_bucket_comm, &running_buffer_allocate, &running_local_compute, &running_all_to_all, &running_buffer_free, &running_insert_newt, &running_insert_in_full);
 
+            if (enable_io == true)
+                executable_task->io_all_relation(1);
+
 #if DEBUG_OUTPUT
             //for (u32 i = 0 ; i < scc_relation_count; i++)
             //    scc_relation[i]->print();
@@ -227,8 +245,15 @@ bool LIE::execute ()
             u64 delta_in_scc = 0;
             do
             {
+                if (enable_io == true)
+                    executable_task->io_all_relation(0);
+
                 executable_task->execute_in_batches(batch_size, history, intern_map, &running_time, &running_intra_bucket_comm, &running_buffer_allocate, &running_local_compute, &running_all_to_all, &running_buffer_free, &running_insert_newt, &running_insert_in_full);
                 delta_in_scc = history[history.size()-2];
+
+                if (enable_io == true)
+                    executable_task->io_all_relation(1);
+
 
 #if DEBUG_OUTPUT
                 //for (u32 i = 0 ; i < scc_relation_count; i++)
@@ -238,6 +263,10 @@ bool LIE::execute ()
             }
             while (delta_in_scc != 0);
         }
+
+        if (enable_io == true)
+            executable_task->io_all_relation(2);
+
         counter++;
         executable_task->insert_delta_in_full();
 
@@ -246,6 +275,15 @@ bool LIE::execute ()
 
         /// loads new runnable task
         executable_task = one_runnable_tasks();
+    }
+
+    if (enable_io == true)
+    {
+        const char* final = "output/output-facts";
+        mkdir(final, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+
+        for (u32 i = 0 ; i < lie_relation_count; i++)
+            lie_relations[i]->serial_IO(final);
     }
 
     return true;
