@@ -695,7 +695,7 @@ void RAM::execute_in_batches(int batch_size, std::vector<u32>& history, std::map
 #endif
 
         //if (outer_loop % refinement_ts == 0)
-            load_balance();
+        //    load_balance();
 
 #if DEBUG_OUTPUT
         if (mcomm.get_rank() == 0)
