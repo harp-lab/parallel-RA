@@ -540,6 +540,7 @@ void RAM::local_insert_in_newt(std::map<u64, u64>& intern_map)
         if (RA_list[ra_id]->get_RA_type() == COPY || RA_list[ra_id]->get_RA_type() == JOIN || RA_list[ra_id]->get_RA_type() == COPY_FILTER)
         {
             u32 width = output->get_arity();
+            u64 tuple[width + 1];
 
             for (u32 x = starting; x < starting + elements_to_read; x = x + width)
             {
@@ -547,7 +548,7 @@ void RAM::local_insert_in_newt(std::map<u64, u64>& intern_map)
                         output->find_in_delta(cumulative_all_to_all_buffer + x, width) == false &&
                         output->find_in_newt(cumulative_all_to_all_buffer + x, width) == false)
                 {
-                    u64 tuple[width + 1];
+
                     for (u32 i = 0; i < width; i++)
                         tuple[i] = cumulative_all_to_all_buffer[x+i];
 
@@ -575,12 +576,12 @@ void RAM::local_insert_in_newt(std::map<u64, u64>& intern_map)
         else
         {
             u32 width = output->get_arity() + 1;
+            u64 tuple[width];
             successful_insert = 0;
             for (u32 x = starting; x < starting + elements_to_read; x = x + width)
             {
                 if (output->find_in_full(cumulative_all_to_all_buffer + x, width) == false && output->find_in_delta(cumulative_all_to_all_buffer + x, width) == false)
                 {
-                    u64 tuple[width];
                     for (u32 i = 0; i < width; i++)
                         tuple[i] = cumulative_all_to_all_buffer[x+i];
 
