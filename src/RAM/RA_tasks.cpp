@@ -524,6 +524,7 @@ void RAM::local_insert_in_newt(std::map<u64, u64>& intern_map)
 
     for (int k = 0; k < RA_count * nprocs; k++)
     {
+        successful_insert = 0;
         u32 ra_id = k % RA_count;
         u32 elements_to_read = cumulative_all_to_all_recv_process_size_array[k];
         relation* output;
@@ -548,7 +549,6 @@ void RAM::local_insert_in_newt(std::map<u64, u64>& intern_map)
                         output->find_in_delta(cumulative_all_to_all_buffer + x, width) == false &&
                         output->find_in_newt(cumulative_all_to_all_buffer + x, width) == false)
                 {
-
                     for (u32 i = 0; i < width; i++)
                         tuple[i] = cumulative_all_to_all_buffer[x+i];
 
@@ -589,19 +589,9 @@ void RAM::local_insert_in_newt(std::map<u64, u64>& intern_map)
                         successful_insert++;
                 }
             }
-#if 0
-            google_relation* newt1 = output->get_newt();
-            vector_buffer *vb_delta = new vector_buffer[2];
-            vb_delta[mcomm.get_rank()].vector_buffer_create_empty();
-            std::vector<u64> prefix = {};
-            newt1[mcomm.get_rank()].as_vector_buffer_recursive(&(vb_delta[mcomm.get_rank()]), prefix);
-
-            vb_delta[mcomm.get_rank()].vector_buffer_free();
-
-            delete[] vb_delta;
-#endif
         }
         starting = starting + elements_to_read;
+        std::cout << output->get_debug_id() << " successful insert " << successful_insert << std::endl;
     }
 
     delete[] cumulative_all_to_all_recv_process_size_array;

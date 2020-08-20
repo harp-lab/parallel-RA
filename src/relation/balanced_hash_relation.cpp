@@ -645,12 +645,7 @@ bool relation::insert_in_newt(u64* t)
     if (is_canonical == false)
         sub_bucket_id = tuple_hash(t + join_column_count, arity-join_column_count) % sub_bucket_per_bucket_count[bucket_id];
 
-    if((int)bucket_id != mcomm.get_local_rank())
-    {
-        for (u32 x=0; x < arity+1; x++)
-            std::cout << t[x] << " ";
-        std::cout << "BID " << bucket_id << " sub-bucket id " << sub_bucket_id << " rank " << mcomm.get_local_rank() << std::endl;
-    }
+    assert((int)bucket_id == mcomm.get_local_rank());
     if (newt[bucket_id].insert_tuple_from_array(t, arity+1) == true)
     {
         newt_element_count++;
