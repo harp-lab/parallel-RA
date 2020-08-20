@@ -645,7 +645,7 @@ bool relation::insert_in_newt(u64* t)
     if (is_canonical == false)
         sub_bucket_id = tuple_hash(t + join_column_count, arity-join_column_count) % sub_bucket_per_bucket_count[bucket_id];
 
-    assert((int)bucket_id == mcomm.get_local_rank());
+    //assert((int)bucket_id == mcomm.get_local_rank());
     if (newt[bucket_id].insert_tuple_from_array(t, arity+1) == true)
     {
         newt_element_count++;

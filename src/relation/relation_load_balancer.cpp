@@ -313,6 +313,7 @@ bool relation::load_balance_split_full_and_delta(float rf)
     {
         if (rank == 0)
             std::cout << "[YES] G RF " << rf << " Bucket Split -- Global Min " << global_min << " Average bucket size " << average_sub_bucket_size << " Global Max [" << global_global_max << " " << average_global_max/buckets  << "] OLD " << old_total_sub_buckets << " NEW " << new_total_sub_buckets << std::endl;
+        return false;
     }
 
     int rcount =  get_last_rank();
