@@ -52,25 +52,26 @@ void relation::serial_IO(const char* filename_template)
             std::vector<u64> prefix = {};
             full[i].as_vector_buffer_recursive(&(vb_full[i]), prefix);
 
-            int fp = open(full_rel_name, O_CREAT | O_WRONLY, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
-            u32 write_size = write(fp, vb_full[i].buffer, vb_full[i].size);
-            if (write_size != vb_full[i].size)
+            if (vb_full[i].size != 0)
             {
-                std::cout << full_rel_name <<  " Wrong IO: rank: " << " " << vb_full[i].size  << std::endl;
-                MPI_Abort(mcomm.get_local_comm(), -1);
-            }
-            close(fp);
+                int fp = open(full_rel_name, O_CREAT | O_WRONLY, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+                u32 write_size = write(fp, vb_full[i].buffer, vb_full[i].size);
+                if (write_size != vb_full[i].size)
+                {
+                    std::cout << full_rel_name <<  " Wrong IO: rank: " << " " << vb_full[i].size  << std::endl;
+                    MPI_Abort(mcomm.get_local_comm(), -1);
+                }
+                close(fp);
 
-            FILE *fp_outt1;
-            fp_outt1 = fopen(meta_data_full_filename, "w");
-            fprintf (fp_outt1, "%d\n%d", (int)(vb_full[i].size/((arity+1)*sizeof(u64))), (int)arity+1);
-            fclose(fp_outt1);
+                FILE *fp_outt1;
+                fp_outt1 = fopen(meta_data_full_filename, "w");
+                fprintf (fp_outt1, "%d\n%d", (int)(vb_full[i].size/((arity+1)*sizeof(u64))), (int)arity+1);
+                fclose(fp_outt1);
+            }
 
             vb_full[i].vector_buffer_free();
         }
         delete[] vb_full;
-
-
 
 
         vector_buffer *vb_delta = new vector_buffer[buckets];
@@ -80,27 +81,36 @@ void relation::serial_IO(const char* filename_template)
             std::vector<u64> prefix = {};
             delta[i].as_vector_buffer_recursive(&(vb_delta[i]), prefix);
 
-            int fp = open(delta_rel_name, O_CREAT | O_WRONLY, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
-            u32 write_size = write(fp, vb_delta[i].buffer, vb_delta[i].size);
-            if (write_size != vb_delta[i].size)
+            if (vb_delta[i].size != 0)
             {
-                std::cout << delta_rel_name <<  " Wrong IO: rank: " << vb_full[i].size  << std::endl;
-                MPI_Abort(mcomm.get_local_comm(), -1);
-            }
-            close(fp);
+                int fp = open(delta_rel_name, O_CREAT | O_WRONLY, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+                u32 write_size = write(fp, vb_delta[i].buffer, vb_delta[i].size);
+                if (write_size != vb_delta[i].size)
+                {
+                    std::cout << delta_rel_name <<  " Wrong IO: rank: " << vb_full[i].size  << std::endl;
+                    MPI_Abort(mcomm.get_local_comm(), -1);
+                }
+                close(fp);
 
-            FILE *fp_outt2;
-            fp_outt2 = fopen(meta_data_delta_filename, "w");
-            fprintf (fp_outt2, "%d\n%d", (int)(vb_delta[i].size/((arity+1)*sizeof(u64))), (int)arity+1);
-            fclose(fp_outt2);
+                FILE *fp_outt2;
+                fp_outt2 = fopen(meta_data_delta_filename, "w");
+                fprintf (fp_outt2, "%d\n%d", (int)(vb_delta[i].size/((arity+1)*sizeof(u64))), (int)arity+1);
+                fclose(fp_outt2);
+            }
 
             vb_delta[i].vector_buffer_free();
         }
         delete[] vb_delta;
-
-
     }
 }
+
+
+
+void relation::parallel_IO(const char* filename_template)
+{
+
+}
+
 
 
 
@@ -673,10 +683,10 @@ bool relation::insert_in_full(u64* t)
 #if 0
     if (get_debug_id() == "rel_path_2_1")
     {
-    std::cout << "Tuples to insert " << full << " ";
-    for (u32 i=0; i < arity+1; i++)
-        std::cout << t[i] << " ";
-    std::cout << std::endl;
+        std::cout << "Tuples to insert " << full << " ";
+        for (u32 i=0; i < arity+1; i++)
+            std::cout << t[i] << " ";
+        std::cout << std::endl;
     }
 #endif
 

@@ -165,17 +165,6 @@ bool LIE::execute ()
 #endif
     }
 
-    if (enable_io == true)
-    {
-        const char* output_name = "output";
-        mkdir(output_name, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-
-        const char* initial = "output/initial-facts";
-        mkdir(initial, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-
-        for (u32 i = 0 ; i < lie_relation_count; i++)
-            lie_relations[i]->serial_IO(initial);
-    }
 
 #if DEBUG_OUTPUT
     if (mcomm.get_local_rank() == 0)
@@ -186,7 +175,7 @@ bool LIE::execute ()
     /// Executable task
     RAM* executable_task = one_runnable_tasks();
 
-    int counter = 0;
+    int loop_counter = 0;
     /// Running one task at a time
     while (executable_task != NULL)
     {
@@ -202,8 +191,6 @@ bool LIE::execute ()
                 scc_relation[i]->insert_full_in_delta();
         }
 
-        if (enable_io == true)
-            executable_task->io_all_relation(0);
 
         std::vector<u32> history;
 
@@ -228,9 +215,8 @@ bool LIE::execute ()
         if (executable_task->get_iteration_count() == 1)
         {
             executable_task->execute_in_batches(batch_size, history, intern_map, &running_time, &running_intra_bucket_comm, &running_buffer_allocate, &running_local_compute, &running_all_to_all, &running_buffer_free, &running_insert_newt, &running_insert_in_full);
+            loop_counter++;
 
-            if (enable_io == true)
-                executable_task->io_all_relation(1);
 
 #if DEBUG_OUTPUT
             //for (u32 i = 0 ; i < scc_relation_count; i++)
@@ -245,14 +231,29 @@ bool LIE::execute ()
             u64 delta_in_scc = 0;
             do
             {
-                if (enable_io == true)
-                    executable_task->io_all_relation(0);
-
                 executable_task->execute_in_batches(batch_size, history, intern_map, &running_time, &running_intra_bucket_comm, &running_buffer_allocate, &running_local_compute, &running_all_to_all, &running_buffer_free, &running_insert_newt, &running_insert_in_full);
+                loop_counter++;
                 delta_in_scc = history[history.size()-2];
 
+
                 if (enable_io == true)
-                    executable_task->io_all_relation(1);
+                {
+                    if (loop_counter % 10 == 0)
+                    {
+                        char dir_name[1024];
+                        sprintf(dir_name, "output/checkpoin-%d", loop_counter);
+                        if (mcomm.get_local_rank() == 0)
+                        {
+                            mkdir("output", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+                            mkdir(dir_name, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+                        }
+                        MPI_Barrier(mcomm.get_local_comm());
+
+                        for (u32 i = 0 ; i < lie_relation_count; i++)
+                            lie_relations[i]->parallel_IO(dir_name);
+
+                    }
+                }
 
 
 #if DEBUG_OUTPUT
@@ -264,10 +265,7 @@ bool LIE::execute ()
             while (delta_in_scc != 0);
         }
 
-        if (enable_io == true)
-            executable_task->io_all_relation(2);
 
-        counter++;
         executable_task->insert_delta_in_full();
 
         /// marks executable_task as finished
@@ -277,14 +275,7 @@ bool LIE::execute ()
         executable_task = one_runnable_tasks();
     }
 
-    if (enable_io == true)
-    {
-        const char* final = "output/output-facts";
-        mkdir(final, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
 
-        for (u32 i = 0 ; i < lie_relation_count; i++)
-            lie_relations[i]->serial_IO(final);
-    }
 
     return true;
 }

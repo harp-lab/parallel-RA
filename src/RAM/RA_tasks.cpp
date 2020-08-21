@@ -695,95 +695,46 @@ void RAM::execute_in_batches(int batch_size, std::vector<u32>& history, std::map
 #endif
 
 
-#if DEBUG_OUTPUT_2
-        if (mcomm.get_rank() == 0)
-            std::cout << "[BEFORE] Intrabucket communication " << loop_count_tracker << "--------------" << std::endl;
-#endif
-
         double intra_start = MPI_Wtime();
         intra_bucket_comm_execute();
         double intra_end = MPI_Wtime();
         *running_intra_bucket_comm = *running_intra_bucket_comm + (intra_end - intra_start);
 
-#if DEBUG_OUTPUT_2
-        if (mcomm.get_rank() == 0)
-            std::cout << "[AFTER] Intrabucket communication " << loop_count_tracker << "--------------" << std::endl;
-#endif
 
 
         bool local_join_status = false;
         while (local_join_status == false)
         {
 
-#if DEBUG_OUTPUT_2
-        if (mcomm.get_rank() == 0)
-            std::cout << "[BEFORE] Memory allocation " << loop_count_tracker << " " << inner_loop << " --------------" << std::endl;
-#endif
             double allocate_buffers_start = MPI_Wtime();
             allocate_compute_buffers();
             double allocate_buffers_end = MPI_Wtime();
             *running_buffer_allocate = *running_buffer_allocate + (allocate_buffers_end - allocate_buffers_start);
 
-#if DEBUG_OUTPUT_2
-        if (mcomm.get_rank() == 0)
-            std::cout << "[AFTER] Memory allocation " << loop_count_tracker << " " << inner_loop << " --------------" << std::endl;
-#endif
 
-
-#if DEBUG_OUTPUT_2
-        if (mcomm.get_rank() == 0)
-            std::cout << "[BEFORE] Local Compute " << loop_count_tracker << " " << inner_loop << " --------------" << std::endl;
-#endif
             double compute_start = MPI_Wtime();
             local_join_status = local_compute(offset);
             double compute_end = MPI_Wtime();
             *running_local_compute = *running_local_compute + (compute_end - compute_start);
-#if DEBUG_OUTPUT_2
-        if (mcomm.get_rank() == 0)
-            std::cout << "[AFTER] Local Compute " << loop_count_tracker << " " << inner_loop << " --------------" << std::endl;
-#endif
 
 
-#if DEBUG_OUTPUT_2
-        if (mcomm.get_rank() == 0)
-            std::cout << "[BEFORE] All to all compute " << loop_count_tracker << " " << inner_loop << " --------------" << std::endl;
-#endif
             double all_to_all_start = MPI_Wtime();
             all_to_all();
             double all_to_all_end = MPI_Wtime();
             *running_all_to_all = *running_all_to_all + (all_to_all_end - all_to_all_start);
-#if DEBUG_OUTPUT_2
-        if (mcomm.get_rank() == 0)
-            std::cout << "[AFTER] All to all compute " << loop_count_tracker << " " << inner_loop << " --------------" << std::endl;
-#endif
 
 
-#if DEBUG_OUTPUT_2
-        if (mcomm.get_rank() == 0)
-            std::cout << "[BEFORE] Freeing memory compute " << loop_count_tracker << " " << inner_loop << " --------------" << std::endl;
-#endif
             double free_buffers_start = MPI_Wtime();
             free_compute_buffers();
             double free_buffers_end = MPI_Wtime();
             *running_buffer_free = *running_buffer_free + (free_buffers_end - free_buffers_start);
-#if DEBUG_OUTPUT_2
-        if (mcomm.get_rank() == 0)
-            std::cout << "[AFTER] Freeing memory compute " << loop_count_tracker << " " << inner_loop << " --------------" << std::endl;
-#endif
 
 
-#if DEBUG_OUTPUT_2
-        if (mcomm.get_rank() == 0)
-            std::cout << "[BEFORE] Insert in newt " << loop_count_tracker << " " << inner_loop << " --------------" << std::endl;
-#endif
             double insert_in_newt_start = MPI_Wtime();
             local_insert_in_newt(intern_map);
             double insert_in_newt_end = MPI_Wtime();
             *running_insert_newt = *running_insert_newt + (insert_in_newt_end - insert_in_newt_start);
-#if DEBUG_OUTPUT_2
-        if (mcomm.get_rank() == 0)
-            std::cout << "[AFTER] Insert in newt " << loop_count_tracker << " " << inner_loop << " --------------" << std::endl;
-#endif
+
 
 #if DEBUG_OUTPUT
             if (mcomm.get_rank() == 0)
@@ -809,19 +760,11 @@ void RAM::execute_in_batches(int batch_size, std::vector<u32>& history, std::map
             inner_loop++;
         }
 
-#if DEBUG_OUTPUT_2
-        if (mcomm.get_rank() == 0)
-            std::cout << "[BEFORE] Insert in full " << loop_count_tracker << " --------------" << std::endl;
-#endif
         double insert_in_full_start = MPI_Wtime();
         local_insert_in_full();
         double insert_in_full_end = MPI_Wtime();
-#if DEBUG_OUTPUT_2
-        if (mcomm.get_rank() == 0)
-            std::cout << "[AFTER] Insert in full " << loop_count_tracker << " --------------" << std::endl;
-#endif
-        *running_insert_in_full = *running_insert_in_full + (insert_in_full_end - insert_in_full_start);
 
+        *running_insert_in_full = *running_insert_in_full + (insert_in_full_end - insert_in_full_start);
         *running_time = *running_time + (insert_in_full_end - intra_start);
 
 #if DEBUG_OUTPUT

@@ -42,7 +42,7 @@ int main(int argc, char **argv)
     lie->add_scc_dependance(scc13238, scc13237);
     lie->add_scc_dependance(scc13239, scc13237);
 
-    //lie->enable_IO();
+    lie->enable_IO();
     lie->set_comm(mcomm);
     lie->set_batch_size(1);
     lie->execute();

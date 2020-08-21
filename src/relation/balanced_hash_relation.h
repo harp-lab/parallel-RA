@@ -151,6 +151,7 @@ public:
 
 
     void serial_IO(const char* filename_template);
+    void parallel_IO(const char* filename_template);
 
 
     /// used for initialization of dynamic relations
