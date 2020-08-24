@@ -160,6 +160,7 @@ bool LIE::execute ()
 {
     /// Main : Execute : init : start
     mcomm.set_local_comm(MPI_COMM_WORLD);
+    debug_buffer.reserve(400000);
 
     /// Initialize all relations
     for (u32 i = 0 ; i < lie_relation_count; i++)
@@ -225,7 +226,7 @@ bool LIE::execute ()
         /// For SCCs that runs for only one iteration
         if (executable_task->get_iteration_count() == 1)
         {
-            executable_task->execute_in_batches(batch_size, history, intern_map, &running_time, &running_intra_bucket_comm, &running_buffer_allocate, &running_local_compute, &running_all_to_all, &running_buffer_free, &running_insert_newt, &running_insert_in_full, &running_fp, debug_buffer);
+            executable_task->execute_in_batches(batch_size, history, intern_map, &running_time, &running_intra_bucket_comm, &running_buffer_allocate, &running_local_compute, &running_all_to_all, &running_buffer_free, &running_insert_newt, &running_insert_in_full, &running_fp, debug_buffer, debug_file_name);
             loop_counter++;
 
 
@@ -242,7 +243,7 @@ bool LIE::execute ()
             u64 delta_in_scc = 0;
             do
             {
-                executable_task->execute_in_batches(batch_size, history, intern_map, &running_time, &running_intra_bucket_comm, &running_buffer_allocate, &running_local_compute, &running_all_to_all, &running_buffer_free, &running_insert_newt, &running_insert_in_full, &running_fp, debug_buffer);
+                executable_task->execute_in_batches(batch_size, history, intern_map, &running_time, &running_intra_bucket_comm, &running_buffer_allocate, &running_local_compute, &running_all_to_all, &running_buffer_free, &running_insert_newt, &running_insert_in_full, &running_fp, debug_buffer, debug_file_name);
                 loop_counter++;
                 delta_in_scc = history[history.size()-2];
 

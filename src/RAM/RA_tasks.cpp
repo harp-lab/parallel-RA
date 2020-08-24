@@ -678,7 +678,7 @@ void RAM::io_all_relation(int status)
 
 
 
-void RAM::execute_in_batches(int batch_size, std::vector<u32>& history, std::map<u64, u64>& intern_map, double *running_time, double *running_intra_bucket_comm, double *running_buffer_allocate, double *running_local_compute, double *running_all_to_all, double *running_buffer_free, double *running_insert_newt, double *running_insert_in_full, double *running_fp, std::vector<std::string>& debug_buffer)
+void RAM::execute_in_batches(int batch_size, std::vector<u32>& history, std::map<u64, u64>& intern_map, double *running_time, double *running_intra_bucket_comm, double *running_buffer_allocate, double *running_local_compute, double *running_all_to_all, double *running_buffer_free, double *running_insert_newt, double *running_insert_in_full, double *running_fp, std::vector<std::string>& debug_buffer, std::string debug_file_name)
 {
     int inner_loop = 0;
     u32 RA_count = RA_list.size();
@@ -775,8 +775,6 @@ void RAM::execute_in_batches(int batch_size, std::vector<u32>& history, std::map
 #if DEBUG_OUTPUT
         if (mcomm.get_rank() == 0)
         {
-
-
             debug_buffer.push_back("Current time OUTER LOOP [" + std::to_string(loop_count_tracker) + " ] "
                       + " Intra " + std::to_string((intra_end - intra_start))
                       + " full " + std::to_string((insert_in_full_end - insert_in_full_start))
@@ -790,8 +788,9 @@ void RAM::execute_in_batches(int batch_size, std::vector<u32>& history, std::map
                       + " full " + std::to_string(*running_insert_in_full)
                       + " Total " + std::to_string(*running_intra_bucket_comm + *running_buffer_allocate + *running_local_compute + *running_all_to_all + *running_buffer_free + *running_insert_newt + *running_insert_in_full) + "\n");
 
-#if 0
-            std::cout << "Current time OUTER LOOP [" << loop_count_tracker << " ] "
+#if 1
+            std::cout << debug_file_name
+                      << " Current time OUTER LOOP [" << loop_count_tracker << " ] "
                       << " Intra " << (intra_end - intra_start)
                       << " full " << (insert_in_full_end - insert_in_full_start)
                       << " Total " << (insert_in_full_end - intra_start)
@@ -799,7 +798,8 @@ void RAM::execute_in_batches(int batch_size, std::vector<u32>& history, std::map
                       << *running_time
                       << " ]" << std::endl;
 
-            std::cout << "Running time OUTER LOOP [" << loop_count_tracker << "] "
+            std::cout << debug_file_name
+                      << " Running time OUTER LOOP [" << loop_count_tracker << "] "
                       << " Intra " << *running_intra_bucket_comm
                       << " full " << *running_insert_in_full
                       << " Total " << *running_intra_bucket_comm + *running_buffer_allocate + *running_local_compute + *running_all_to_all + *running_buffer_free + *running_insert_newt + *running_insert_in_full << std::endl;
