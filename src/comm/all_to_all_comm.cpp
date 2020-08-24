@@ -42,7 +42,7 @@ void all_to_all_comm(vector_buffer* vectorized_send_buffer, int vectorized_send_
         memcpy(send_buffer + send_displacements[i], (&vectorized_send_buffer[i])->buffer, (&vectorized_send_buffer[i])->size);
         vectorized_send_buffer[i].vector_buffer_free();
     }
-    assert(send_displacements[nprocs - 1] + send_counts[nprocs - 1] == vectorized_send_buffer_size);
+    //assert(send_displacements[nprocs - 1] + send_counts[nprocs - 1] == vectorized_send_buffer_size);
 
     /// creating recv_buffer
     *recv_buffer = new u64[*recv_buffer_size];
@@ -105,7 +105,7 @@ void comm_compaction_all_to_all(all_to_all_buffer compute_buffer, int **recv_buf
         outer_hash_buffer_size = outer_hash_buffer_size + recv_counts[i];
     }
 
-    assert(compute_buffer.local_compute_output_size_total == send_disp[nprocs - 1] + compute_buffer.cumulative_tuple_process_map[nprocs - 1]);
+    //assert(compute_buffer.local_compute_output_size_total == send_disp[nprocs - 1] + compute_buffer.cumulative_tuple_process_map[nprocs - 1]);
 
     *recv_buffer = new u64[outer_hash_buffer_size];
 

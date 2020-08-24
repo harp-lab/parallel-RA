@@ -379,8 +379,8 @@ u32 RAM::local_compute(int* offset)
             current_ra->get_join_projection_index(&reorder_map_array);
             relation* input0 = current_ra->get_join_input0();
             relation* input1 = current_ra->get_join_input1();
-            relation* output = current_ra->get_join_output();
-            assert(output->get_arity() == reorder_map_array.size());
+            //relation* output = current_ra->get_join_output();
+            //assert(output->get_arity() == reorder_map_array.size());
             int join_column_count = input0->get_join_column_count();
 
             if (current_ra->get_join_input0_graph_type() == DELTA && current_ra->get_join_input1_graph_type() == DELTA)

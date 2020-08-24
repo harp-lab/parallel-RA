@@ -77,7 +77,7 @@ void parallel_io::parallel_read_input_relation_from_file_to_local_buffer(u32 ari
     else
         entry_count = (int) ceil((float)global_row_count / nprocs);
 
-    assert((int)arity+1 == col_count);
+    //assert((int)arity+1 == col_count);
 
     if (entry_count == 0)
         return;
@@ -139,7 +139,7 @@ void parallel_io::buffer_data_to_hash_buffer_col(u32 arity, const char *fname, u
     u64 val[col_count];
 
 
-    assert((int)arity+1 == col_count);
+    //assert((int)arity+1 == col_count);
     for (int i = 0; i < entry_count * (col_count); i=i+(col_count))
     {
         uint64_t bucket_id = tuple_hash(input_buffer + i, join_column_count) % buckets;

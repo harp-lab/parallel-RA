@@ -14,7 +14,7 @@ void parallel_acopy::local_acopy(u32 buckets, google_relation* input, u32* input
     u32** output_sub_bucket_rank = output->get_sub_bucket_rank();
 
     acopy_buffer.width[ra_counter] = reorder_map.size();
-    assert(acopy_buffer.width[ra_counter] == (int)output->get_arity()+1);
+    //assert(acopy_buffer.width[ra_counter] == (int)output->get_arity()+1);
 
     for (u32 i = 0; i < buckets; i++)
         if (input_bucket_map[i] == 1)

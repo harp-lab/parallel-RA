@@ -15,7 +15,7 @@ void parallel_copy_filter::local_copy_filter(u32 buckets, google_relation* input
 
 
     copy_filter_buffer.width[ra_counter] = reorder_map.size();
-    assert(copy_filter_buffer.width[ra_counter] == (int)output->get_arity());
+    //assert(copy_filter_buffer.width[ra_counter] == (int)output->get_arity());
 
 
     for (u32 i = 0; i < buckets; i++)
