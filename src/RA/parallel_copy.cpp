@@ -16,6 +16,7 @@ void parallel_copy::local_copy(u32 buckets, google_relation* input, u32* input_b
     copy_buffer.width[ra_counter] = reorder_map.size();
     //assert(copy_buffer.width[ra_counter] == (int)output->get_arity());
 
+#if 0
     for (u32 i = 0; i < buckets; i++)
     {
         if (input_bucket_map[i] == 1)
@@ -23,6 +24,8 @@ void parallel_copy::local_copy(u32 buckets, google_relation* input, u32* input_b
             input[i].as_all_to_all_copy_buffer(copy_buffer, {}, reorder_map, ra_counter, buckets, output_sub_bucket_count, output_sub_bucket_rank, arity, join_column_count, output->get_join_column_count(), output->get_is_canonical());
         }
     }
+#endif
+    input[mcomm.get_local_rank()].as_all_to_all_copy_buffer(copy_buffer, {}, reorder_map, ra_counter, buckets, output_sub_bucket_count, output_sub_bucket_rank, arity, join_column_count, output->get_join_column_count(), output->get_is_canonical());
 
     return;
 }

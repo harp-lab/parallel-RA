@@ -16,16 +16,13 @@ void parallel_acopy::local_acopy(u32 buckets, google_relation* input, u32* input
     acopy_buffer.width[ra_counter] = reorder_map.size();
     //assert(acopy_buffer.width[ra_counter] == (int)output->get_arity()+1);
 
+#if 0
     for (u32 i = 0; i < buckets; i++)
         if (input_bucket_map[i] == 1)
             input[i].as_all_to_all_acopy_buffer(acopy_buffer, {}, reorder_map, ra_counter, buckets, output_sub_bucket_count, output_sub_bucket_rank, arity, join_column_count, output->get_join_column_count(), output->get_is_canonical());
-
-#if 0
-    std::cout << mcomm.get_local_rank() << " --------------- "
-              << acopy_buffer.cumulative_tuple_process_map[0] << " "
-              << acopy_buffer.cumulative_tuple_process_map[1] << " "
-              << std::endl;
 #endif
+
+    input[mcomm.get_local_rank()].as_all_to_all_acopy_buffer(acopy_buffer, {}, reorder_map, ra_counter, buckets, output_sub_bucket_count, output_sub_bucket_rank, arity, join_column_count, output->get_join_column_count(), output->get_is_canonical());
 
     return;
 }

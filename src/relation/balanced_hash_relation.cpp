@@ -630,8 +630,10 @@ bool relation::insert_in_delta(u64* t)
 {
     uint64_t bucket_id = tuple_hash(t, join_column_count) % get_bucket_count();
     u32 sub_bucket_id = 0;
-    if (is_canonical == false)
-        sub_bucket_id = tuple_hash(t + join_column_count, arity-join_column_count) % sub_bucket_per_bucket_count[bucket_id];
+
+    // QWERTY
+    //if (is_canonical == false)
+    //    sub_bucket_id = tuple_hash(t + join_column_count, arity-join_column_count) % sub_bucket_per_bucket_count[bucket_id];
 
     //assert((int)bucket_id == mcomm.get_local_rank());
     if (delta[bucket_id].insert_tuple_from_array(t, arity+1) == true)
@@ -652,8 +654,10 @@ bool relation::insert_in_newt(u64* t)
 {
     uint64_t bucket_id = tuple_hash(t, join_column_count) % get_bucket_count();
     u32 sub_bucket_id = 0;
-    if (is_canonical == false)
-        sub_bucket_id = tuple_hash(t + join_column_count, arity-join_column_count) % sub_bucket_per_bucket_count[bucket_id];
+
+    // QWERTY
+    //if (is_canonical == false)
+    //    sub_bucket_id = tuple_hash(t + join_column_count, arity-join_column_count) % sub_bucket_per_bucket_count[bucket_id];
 
     //assert((int)bucket_id == mcomm.get_local_rank());
     if (newt[bucket_id].insert_tuple_from_array(t, arity+1) == true)
@@ -675,8 +679,10 @@ bool relation::insert_in_full(u64* t)
     u32 buckets = get_bucket_count();
     uint64_t bucket_id = tuple_hash(t, join_column_count) % buckets;
     uint64_t sub_bucket_id=0;
-    if (is_canonical == false)
-        sub_bucket_id = tuple_hash(t + join_column_count, arity-join_column_count) % sub_bucket_per_bucket_count[bucket_id];
+
+    // QWERTY
+    //if (is_canonical == false)
+    //    sub_bucket_id = tuple_hash(t + join_column_count, arity-join_column_count) % sub_bucket_per_bucket_count[bucket_id];
 
     //assert((int)bucket_id == mcomm.get_local_rank());
 
@@ -713,7 +719,9 @@ int relation::insert_delta_in_full()
     u32 buckets = get_bucket_count();
     vector_buffer *input_buffer = new vector_buffer[buckets];
 
-    for (u32 i = 0; i < buckets; i++)
+    // QWERTY
+    u32 i = mcomm.get_local_rank();
+    //for (u32 i = 0; i < buckets; i++)
     {
         input_buffer[i].vector_buffer_create_empty();
         if (bucket_map[i] == 1)
@@ -729,9 +737,6 @@ int relation::insert_delta_in_full()
             input_buffer[i].vector_buffer_free();
         }
     }
-    //if (get_debug_id() == "rel_edge_2_2" || get_debug_id() == "rel_edge_2_1_2")
-    //if (mcomm.get_local_rank() == 0)
-    //    std::cout << "[" << get_debug_id() << "] inserting delta in full insert_success " << insert_success << std::endl;
 
     set_delta_element_count(0);
     delete[] input_buffer;
@@ -747,7 +752,9 @@ int relation::insert_full_in_delta()
     u32 buckets = get_bucket_count();
     vector_buffer *input_buffer = new vector_buffer[buckets];
 
-    for (u32 i = 0; i < buckets; i++)
+    // QWERTY
+    u32 i = mcomm.get_local_rank();
+    //for (u32 i = 0; i < buckets; i++)
     {
         input_buffer[i].vector_buffer_create_empty();
         if (bucket_map[i] == 1)
@@ -804,8 +811,10 @@ void relation::local_insert_in_delta()
     //if (rank == 0)
     //    std::cout << "[" << get_debug_id() << "] copyng newt pointer to delta   " << delta_element_count << std::endl;
 
+    // QWERTY
     memcpy(delta_bucket_element_count, newt_bucket_element_count, buckets * sizeof(u32));
-    for (u32 b = 0; b < buckets; b++)
+    u32 b = mcomm.get_local_rank();
+    //for (u32 b = 0; b < buckets; b++)
     {
         memcpy(delta_sub_bucket_element_count[b], newt_sub_bucket_element_count[b], sub_bucket_per_bucket_count[b] * sizeof(u32));
         memset(newt_sub_bucket_element_count[b], 0, sub_bucket_per_bucket_count[b] * sizeof(u32));

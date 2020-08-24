@@ -161,7 +161,7 @@ bool LIE::execute ()
         lie_relations[i]->initialize_relation(mcomm);
 
 #if DEBUG_OUTPUT
-        lie_relations[i]->print();
+        //lie_relations[i]->print();
 #endif
     }
 
@@ -175,7 +175,16 @@ bool LIE::execute ()
     /// Executable task
     RAM* executable_task = one_runnable_tasks();
 
+    double running_time=0;
+    double running_intra_bucket_comm=0;
+    double running_buffer_allocate=0;
+    double running_local_compute=0;
+    double running_all_to_all=0;
+    double running_buffer_free=0;
+    double running_insert_newt=0;
+    double running_insert_in_full=0;
     int loop_counter = 0;
+
     /// Running one task at a time
     while (executable_task != NULL)
     {
@@ -191,7 +200,6 @@ bool LIE::execute ()
                 scc_relation[i]->insert_full_in_delta();
         }
 
-
         std::vector<u32> history;
 
 #if DEBUG_OUTPUT
@@ -201,16 +209,6 @@ bool LIE::execute ()
 
         /// if case is for rules (acopy and copy) that requires only one iteration
         /// else case is for join rules
-
-        double running_time=0;
-        double running_intra_bucket_comm=0;
-        double running_buffer_allocate=0;
-        double running_local_compute=0;
-        double running_all_to_all=0;
-        double running_buffer_free=0;
-        double running_insert_newt=0;
-        double running_insert_in_full=0;
-
         /// For SCCs that runs for only one iteration
         if (executable_task->get_iteration_count() == 1)
         {
@@ -251,10 +249,8 @@ bool LIE::execute ()
 
                         for (u32 i = 0 ; i < lie_relation_count; i++)
                             lie_relations[i]->parallel_IO(dir_name);
-
                     }
                 }
-
 
 #if DEBUG_OUTPUT
                 //for (u32 i = 0 ; i < scc_relation_count; i++)
@@ -274,8 +270,6 @@ bool LIE::execute ()
         /// loads new runnable task
         executable_task = one_runnable_tasks();
     }
-
-
 
     return true;
 }

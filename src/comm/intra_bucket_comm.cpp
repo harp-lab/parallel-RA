@@ -28,6 +28,16 @@ void intra_bucket_comm(u32 buckets,
                        u64 *total_buffer_size, u64 **recvbuf,
                        MPI_Comm mcomm)
 {
+    int rank;
+    MPI_Comm_rank(mcomm, &rank);
+    vector_buffer input_buffer;
+    *recvbuf = new u64[*total_buffer_size];
+    rel[rank].as_vector_buffer_recursive(&input_buffer, {});
+    *total_buffer_size = input_buffer.size / sizeof(u64);
+    *recvbuf = new u64[*total_buffer_size];
+    memcpy(*recvbuf, input_buffer.buffer, input_buffer.size);
+
+#if 0
     // buffer to hold relation data to be sent out
     vector_buffer *input_buffer = new vector_buffer[buckets];
     int *input_buffer_size = new int[buckets];
@@ -161,6 +171,6 @@ void intra_bucket_comm(u32 buckets,
     delete[] input_buffer;
     delete[] input_buffer_size;
     delete[] bucket_offset;
-
+#endif
     return;
 }

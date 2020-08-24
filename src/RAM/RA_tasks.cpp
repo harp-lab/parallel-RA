@@ -694,18 +694,14 @@ void RAM::execute_in_batches(int batch_size, std::vector<u32>& history, std::map
             std::cout << "--------------FIXED POINT ITERATION " << loop_count_tracker << "--------------" << std::endl;
 #endif
 
-
         double intra_start = MPI_Wtime();
         intra_bucket_comm_execute();
         double intra_end = MPI_Wtime();
         *running_intra_bucket_comm = *running_intra_bucket_comm + (intra_end - intra_start);
 
-
-
         bool local_join_status = false;
         while (local_join_status == false)
         {
-
             double allocate_buffers_start = MPI_Wtime();
             allocate_compute_buffers();
             double allocate_buffers_end = MPI_Wtime();
@@ -748,7 +744,6 @@ void RAM::execute_in_batches(int batch_size, std::vector<u32>& history, std::map
                           << std::endl;
 
                 std::cout << "Running time INNER LOOP [" << loop_count_tracker << " " << inner_loop << "] "
-                          << " Intra " << *running_intra_bucket_comm
                           << " Buf cre " << *running_buffer_allocate
                           << " comp " << *running_local_compute
                           << " A2A " << *running_all_to_all
