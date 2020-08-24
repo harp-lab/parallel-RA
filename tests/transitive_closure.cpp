@@ -6,8 +6,8 @@ int main(int argc, char **argv)
     mpi_comm mcomm;
     mcomm.create(argc, argv);    
 
-    if (argc != 2)
-        std::cout << "Usage: mpirun -n <process cout> ./TC <input data file>" << std::endl;
+    //if (argc != 2)
+    //    std::cout << "Usage: mpirun -n <process cout> ./TC <input data file>" << std::endl;
 
     relation* rel_path_2_1_2 = new relation(2, true, 2, 257, "rel_path_2_1_2", "../data/g5955/path_2_1_2", FULL);
     relation* rel_edge_2_1_2 = new relation(2, true, 2, 256, "rel_edge_2_1_2", argv[1], FULL);
@@ -42,6 +42,7 @@ int main(int argc, char **argv)
     lie->add_scc_dependance(scc13238, scc13237);
     lie->add_scc_dependance(scc13239, scc13237);
 
+    lie->set_debug_output_filename(argv[2]);
     lie->enable_IO();
     lie->set_comm(mcomm);
     lie->set_batch_size(100);

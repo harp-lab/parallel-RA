@@ -277,7 +277,7 @@ int main(int argc, char **argv)
 
 
 
-
+    lie->set_debug_output_filename(argv[1]);
     lie->set_comm(mcomm);
     lie->set_batch_size(100);
     lie->execute();

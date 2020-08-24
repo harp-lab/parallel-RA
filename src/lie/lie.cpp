@@ -140,12 +140,18 @@ void LIE::print_all_relation_size()
     {
         relation* curr_relation = lie_relations[i];
         if (mcomm.get_local_rank() == 0)
-            std::cout << curr_relation->get_debug_id() << ": {" << curr_relation->get_arity() << "}. (" << global_total_facts[i] << " total facts)" << std::endl;
+        {
+            //std::cout << curr_relation->get_debug_id() << ": {" << curr_relation->get_arity() << "}. (" << global_total_facts[i] << " total facts)" << std::endl;
+            debug_buffer.push_back(curr_relation->get_debug_id() + ": {" + std::to_string(curr_relation->get_arity()) + "}. (" + std::to_string(global_total_facts[i]) + " total facts)\n");
+        }
         total_facts = total_facts + global_total_facts[i];
     }
 
     if (mcomm.get_local_rank() == 0)
-        std::cout << "Total facts across all relations " << total_facts << std::endl << std::endl;
+    {
+        debug_buffer.push_back("Total facts across all relations " + std::to_string(total_facts) + "\n\n");
+        //std::cout << "Total facts across all relations " << total_facts << std::endl << std::endl;
+    }
 }
 
 
@@ -168,7 +174,10 @@ bool LIE::execute ()
 
 #if DEBUG_OUTPUT
     if (mcomm.get_local_rank() == 0)
-        std::cout << "----------------- Initialization Complete ---------------------" << std::endl << std::endl;
+    {
+        //std::cout << "----------------- Initialization Complete ---------------------" << std::endl << std::endl;
+        debug_buffer.push_back("----------------- Initialization Complete ---------------------\n\n");
+    }
 #endif
 
 
@@ -205,7 +214,10 @@ bool LIE::execute ()
 
 #if DEBUG_OUTPUT
         if (mcomm.get_local_rank() == 0)
-            std::cout << "-------------------Executing SCC " << executable_task->get_id() << "------------------" << std::endl;
+        {
+            //std::cout << "-------------------Executing SCC " << executable_task->get_id() << "------------------" << std::endl;
+            debug_buffer.push_back("-------------------Executing SCC " + std::to_string(executable_task->get_id()) + " ------------------\n");
+        }
 #endif
 
         /// if case is for rules (acopy and copy) that requires only one iteration
@@ -213,7 +225,7 @@ bool LIE::execute ()
         /// For SCCs that runs for only one iteration
         if (executable_task->get_iteration_count() == 1)
         {
-            executable_task->execute_in_batches(batch_size, history, intern_map, &running_time, &running_intra_bucket_comm, &running_buffer_allocate, &running_local_compute, &running_all_to_all, &running_buffer_free, &running_insert_newt, &running_insert_in_full, &running_fp);
+            executable_task->execute_in_batches(batch_size, history, intern_map, &running_time, &running_intra_bucket_comm, &running_buffer_allocate, &running_local_compute, &running_all_to_all, &running_buffer_free, &running_insert_newt, &running_insert_in_full, &running_fp, debug_buffer);
             loop_counter++;
 
 
@@ -230,7 +242,7 @@ bool LIE::execute ()
             u64 delta_in_scc = 0;
             do
             {
-                executable_task->execute_in_batches(batch_size, history, intern_map, &running_time, &running_intra_bucket_comm, &running_buffer_allocate, &running_local_compute, &running_all_to_all, &running_buffer_free, &running_insert_newt, &running_insert_in_full, &running_fp);
+                executable_task->execute_in_batches(batch_size, history, intern_map, &running_time, &running_intra_bucket_comm, &running_buffer_allocate, &running_local_compute, &running_all_to_all, &running_buffer_free, &running_insert_newt, &running_insert_in_full, &running_fp, debug_buffer);
                 loop_counter++;
                 delta_in_scc = history[history.size()-2];
 
@@ -271,6 +283,12 @@ bool LIE::execute ()
         /// loads new runnable task
         executable_task = one_runnable_tasks();
     }
+
+    std::ofstream myfile;
+    myfile.open (debug_file_name);
+    for (std::string n : debug_buffer)
+        myfile << n;
+    myfile.close();
 
     return true;
 }

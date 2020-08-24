@@ -36,6 +36,9 @@ private:
 
     bool enable_io;
 
+    std::vector<std::string> debug_buffer;
+
+    std::string debug_file_name;
 
 public:
 
@@ -51,6 +54,9 @@ public:
     }
 
     void enable_IO()    {enable_io = true;}
+
+
+    void set_debug_output_filename(std::string dfn)    {debug_file_name = dfn;}
 
 
     void print_all_relation_size();
