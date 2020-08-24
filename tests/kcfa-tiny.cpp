@@ -273,7 +273,7 @@ int main(int argc, char **argv)
 
 
     lie->set_comm(mcomm);
-    lie->set_batch_size(1);
+    lie->set_batch_size(100);
     lie->execute();
 
     delete lie;

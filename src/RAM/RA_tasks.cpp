@@ -678,7 +678,7 @@ void RAM::io_all_relation(int status)
 
 
 
-void RAM::execute_in_batches(int batch_size, std::vector<u32>& history, std::map<u64, u64>& intern_map, double *running_time, double *running_intra_bucket_comm, double *running_buffer_allocate, double *running_local_compute, double *running_all_to_all, double *running_buffer_free, double *running_insert_newt, double *running_insert_in_full)
+void RAM::execute_in_batches(int batch_size, std::vector<u32>& history, std::map<u64, u64>& intern_map, double *running_time, double *running_intra_bucket_comm, double *running_buffer_allocate, double *running_local_compute, double *running_all_to_all, double *running_buffer_free, double *running_insert_newt, double *running_insert_in_full, double *running_fp)
 {
     int inner_loop = 0;
     u32 RA_count = RA_list.size();
@@ -789,7 +789,19 @@ void RAM::execute_in_batches(int batch_size, std::vector<u32>& history, std::map
 
     delete[] offset;
 
+    double fp_start = MPI_Wtime();
     check_for_fixed_point(history);
+    double fp_end = MPI_Wtime();
+    *running_time = *running_time + (fp_end - fp_start);
+    *running_fp = *running_fp + (fp_end - fp_start);
+    if (mcomm.get_rank() == 0)
+    {
+        std::cout << "Fixed Point [" << loop_count_tracker << "] "
+                  << (fp_end - fp_start)
+                  << " "
+                  << *running_fp
+                  << std::endl;
+    }
 
     if (logging == true)
         print_all_relation();
