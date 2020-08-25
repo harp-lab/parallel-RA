@@ -238,7 +238,7 @@ bool LIE::execute ()
 
                 if (enable_io == true)
                 {
-                    if (loop_counter % 10 == 0)
+                    if (loop_counter % 5 == 0)
                     {
                         char dir_name[1024];
                         sprintf(dir_name, "output/checkpoin-%d", loop_counter);
@@ -249,8 +249,9 @@ bool LIE::execute ()
                         }
                         MPI_Barrier(mcomm.get_local_comm());
 
+                        bool share = false;
                         for (u32 i = 0 ; i < lie_relation_count; i++)
-                            lie_relations[i]->parallel_IO(dir_name);
+                            lie_relations[i]->parallel_IO(dir_name, share);
 
                     }
                 }

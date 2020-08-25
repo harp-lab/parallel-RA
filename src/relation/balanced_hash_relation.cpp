@@ -106,9 +106,135 @@ void relation::serial_IO(const char* filename_template)
 
 
 
-void relation::parallel_IO(const char* filename_template)
+void relation::parallel_IO(const char* filename_template, bool share)
 {
+    char full_rel_name[1024];
+	char delta_rel_name[1024];
+	char meta_data_delta_filename[1024];
+	char meta_data_full_filename[1024];
 
+	sprintf(full_rel_name, "%s/%s_full", filename_template, get_debug_id().c_str());
+	sprintf(delta_rel_name, "%s/%s_delta", filename_template, get_debug_id().c_str());
+	sprintf(meta_data_delta_filename, "%s/%s_delta.size", filename_template, get_debug_id().c_str());
+	sprintf(meta_data_full_filename, "%s/%s_full.size", filename_template, get_debug_id().c_str());
+
+	u32 buckets = get_bucket_count();
+	vector_buffer *vb_full = new vector_buffer[buckets];
+	uint64_t sizes[mcomm.get_local_nprocs()];
+	uint64_t size = 0;
+	for (u32 i=0; i < buckets; i++)
+	{
+		vb_full[i].vector_buffer_create_empty();
+		std::vector<u64> prefix = {};
+		full[i].as_vector_buffer_recursive(&(vb_full[i]), prefix);
+
+		if (vb_full[i].size != 0)
+			size = vb_full[i].size;
+		vb_full[i].vector_buffer_free();
+	}
+	MPI_Allgather(&size, 1, MPI_LONG_LONG, sizes, 1, MPI_LONG_LONG, mcomm.get_comm());
+
+	uint64_t offset = 0;
+	for (int i = 0; i < mcomm.get_rank(); i++)
+		offset += sizes[i];
+	uint64_t total_size = 0;
+	for (int i = 0; i < mcomm.get_nprocs(); i++)
+		total_size += sizes[i];
+
+	MPI_Status stas;
+	MPI_Request req;
+	for (u32 i=0; i < buckets; i++)
+	{
+		vb_full[i].vector_buffer_create_empty();
+		std::vector<u64> prefix = {};
+		full[i].as_vector_buffer_recursive(&(vb_full[i]), prefix);
+
+		if (share == true)
+		{
+			MPI_File fp;
+			MPI_File_open(mcomm.get_comm(), full_rel_name, MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &fp);
+			MPI_File_iwrite_at(fp, offset, vb_full[i].buffer, vb_full[i].size, MPI_BYTE, &req);
+			MPI_File_close(&fp);
+			MPI_Wait(&req, &stas);
+		}
+		else
+		{
+			int fp = open(full_rel_name, O_CREAT | O_WRONLY, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+			u32 write_size = pwrite(fp, vb_full[i].buffer, vb_full[i].size, offset);
+			if (write_size != vb_full[i].size)
+			{
+				std::cout << full_rel_name <<  " Wrong IO: rank: " << " " << vb_full[i].size  << std::endl;
+				MPI_Abort(mcomm.get_local_comm(), -1);
+			}
+			close(fp);
+		}
+		if (mcomm.get_rank() == 0)
+		{
+			FILE *fp_outt2;
+			fp_outt2 = fopen(meta_data_full_filename, "w");
+			fprintf (fp_outt2, "%d\n%d", (int)(total_size/((arity+1)*sizeof(u64))), (int)arity+1);
+			fclose(fp_outt2);
+		}
+		vb_full[i].vector_buffer_free();
+	}
+	delete[] vb_full;
+
+	vector_buffer *vb_delta = new vector_buffer[buckets];
+	size = 0;
+	for (u32 i=0; i < buckets; i++)
+	{
+		vb_delta[i].vector_buffer_create_empty();
+		std::vector<u64> prefix = {};
+		delta[i].as_vector_buffer_recursive(&(vb_delta[i]), prefix);
+
+		if (vb_delta[i].size != 0)
+			size = vb_delta[i].size;
+		vb_delta[i].vector_buffer_free();
+	}
+	MPI_Allgather(&size, 1, MPI_LONG_LONG, sizes, 1, MPI_LONG_LONG, mcomm.get_comm());
+
+	offset = 0;
+	for (int i = 0; i < mcomm.get_rank(); i++)
+		offset += sizes[i];
+	total_size = 0;
+	for (int i = 0; i < mcomm.get_nprocs(); i++)
+		total_size += sizes[i];
+
+	for (u32 i=0; i < buckets; i++)
+	{
+		vb_delta[i].vector_buffer_create_empty();
+		std::vector<u64> prefix = {};
+		delta[i].as_vector_buffer_recursive(&(vb_delta[i]), prefix);
+
+		if (share == true)
+		{
+			MPI_File fp;
+			MPI_File_open(mcomm.get_comm(), delta_rel_name, MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &fp);
+			MPI_File_iwrite_at(fp, offset, vb_delta[i].buffer, vb_delta[i].size, MPI_BYTE, &req);
+			MPI_File_close(&fp);
+			MPI_Wait(&req, &stas);
+		}
+		else
+		{
+			int fp = open(delta_rel_name, O_CREAT | O_WRONLY, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+			u32 write_size = pwrite(fp, vb_delta[i].buffer, vb_delta[i].size, offset);
+			if (write_size != vb_delta[i].size)
+			{
+				std::cout << delta_rel_name <<  " Wrong IO: rank: " << " " << vb_delta[i].size  << std::endl;
+				MPI_Abort(mcomm.get_local_comm(), -1);
+			}
+			close(fp);
+		}
+		if (mcomm.get_rank() == 0)
+		{
+			FILE *fp_outt2;
+			fp_outt2 = fopen(meta_data_delta_filename, "w");
+			fprintf (fp_outt2, "%d\n%d", (int)(total_size/((arity+1)*sizeof(u64))), (int)arity+1);
+			fclose(fp_outt2);
+		}
+		vb_delta[i].vector_buffer_free();
+	}
+	delete[] vb_delta;
 }
 
 

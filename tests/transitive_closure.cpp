@@ -6,13 +6,40 @@ int main(int argc, char **argv)
     mpi_comm mcomm;
     mcomm.create(argc, argv);    
 
-    if (argc != 2)
-        std::cout << "Usage: mpirun -n <process cout> ./TC <input data file>" << std::endl;
+    if (argc != 2 && argc != 3)
+    {
+    	printf("argc %d\n", argc);
+        std::cout << "1. Usage: mpirun -n <process cout> ./TC <input data file>\n"
+        		"2. Restart: mpirun -n <process cout> ./TC --restart <checkpoint dump directory>" << std::endl;
+        MPI_Abort(mcomm.get_comm(), -1);
+    }
 
-    relation* rel_path_2_1_2 = new relation(2, true, 2, 257, "rel_path_2_1_2", "../data/g5955/path_2_1_2", FULL);
-    relation* rel_edge_2_1_2 = new relation(2, true, 2, 256, "rel_edge_2_1_2", argv[1], FULL);
-    relation* rel_path_2_1 = new relation(1, false, 2, 257, "rel_path_2_1", "../data/g5955/path_2_1", FULL);
-    relation* rel_edge_2_2 = new relation(1, false, 2, 256, "rel_edge_2_2", "../data/g5955/edge_2_2", FULL);
+    char rel_path_212[1024];
+    char rel_edge_212[1024];
+    char rel_path_21[1024];
+    char rel_edge_22[1024];
+
+    bool restart_flag = false;
+    if (strcmp(argv[1], "--restart") == 0)
+    {
+    	restart_flag = true;
+    	sprintf(rel_path_212, "%s/%s_full", argv[2], "rel_path_2_1_2");
+    	sprintf(rel_edge_212, "%s/%s_full", argv[2], "rel_edge_2_1_2");
+    	sprintf(rel_path_21, "%s/%s_full", argv[2], "rel_path_2_1");
+    	sprintf(rel_edge_22, "%s/%s_full", argv[2], "rel_edge_2_2");
+    }
+    else
+    {
+    	sprintf(rel_path_212, "%s", "../data/g5955/path_2_1_2");
+		sprintf(rel_edge_212, "%s", argv[1]);
+		sprintf(rel_path_21, "%s", "../data/g5955/path_2_1");
+		sprintf(rel_edge_22, "%s", "../data/g5955/edge_2_2");
+    }
+
+    relation* rel_path_2_1_2 = new relation(2, true, 2, 257, "rel_path_2_1_2", rel_path_212, FULL);
+    relation* rel_edge_2_1_2 = new relation(2, true, 2, 256, "rel_edge_2_1_2", rel_edge_212, FULL);
+    relation* rel_path_2_1 = new relation(1, false, 2, 257, "rel_path_2_1", rel_path_21, FULL);
+    relation* rel_edge_2_2 = new relation(1, false, 2, 256, "rel_edge_2_2", rel_edge_22, FULL);
 
     RAM* scc13237 = new RAM(true, 1);
     scc13237->add_relation(rel_edge_2_2, false);
@@ -36,11 +63,18 @@ int main(int argc, char **argv)
     lie->add_relation(rel_edge_2_1_2);
     lie->add_relation(rel_path_2_1);
     lie->add_relation(rel_edge_2_2);
-    lie->add_scc(scc13237);
-    lie->add_scc(scc13238);
-    lie->add_scc(scc13239);
-    lie->add_scc_dependance(scc13238, scc13237);
-    lie->add_scc_dependance(scc13239, scc13237);
+    if (restart_flag)
+    {
+    	lie->add_scc(scc13237);
+    }
+    else
+    {
+		lie->add_scc(scc13237);
+		lie->add_scc(scc13238);
+		lie->add_scc(scc13239);
+		lie->add_scc_dependance(scc13238, scc13237);
+		lie->add_scc_dependance(scc13239, scc13237);
+    }
 
     lie->enable_IO();
     lie->set_comm(mcomm);

@@ -151,7 +151,7 @@ public:
 
 
     void serial_IO(const char* filename_template);
-    void parallel_IO(const char* filename_template);
+    void parallel_IO(const char* filename_template, bool share);
 
 
     /// used for initialization of dynamic relations
