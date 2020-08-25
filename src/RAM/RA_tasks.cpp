@@ -743,8 +743,9 @@ void RAM::execute_in_batches(int batch_size, std::vector<u32>& history, std::map
                 debug_buffer.push_back("Running time INNER LOOP [" + std::to_string(loop_count_tracker) + " " + std::to_string(inner_loop) + "] " + " Buf cre " + std::to_string(*running_buffer_allocate) + " comp " + std::to_string(*running_local_compute) + " A2A " + std::to_string(*running_all_to_all) + " Buf free " + std::to_string(*running_buffer_free) + " newt " + std::to_string(*running_insert_newt) + "\n");
 
 
-#if 0
-                std::cout << "Current time INNER LOOP [" << loop_count_tracker << " " << inner_loop << "] "
+#if 1
+                std::cout << debug_file_name
+                          << " Current time INNER LOOP [" << loop_count_tracker << " " << inner_loop << "] "
                           << " Buf cre " << (allocate_buffers_end - allocate_buffers_start)
                           << " comp " << (compute_end - compute_start)
                           << " A2A " << (all_to_all_end - all_to_all_start)
@@ -752,7 +753,8 @@ void RAM::execute_in_batches(int batch_size, std::vector<u32>& history, std::map
                           << " newt " << (insert_in_newt_end - insert_in_newt_start)
                           << std::endl;
 
-                std::cout << "Running time INNER LOOP [" << loop_count_tracker << " " << inner_loop << "] "
+                std::cout << debug_file_name
+                          << " Running time INNER LOOP [" << loop_count_tracker << " " << inner_loop << "] "
                           << " Buf cre " << *running_buffer_allocate
                           << " comp " << *running_local_compute
                           << " A2A " << *running_all_to_all
