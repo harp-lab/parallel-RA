@@ -40,6 +40,8 @@ private:
 
     char restart_dir_name[1024];                          /// the directory of restart
 
+    bool share_io;                                        /// whether using MPI collective IO to write file
+
 
 public:
 
@@ -47,6 +49,7 @@ public:
 
     LIE()
     {
+    	share_io = false;
     	restart_flag = false;
         enable_io = false;
         lie_relation_count = 0;
@@ -54,6 +57,8 @@ public:
         taskgraph = {{},{}};
         intern_map = {{},{}};
     }
+
+    void enable_share_io()    {share_io = true;}
 
     void set_restart_dir_name(char* path)  {sprintf(restart_dir_name, "%s", path);}
 

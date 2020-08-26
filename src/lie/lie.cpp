@@ -172,9 +172,8 @@ void LIE::write_checkpoint_dump(int loop_counter, std::vector<int> executed_scc_
             }
             MPI_Barrier(mcomm.get_local_comm());
 
-            bool share = true;
             for (u32 i = 0 ; i < lie_relation_count; i++)
-                lie_relations[i]->parallel_IO(dir_name, share);
+                lie_relations[i]->parallel_IO(dir_name, share_io);
 
         }
     }
@@ -244,10 +243,26 @@ bool LIE::execute ()
         relation** scc_relation = executable_task->get_RAM_relations();
         bool* scc_relation_status = executable_task->get_RAM_relations_status();;
         u32 scc_relation_count = executable_task->get_ram_relation_count();
-        for (u32 i=0; i < scc_relation_count; i++)
+        if (restart_flag == false)
         {
-            if (scc_relation_status[i] == true)
-                scc_relation[i]->insert_full_in_delta();
+			for (u32 i=0; i < scc_relation_count; i++)
+			{
+				if (scc_relation_status[i] == true)
+					scc_relation[i]->insert_full_in_delta();
+			}
+        }
+        else
+        {
+        	for (u32 i = 0 ; i < scc_relation_count; i++)
+        	{
+				char delta_filename[1024];
+        		sprintf(delta_filename, "%s/%s_delta", restart_dir_name, scc_relation[i]->get_debug_id().c_str());
+
+        		scc_relation[i]->set_filename(delta_filename);
+        		scc_relation[i]->set_initailization_type(0);
+
+        		scc_relation[i]->load_data_from_file();
+        	}
         }
 
         std::vector<u32> history;

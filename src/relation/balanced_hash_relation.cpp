@@ -364,6 +364,36 @@ void relation::read_from_relation(relation* input, int full_delta)
 #endif
 
 
+void relation::load_data_from_file()
+{
+    /// reading from file
+    if (initailization_type != -1)
+    {
+        /// Main : Execute : init : io : end
+        file_io.parallel_read_input_relation_from_file_to_local_buffer(arity, filename, mcomm.get_local_comm());
+
+        file_io.buffer_data_to_hash_buffer_col(arity, filename, join_column_count, get_bucket_count(), sub_bucket_rank, sub_bucket_per_bucket_count, mcomm.get_local_comm());
+
+        file_io.delete_raw_buffers();
+
+        /* Copy data from buffer to relation */
+        if (initailization_type == DELTA)
+            populate_delta(file_io.get_hash_buffer_size(), file_io.get_hash_buffer());
+
+        else if (initailization_type == FULL)
+            populate_full(file_io.get_hash_buffer_size(), file_io.get_hash_buffer());
+
+        //int f_size = get_full_element_count();
+        //u32 g_f_size = 0;
+        //MPI_Allreduce(&f_size, &g_f_size, 1, MPI_INT, MPI_SUM, mcomm.get_local_comm());
+        //if (rank == 0)
+        //    std::cout << "After Init " << filename << " " << g_f_size << std::endl;
+        //std::cout << "Writing " << file_io.get_hash_buffer_size() << " bytes" << std::endl;
+
+        file_io.delete_hash_buffers();
+    }
+}
+
 void relation::initialize_relation(mpi_comm& mcomm)
 {
     /// Main : Execute : init : buffer_init : start
@@ -452,34 +482,8 @@ void relation::initialize_relation(mpi_comm& mcomm)
 
     /// Main : Execute : init : buffer_init : end
 
-
-    /// reading from file
-    if (initailization_type != -1)
-    {
-        /// Main : Execute : init : io : end
-
-        file_io.parallel_read_input_relation_from_file_to_local_buffer(arity, filename, mcomm.get_local_comm());
-
-        file_io.buffer_data_to_hash_buffer_col(arity, filename, join_column_count, get_bucket_count(), sub_bucket_rank, sub_bucket_per_bucket_count, mcomm.get_local_comm());
-
-        file_io.delete_raw_buffers();
-
-        /* Copy data from buffer to relation */
-        if (initailization_type == DELTA)
-            populate_delta(file_io.get_hash_buffer_size(), file_io.get_hash_buffer());
-
-        else if (initailization_type == FULL)
-            populate_full(file_io.get_hash_buffer_size(), file_io.get_hash_buffer());
-
-        //int f_size = get_full_element_count();
-        //u32 g_f_size = 0;
-        //MPI_Allreduce(&f_size, &g_f_size, 1, MPI_INT, MPI_SUM, mcomm.get_local_comm());
-        //if (rank == 0)
-        //    std::cout << "After Init " << filename << " " << g_f_size << std::endl;
-        //std::cout << "Writing " << file_io.get_hash_buffer_size() << " bytes" << std::endl;
-
-        file_io.delete_hash_buffers();
-    }
+    /// read data from file
+    load_data_from_file();
 }
 
 

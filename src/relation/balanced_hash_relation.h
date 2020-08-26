@@ -83,6 +83,10 @@ public:
         delta_bucket_element_count=0;
     }
 
+    const char* get_filename()       {return filename;}
+
+    void set_filename(char* file)       {sprintf((char*)filename, "%s", file);}
+
     /// set comm
     void set_mcomm(mpi_comm& mc)    {mcomm = mc;}
 
@@ -162,6 +166,10 @@ public:
     void populate_full(int buffer_size, u64* buffer);
     void populate_delta (int buffer_size, u64* buffer);
     void finalize_relation();
+
+
+    /// load data from file into full or delta buffer
+    void load_data_from_file();
 
 
     /// for task parallelism, copying relation from exiting comm to output_comm

@@ -20,13 +20,16 @@ int main(int argc, char **argv)
     char rel_edge_22[1024];
 
     bool restart_flag = false;
+    char* dir_name;
     if (argc == 3 && strcmp(argv[1], "--restart") == 0)
     {
     	restart_flag = true;
-    	sprintf(rel_path_212, "%s/%s_full", argv[2], "rel_path_2_1_2");
-    	sprintf(rel_edge_212, "%s/%s_full", argv[2], "rel_edge_2_1_2");
-    	sprintf(rel_path_21, "%s/%s_full", argv[2], "rel_path_2_1");
-    	sprintf(rel_edge_22, "%s/%s_full", argv[2], "rel_edge_2_2");
+    	dir_name = argv[2];
+    	if ( dir_name[strlen(dir_name) - 1] == '/' ) dir_name[strlen(dir_name) - 1] = '\0';
+    	sprintf(rel_path_212, "%s/%s_full", dir_name, "rel_path_2_1_2");
+    	sprintf(rel_edge_212, "%s/%s_full", dir_name, "rel_edge_2_1_2");
+    	sprintf(rel_path_21, "%s/%s_full", dir_name, "rel_path_2_1");
+    	sprintf(rel_edge_22, "%s/%s_full", dir_name, "rel_edge_2_2");
     }
     else if (argc == 2)
     {
@@ -75,9 +78,10 @@ int main(int argc, char **argv)
 	lie->add_scc_dependance(scc13239, scc13237);
 
 	if (restart_flag == true)
-		lie->set_restart_dir_name(argv[2]);
+		lie->set_restart_dir_name(dir_name);
 
     lie->set_restart_flag(restart_flag); // set restart flag
+	lie->enable_share_io();
     lie->enable_IO();
     lie->set_comm(mcomm);
     lie->set_batch_size(1);
