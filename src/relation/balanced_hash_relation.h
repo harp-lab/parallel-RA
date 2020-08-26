@@ -83,8 +83,6 @@ public:
         delta_bucket_element_count=0;
     }
 
-
-
     /// set comm
     void set_mcomm(mpi_comm& mc)    {mcomm = mc;}
 

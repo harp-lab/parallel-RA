@@ -36,6 +36,10 @@ private:
 
     bool enable_io;
 
+    bool restart_flag;
+
+    char restart_dir_name[1024];                          /// the directory of restart
+
 
 public:
 
@@ -43,12 +47,17 @@ public:
 
     LIE()
     {
+    	restart_flag = false;
         enable_io = false;
         lie_relation_count = 0;
         lie_sccs_count = 0;
         taskgraph = {{},{}};
         intern_map = {{},{}};
     }
+
+    void set_restart_dir_name(char* path)  {sprintf(restart_dir_name, "%s", path);}
+
+    void set_restart_flag(bool flag)   {restart_flag = flag;}
 
     void enable_IO()    {enable_io = true;}
 
@@ -91,6 +100,8 @@ public:
 
     /// Runs all tasks within the LIE, following the dependence as set by taskgraph
     bool execute();
+
+    void write_checkpoint_dump(int loop_counter, std::vector<int> executed_scc_id);
 };
 
 #endif

@@ -142,7 +142,7 @@ void relation::parallel_IO(const char* filename_template, bool share)
 		total_size += sizes[i];
 
 	MPI_Status stas;
-	MPI_Request req;
+//	MPI_Request req;
 	for (u32 i=0; i < buckets; i++)
 	{
 		vb_full[i].vector_buffer_create_empty();
@@ -153,9 +153,8 @@ void relation::parallel_IO(const char* filename_template, bool share)
 		{
 			MPI_File fp;
 			MPI_File_open(mcomm.get_comm(), full_rel_name, MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &fp);
-			MPI_File_iwrite_at(fp, offset, vb_full[i].buffer, vb_full[i].size, MPI_BYTE, &req);
+			MPI_File_write_at_all(fp, offset, vb_full[i].buffer, vb_full[i].size, MPI_BYTE, &stas);
 			MPI_File_close(&fp);
-			MPI_Wait(&req, &stas);
 		}
 		else
 		{
@@ -210,9 +209,8 @@ void relation::parallel_IO(const char* filename_template, bool share)
 		{
 			MPI_File fp;
 			MPI_File_open(mcomm.get_comm(), delta_rel_name, MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &fp);
-			MPI_File_iwrite_at(fp, offset, vb_delta[i].buffer, vb_delta[i].size, MPI_BYTE, &req);
+			MPI_File_write_at_all(fp, offset, vb_delta[i].buffer, vb_delta[i].size, MPI_BYTE, &stas);
 			MPI_File_close(&fp);
-			MPI_Wait(&req, &stas);
 		}
 		else
 		{

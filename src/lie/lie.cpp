@@ -150,6 +150,38 @@ void LIE::print_all_relation_size()
 
 
 
+void LIE::write_checkpoint_dump(int loop_counter, std::vector<int> executed_scc_id)
+{
+    if (enable_io == true)
+    {
+        if (loop_counter % 5 == 0)
+        {
+            char dir_name[1024];
+            sprintf(dir_name, "output/checkpoin-%d", loop_counter);
+        	char scc_metadata[1024];
+        	sprintf(scc_metadata, "%s/scc_metadata", dir_name);
+            if (mcomm.get_local_rank() == 0)
+            {
+                mkdir("output", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+                mkdir(dir_name, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+       			FILE *fp;
+				fp = fopen(scc_metadata, "w");
+				for (int i = 0; i < executed_scc_id.size(); i++)
+					fprintf (fp, "%d\n", executed_scc_id[i]);
+				fclose(fp);
+            }
+            MPI_Barrier(mcomm.get_local_comm());
+
+            bool share = true;
+            for (u32 i = 0 ; i < lie_relation_count; i++)
+                lie_relations[i]->parallel_IO(dir_name, share);
+
+        }
+    }
+}
+
+
+
 bool LIE::execute ()
 {
     /// Main : Execute : init : start
@@ -176,9 +208,36 @@ bool LIE::execute ()
     RAM* executable_task = one_runnable_tasks();
 
     int loop_counter = 0;
+
+    std::vector<int> executed_scc_id;  /* the sccs that have been executed */
+    /* Read scc metadate if it restarts from checkpoint */
+    if (restart_flag == true)
+    {
+    	char scc_metadata[1024];
+    	sprintf(scc_metadata, "%s/scc_metadata", restart_dir_name);
+    	int a;
+    	std::ifstream file(scc_metadata);
+    	if (file.is_open())
+    	{
+    		while (file >> a)
+    			executed_scc_id.push_back(a);
+    	}
+    	file.close();
+    }
     /// Running one task at a time
     while (executable_task != NULL)
     {
+    	/* Skip the scc if it has been executed before */
+    	int scc_id = executable_task->get_id();
+    	std::vector<int>::iterator it;
+    	it = find (executed_scc_id.begin(), executed_scc_id.end(), scc_id);
+    	if (it != executed_scc_id.end())
+    	{
+            update_task_graph(executable_task);
+            executable_task = one_runnable_tasks();
+    		continue;
+    	}
+
         executable_task->set_comm(mcomm);
 
         /// Initialize all relations
@@ -191,7 +250,6 @@ bool LIE::execute ()
                 scc_relation[i]->insert_full_in_delta();
         }
 
-
         std::vector<u32> history;
 
 #if DEBUG_OUTPUT
@@ -201,7 +259,6 @@ bool LIE::execute ()
 
         /// if case is for rules (acopy and copy) that requires only one iteration
         /// else case is for join rules
-
         double running_time=0;
         double running_intra_bucket_comm=0;
         double running_buffer_allocate=0;
@@ -216,6 +273,8 @@ bool LIE::execute ()
         {
             executable_task->execute_in_batches(batch_size, history, intern_map, &running_time, &running_intra_bucket_comm, &running_buffer_allocate, &running_local_compute, &running_all_to_all, &running_buffer_free, &running_insert_newt, &running_insert_in_full);
             loop_counter++;
+            executed_scc_id.push_back(executable_task->get_id());
+            write_checkpoint_dump(loop_counter, executed_scc_id);
 
 
 #if DEBUG_OUTPUT
@@ -234,27 +293,9 @@ bool LIE::execute ()
                 executable_task->execute_in_batches(batch_size, history, intern_map, &running_time, &running_intra_bucket_comm, &running_buffer_allocate, &running_local_compute, &running_all_to_all, &running_buffer_free, &running_insert_newt, &running_insert_in_full);
                 loop_counter++;
                 delta_in_scc = history[history.size()-2];
-
-
-                if (enable_io == true)
-                {
-                    if (loop_counter % 5 == 0)
-                    {
-                        char dir_name[1024];
-                        sprintf(dir_name, "output/checkpoin-%d", loop_counter);
-                        if (mcomm.get_local_rank() == 0)
-                        {
-                            mkdir("output", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-                            mkdir(dir_name, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-                        }
-                        MPI_Barrier(mcomm.get_local_comm());
-
-                        bool share = false;
-                        for (u32 i = 0 ; i < lie_relation_count; i++)
-                            lie_relations[i]->parallel_IO(dir_name, share);
-
-                    }
-                }
+                if (delta_in_scc == 0)
+                	executed_scc_id.push_back(executable_task->get_id());
+                write_checkpoint_dump(loop_counter, executed_scc_id);
 
 
 #if DEBUG_OUTPUT

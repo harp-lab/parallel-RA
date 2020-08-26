@@ -20,7 +20,7 @@ int main(int argc, char **argv)
     char rel_edge_22[1024];
 
     bool restart_flag = false;
-    if (strcmp(argv[1], "--restart") == 0)
+    if (argc == 3 && strcmp(argv[1], "--restart") == 0)
     {
     	restart_flag = true;
     	sprintf(rel_path_212, "%s/%s_full", argv[2], "rel_path_2_1_2");
@@ -28,12 +28,17 @@ int main(int argc, char **argv)
     	sprintf(rel_path_21, "%s/%s_full", argv[2], "rel_path_2_1");
     	sprintf(rel_edge_22, "%s/%s_full", argv[2], "rel_edge_2_2");
     }
-    else
+    else if (argc == 2)
     {
     	sprintf(rel_path_212, "%s", "../data/g5955/path_2_1_2");
 		sprintf(rel_edge_212, "%s", argv[1]);
 		sprintf(rel_path_21, "%s", "../data/g5955/path_2_1");
 		sprintf(rel_edge_22, "%s", "../data/g5955/edge_2_2");
+    }
+    else
+    {
+    	std::cout << "1. Usage: mpirun -n <process cout> ./TC <input data file>\n"
+    	        "2. Restart: mpirun -n <process cout> ./TC --restart <checkpoint dump directory>" << std::endl;
     }
 
     relation* rel_path_2_1_2 = new relation(2, true, 2, 257, "rel_path_2_1_2", rel_path_212, FULL);
@@ -63,19 +68,16 @@ int main(int argc, char **argv)
     lie->add_relation(rel_edge_2_1_2);
     lie->add_relation(rel_path_2_1);
     lie->add_relation(rel_edge_2_2);
-    if (restart_flag)
-    {
-    	lie->add_scc(scc13237);
-    }
-    else
-    {
-		lie->add_scc(scc13237);
-		lie->add_scc(scc13238);
-		lie->add_scc(scc13239);
-		lie->add_scc_dependance(scc13238, scc13237);
-		lie->add_scc_dependance(scc13239, scc13237);
-    }
+	lie->add_scc(scc13237);
+	lie->add_scc(scc13238);
+	lie->add_scc(scc13239);
+	lie->add_scc_dependance(scc13238, scc13237);
+	lie->add_scc_dependance(scc13239, scc13237);
 
+	if (restart_flag == true)
+		lie->set_restart_dir_name(argv[2]);
+
+    lie->set_restart_flag(restart_flag); // set restart flag
     lie->enable_IO();
     lie->set_comm(mcomm);
     lie->set_batch_size(1);
