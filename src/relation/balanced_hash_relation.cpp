@@ -128,6 +128,7 @@ void relation::print()
 
             if (vb_full[i].size != 0)
                 std::cout << get_debug_id() << " " << mcomm.get_rank() << " FULL Rows " << vb_full[i].size/(sizeof(u64) * (arity + 1)) << " columns " << arity + 1 << std::endl;
+            /*
             for (u32 j=0; j < vb_full[i].size/sizeof(u64); j = j + arity+1)
             {
                 if (j % (arity+1) == 0)
@@ -140,6 +141,7 @@ void relation::print()
                 }
                 std::cout << std::endl;
             }
+            */
 
             vb_full[i].vector_buffer_free();
         }
@@ -156,6 +158,7 @@ void relation::print()
             if (vb_delta[i].size != 0)
                 std::cout << get_debug_id() << " " << mcomm.get_rank() << " DELTA Rows " << vb_delta[i].size/(sizeof(u64) * (arity + 1)) << " columns " << arity + 1 << std::endl;
 
+            /*
             for (u32 j=0; j < vb_delta[i].size/sizeof(u64); j = j + arity+1)
             {
                 if (j % (arity+1) == 0)
@@ -169,6 +172,7 @@ void relation::print()
                 }
                 std::cout << std::endl;
             }
+            */
 
             vb_delta[i].vector_buffer_free();
         }
