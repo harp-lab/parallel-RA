@@ -112,11 +112,15 @@ void relation::parallel_IO(const char* filename_template, bool share)
 	char delta_rel_name[1024];
 	char meta_data_delta_filename[1024];
 	char meta_data_full_filename[1024];
+	char full_file_offset[1024];
+	char delta_file_offset[1024];
 
 	sprintf(full_rel_name, "%s/%s_full", filename_template, get_debug_id().c_str());
 	sprintf(delta_rel_name, "%s/%s_delta", filename_template, get_debug_id().c_str());
 	sprintf(meta_data_delta_filename, "%s/%s_delta.size", filename_template, get_debug_id().c_str());
 	sprintf(meta_data_full_filename, "%s/%s_full.size", filename_template, get_debug_id().c_str());
+	sprintf(full_file_offset, "%s.offset", full_rel_name);
+	sprintf(delta_file_offset, "%s.offset", delta_rel_name);
 
 	u32 buckets = get_bucket_count();
 	vector_buffer *vb_full = new vector_buffer[buckets];
@@ -134,12 +138,23 @@ void relation::parallel_IO(const char* filename_template, bool share)
 	}
 	MPI_Allgather(&size, 1, MPI_LONG_LONG, sizes, 1, MPI_LONG_LONG, mcomm.get_comm());
 
-	uint64_t offset = 0;
-	for (int i = 0; i < mcomm.get_rank(); i++)
-		offset += sizes[i];
+	uint64_t offsets[mcomm.get_nprocs()];
 	uint64_t total_size = 0;
 	for (int i = 0; i < mcomm.get_nprocs(); i++)
+	{
+		offsets[i] = total_size;
 		total_size += sizes[i];
+	}
+	uint64_t offset = offsets[mcomm.get_rank()];
+
+	if (mcomm.get_rank() == 0)
+	{
+		FILE *fp;
+		fp = fopen(full_file_offset, "w");
+		for (int i = 0; i < mcomm.get_nprocs(); i++)
+			fprintf (fp, "%d %d %d\n", i, (int)(offsets[i]/((arity+1)*sizeof(u64))), (int)(sizes[i]/((arity+1)*sizeof(u64))));
+		fclose(fp);
+	}
 
 	MPI_Status stas;
 //	MPI_Request req;
@@ -179,6 +194,7 @@ void relation::parallel_IO(const char* filename_template, bool share)
 	delete[] vb_full;
 
 	vector_buffer *vb_delta = new vector_buffer[buckets];
+	memset(sizes, 0,  mcomm.get_nprocs()*sizeof(uint64_t));
 	size = 0;
 	for (u32 i=0; i < buckets; i++)
 	{
@@ -192,12 +208,23 @@ void relation::parallel_IO(const char* filename_template, bool share)
 	}
 	MPI_Allgather(&size, 1, MPI_LONG_LONG, sizes, 1, MPI_LONG_LONG, mcomm.get_comm());
 
-	offset = 0;
-	for (int i = 0; i < mcomm.get_rank(); i++)
-		offset += sizes[i];
+	memset(offsets, 0,  mcomm.get_nprocs()*sizeof(uint64_t));
 	total_size = 0;
 	for (int i = 0; i < mcomm.get_nprocs(); i++)
+	{
+		offsets[i] = total_size;
 		total_size += sizes[i];
+	}
+	offset = offsets[mcomm.get_rank()];
+
+	if (mcomm.get_rank() == 0)
+	{
+		FILE *fp;
+		fp = fopen(delta_file_offset, "w");
+		for (int i = 0; i < mcomm.get_nprocs(); i++)
+			fprintf (fp, "%d %d %d\n", i, (int)(offsets[i]/((arity+1)*sizeof(u64))), (int)(sizes[i]/((arity+1)*sizeof(u64))));
+		fclose(fp);
+	}
 
 	for (u32 i=0; i < buckets; i++)
 	{

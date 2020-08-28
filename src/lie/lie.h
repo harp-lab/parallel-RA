@@ -42,6 +42,8 @@ private:
 
     bool share_io;                                        /// whether using MPI collective IO to write file
 
+    bool offset_io;
+
 
 public:
 
@@ -49,6 +51,7 @@ public:
 
     LIE()
     {
+    	offset_io = false;
     	share_io = false;
     	restart_flag = false;
         enable_io = false;
@@ -57,6 +60,8 @@ public:
         taskgraph = {{},{}};
         intern_map = {{},{}};
     }
+
+    void enable_offset_io()    {offset_io = true;}
 
     void enable_share_io()    {share_io = true;}
 

@@ -78,10 +78,13 @@ int main(int argc, char **argv)
 	lie->add_scc_dependance(scc13239, scc13237);
 
 	if (restart_flag == true)
+	{
 		lie->set_restart_dir_name(dir_name);
+		lie->enable_offset_io();
+	}
 
-    lie->set_restart_flag(restart_flag); // set restart flag
 	lie->enable_share_io();
+    lie->set_restart_flag(restart_flag); // set restart flag
     lie->enable_IO();
     lie->set_comm(mcomm);
     lie->set_batch_size(1);
