@@ -189,6 +189,7 @@ bool LIE::execute ()
     /// Initialize all relations
     for (u32 i = 0 ; i < lie_relation_count; i++)
     {
+    	lie_relations[i]->set_offset_io(offset_io);
         lie_relations[i]->initialize_relation(mcomm);
 
 #if DEBUG_OUTPUT
@@ -261,7 +262,10 @@ bool LIE::execute ()
         		scc_relation[i]->set_filename(delta_filename);
         		scc_relation[i]->set_initailization_type(0);
 
-        		scc_relation[i]->load_data_from_file();
+        		if (offset_io == false)
+        			scc_relation[i]->load_data_from_file();
+        		else
+        			scc_relation[i]->load_data_from_file_with_offset();
         	}
         }
 

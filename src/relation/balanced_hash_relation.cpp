@@ -152,7 +152,7 @@ void relation::parallel_IO(const char* filename_template, bool share)
 		FILE *fp;
 		fp = fopen(full_file_offset, "w");
 		for (int i = 0; i < mcomm.get_nprocs(); i++)
-			fprintf (fp, "%d %d %d\n", i, (int)(offsets[i]/((arity+1)*sizeof(u64))), (int)(sizes[i]/((arity+1)*sizeof(u64))));
+			fprintf (fp, "%d %llu %llu\n", i, offsets[i], sizes[i]);
 		fclose(fp);
 	}
 
@@ -222,7 +222,7 @@ void relation::parallel_IO(const char* filename_template, bool share)
 		FILE *fp;
 		fp = fopen(delta_file_offset, "w");
 		for (int i = 0; i < mcomm.get_nprocs(); i++)
-			fprintf (fp, "%d %d %d\n", i, (int)(offsets[i]/((arity+1)*sizeof(u64))), (int)(sizes[i]/((arity+1)*sizeof(u64))));
+			fprintf (fp, "%d %llu %llu\n", i, offsets[i], sizes[i]);
 		fclose(fp);
 	}
 
@@ -390,6 +390,17 @@ void relation::read_from_relation(relation* input, int full_delta)
 }
 #endif
 
+void relation::load_data_from_file_with_offset()
+{
+//	std::cout << filename << "\n";
+	file_io.parallel_read_input_relation_from_file_with_offset(arity, filename, mcomm.get_local_comm());
+
+//	if (initailization_type == DELTA)
+//		std::cout << "DELTA" << "\n";
+//	else if (initailization_type == FULL)
+//		std::cout << "FULL" << "\n";
+	file_io.delete_hash_buffers();
+}
 
 void relation::load_data_from_file()
 {
@@ -510,7 +521,10 @@ void relation::initialize_relation(mpi_comm& mcomm)
     /// Main : Execute : init : buffer_init : end
 
     /// read data from file
-    load_data_from_file();
+    if (offset_io == false)
+    	load_data_from_file();
+    else
+    	load_data_from_file_with_offset();
 }
 
 

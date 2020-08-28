@@ -58,6 +58,8 @@ private:
     mpi_comm mcomm;                             /// comm related
     parallel_io file_io;                        /// to handle parallel IO
 
+    bool offset_io;
+
 
 public:
 
@@ -82,6 +84,8 @@ public:
         full_element_count=0;
         delta_bucket_element_count=0;
     }
+
+    void set_offset_io(bool offset)   {offset_io = offset;}
 
     const char* get_filename()       {return filename;}
 
@@ -170,6 +174,7 @@ public:
 
     /// load data from file into full or delta buffer
     void load_data_from_file();
+    void load_data_from_file_with_offset();
 
 
     /// for task parallelism, copying relation from exiting comm to output_comm

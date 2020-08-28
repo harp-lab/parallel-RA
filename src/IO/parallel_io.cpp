@@ -14,6 +14,54 @@ parallel_io::parallel_io()
     hash_buffer_size=0;
 }
 
+void parallel_io::parallel_read_input_relation_from_file_with_offset(u32 arity, const char *fname, MPI_Comm lcomm)
+{
+    int rank, nprocs;
+    MPI_Comm_rank(lcomm, &rank);
+    MPI_Comm_size(lcomm, &nprocs);
+    file_name = fname;
+
+    char offset_filename[1024];
+    sprintf(offset_filename, "%s.offset", file_name);
+
+    uint64_t offsets[nprocs];    /// the offset for each process
+    uint64_t sizes[nprocs];      /// the size for each process
+
+    int a;
+    uint64_t b, c;
+    std::ifstream myfile (offset_filename);
+    if (myfile.is_open())
+    {
+    	while(myfile >> a >> b >> c)
+    	{
+    		offsets[a] = b;
+    		sizes[a] = c;
+    	}
+        myfile.close();
+    }
+    else
+    {
+    	std::cout << "ERROR: Cannot read " << offset_filename << std::endl;
+    	MPI_Abort(lcomm, -1);
+    }
+
+    uint64_t read_offset = offsets[rank];
+    uint64_t read_size = sizes[rank];
+
+    char data_filename[1024];
+    sprintf(data_filename, "%s", file_name);
+    int fp = open(data_filename, O_RDONLY);
+
+    hash_buffer = new u64[read_size/sizeof(u64)];
+    u32 rb_size = pread(fp, hash_buffer, read_size, read_offset);
+    if (rb_size != read_size)
+    {
+        std::cout << data_filename <<  " Wrong IO: rank: " << rank << " " << rb_size << " " << read_size << " " << read_offset << std::endl;
+        MPI_Abort(lcomm, -1);
+    }
+    close(fp);
+}
+
 void parallel_io::parallel_read_input_relation_from_file_to_local_buffer(u32 arity, const char *fname, MPI_Comm lcomm)
 {
     int rank, nprocs;

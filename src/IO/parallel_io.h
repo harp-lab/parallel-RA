@@ -40,6 +40,10 @@ public:
     void delete_hash_buffers()  {  delete[] hash_buffer;  }
 
 
+    /// read file with offset
+    void parallel_read_input_relation_from_file_with_offset(u32 arity, const char *fname, MPI_Comm lcomm);
+
+
     /// offset reads (parallel IO)
     void parallel_read_input_relation_from_file_to_local_buffer(u32 arity, const char *fname, MPI_Comm lcomm);
 
