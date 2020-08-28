@@ -392,13 +392,13 @@ void relation::read_from_relation(relation* input, int full_delta)
 
 void relation::load_data_from_file_with_offset()
 {
-//	std::cout << filename << "\n";
 	file_io.parallel_read_input_relation_from_file_with_offset(arity, filename, mcomm.get_local_comm());
 
-//	if (initailization_type == DELTA)
-//		std::cout << "DELTA" << "\n";
-//	else if (initailization_type == FULL)
-//		std::cout << "FULL" << "\n";
+	if (initailization_type == DELTA)
+		 populate_delta(file_io.get_hash_buffer_size(), file_io.get_hash_buffer());
+	else if (initailization_type == FULL)
+		populate_full(file_io.get_hash_buffer_size(), file_io.get_hash_buffer());
+
 	file_io.delete_hash_buffers();
 }
 

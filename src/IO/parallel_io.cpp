@@ -44,7 +44,6 @@ void parallel_io::parallel_read_input_relation_from_file_with_offset(u32 arity, 
     	std::cout << "ERROR: Cannot read " << offset_filename << std::endl;
     	MPI_Abort(lcomm, -1);
     }
-
     uint64_t read_offset = offsets[rank];
     uint64_t read_size = sizes[rank];
 
@@ -59,6 +58,7 @@ void parallel_io::parallel_read_input_relation_from_file_with_offset(u32 arity, 
         std::cout << data_filename <<  " Wrong IO: rank: " << rank << " " << rb_size << " " << read_size << " " << read_offset << std::endl;
         MPI_Abort(lcomm, -1);
     }
+    hash_buffer_size = rb_size/sizeof(u64);
     close(fp);
 }
 

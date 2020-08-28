@@ -318,8 +318,8 @@ bool LIE::execute ()
 
 
 #if DEBUG_OUTPUT
-                //for (u32 i = 0 ; i < scc_relation_count; i++)
-                //    scc_relation[i]->print();
+                for (u32 i = 0 ; i < scc_relation_count; i++)
+                    scc_relation[i]->print();
                 print_all_relation_size();
 #endif
             }
