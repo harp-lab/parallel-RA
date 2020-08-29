@@ -6,6 +6,7 @@
 
 
 #include "../parallel_RA_inc.h"
+#include <experimental/filesystem>
 
 
 void LIE::add_relation(relation* rel)
@@ -205,7 +206,6 @@ bool LIE::execute ()
         std::cout << "----------------- Initialization Complete ---------------------" << std::endl << std::endl;
 #endif
 
-
     /// Executable task
     RAM* executable_task = one_runnable_tasks();
 
@@ -274,6 +274,20 @@ bool LIE::execute ()
         }
 
         std::vector<u32> history;
+
+        /// check whether output directory exists
+    	/// if it is, delete it and all its contains
+        if (mcomm.get_local_rank() == 0)
+        {
+			int64_t delete_num = 0;
+			if (std::experimental::filesystem::exists("./output") == true)
+			{
+				delete_num = std::experimental::filesystem::remove_all("./output");
+			#if DEBUG_OUTPUT
+				std::cout << "Deleted the old output folder with " << delete_num << " files." << std::endl;
+			#endif
+			}
+        }
 
 #if DEBUG_OUTPUT
         if (mcomm.get_local_rank() == 0)
