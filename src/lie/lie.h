@@ -42,8 +42,9 @@ private:
 
     bool share_io;                                        /// whether using MPI collective IO to write file
 
-    bool offset_io;
+    bool offset_io;										 /// whether read checkpoint dump with offset
 
+    bool separate_io;                                    /// whether write checkpoint dump separately for each process
 
 public:
 
@@ -51,6 +52,7 @@ public:
 
     LIE()
     {
+    	separate_io = false;
     	offset_io = false;
     	share_io = false;
     	restart_flag = false;
@@ -60,6 +62,8 @@ public:
         taskgraph = {{},{}};
         intern_map = {{},{}};
     }
+
+    void enable_separate_io()      {separate_io = true;}
 
     void enable_offset_io()    {offset_io = true;}
 

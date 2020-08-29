@@ -14,6 +14,37 @@ parallel_io::parallel_io()
     hash_buffer_size=0;
 }
 
+void parallel_io::parallel_read_input_relation_from_separate_files(u32 arity, const char *fname, MPI_Comm lcomm)
+{
+    int rank, nprocs;
+    MPI_Comm_rank(lcomm, &rank);
+    MPI_Comm_size(lcomm, &nprocs);
+	file_name = fname;
+
+	char data_filename[1024];
+	sprintf(data_filename, "%s_%d", file_name, rank);
+
+	FILE * fp;
+	fp = fopen(data_filename, "r");
+	if (fp == NULL)
+		perror ("Error opening file");
+	fseek(fp, 0, SEEK_END);
+	uint64_t read_size = ftell(fp);
+	fseek(fp, 0, SEEK_SET);
+
+	hash_buffer = new u64[read_size/sizeof(u64)];
+
+    u32 rb_size = fread(hash_buffer, 1, read_size, fp);
+    if (rb_size != read_size)
+    {
+        std::cout << data_filename <<  " Wrong IO: rank: " << rank << " " << rb_size << " " << read_size << std::endl;
+        MPI_Abort(lcomm, -1);
+    }
+    hash_buffer_size = rb_size/sizeof(u64);
+	fclose(fp);
+}
+
+
 void parallel_io::parallel_read_input_relation_from_file_with_offset(u32 arity, const char *fname, MPI_Comm lcomm)
 {
     int rank, nprocs;
@@ -47,11 +78,11 @@ void parallel_io::parallel_read_input_relation_from_file_with_offset(u32 arity, 
     uint64_t read_offset = offsets[rank];
     uint64_t read_size = sizes[rank];
 
+    hash_buffer = new u64[read_size/sizeof(u64)];
+
     char data_filename[1024];
     sprintf(data_filename, "%s", file_name);
     int fp = open(data_filename, O_RDONLY);
-
-    hash_buffer = new u64[read_size/sizeof(u64)];
     u32 rb_size = pread(fp, hash_buffer, read_size, read_offset);
     if (rb_size != read_size)
     {

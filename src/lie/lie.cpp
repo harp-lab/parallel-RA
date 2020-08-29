@@ -173,8 +173,7 @@ void LIE::write_checkpoint_dump(int loop_counter, std::vector<int> executed_scc_
             MPI_Barrier(mcomm.get_local_comm());
 
             for (u32 i = 0 ; i < lie_relation_count; i++)
-                lie_relations[i]->parallel_IO(dir_name, share_io);
-
+                lie_relations[i]->parallel_IO(dir_name);
         }
     }
 }
@@ -189,6 +188,9 @@ bool LIE::execute ()
     /// Initialize all relations
     for (u32 i = 0 ; i < lie_relation_count; i++)
     {
+    	lie_relations[i]->set_restart_flag(restart_flag);
+    	lie_relations[i]->set_share_io(share_io);
+    	lie_relations[i]->set_separate_io(separate_io);
     	lie_relations[i]->set_offset_io(offset_io);
         lie_relations[i]->initialize_relation(mcomm);
 
@@ -262,10 +264,12 @@ bool LIE::execute ()
         		scc_relation[i]->set_filename(delta_filename);
         		scc_relation[i]->set_initailization_type(0);
 
-        		if (offset_io == false)
-        			scc_relation[i]->load_data_from_file();
+        		if (separate_io == true)
+        			scc_relation[i]->load_data_from_separate_files();
+        		else if (offset_io == true)
+        	    	scc_relation[i]->load_data_from_file_with_offset();
         		else
-        			scc_relation[i]->load_data_from_file_with_offset();
+        	    	scc_relation[i]->load_data_from_file();
         	}
         }
 
@@ -318,8 +322,8 @@ bool LIE::execute ()
 
 
 #if DEBUG_OUTPUT
-                for (u32 i = 0 ; i < scc_relation_count; i++)
-                    scc_relation[i]->print();
+//                for (u32 i = 0 ; i < scc_relation_count; i++)
+//                    scc_relation[i]->print();
                 print_all_relation_size();
 #endif
             }

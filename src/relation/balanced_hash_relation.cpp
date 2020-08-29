@@ -106,7 +106,7 @@ void relation::serial_IO(const char* filename_template)
 
 
 
-void relation::parallel_IO(const char* filename_template, bool share)
+void relation::parallel_IO(const char* filename_template)
 {
     char full_rel_name[1024];
 	char delta_rel_name[1024];
@@ -115,10 +115,19 @@ void relation::parallel_IO(const char* filename_template, bool share)
 	char full_file_offset[1024];
 	char delta_file_offset[1024];
 
-	sprintf(full_rel_name, "%s/%s_full", filename_template, get_debug_id().c_str());
-	sprintf(delta_rel_name, "%s/%s_delta", filename_template, get_debug_id().c_str());
-	sprintf(meta_data_delta_filename, "%s/%s_delta.size", filename_template, get_debug_id().c_str());
-	sprintf(meta_data_full_filename, "%s/%s_full.size", filename_template, get_debug_id().c_str());
+	if (separate_io == false)
+	{
+		sprintf(full_rel_name, "%s/%s_full", filename_template, get_debug_id().c_str());
+		sprintf(delta_rel_name, "%s/%s_delta", filename_template, get_debug_id().c_str());
+	}
+	else
+	{
+		sprintf(full_rel_name, "%s/%s_full_%d", filename_template, get_debug_id().c_str(), mcomm.get_rank());
+		sprintf(delta_rel_name, "%s/%s_delta_%d", filename_template, get_debug_id().c_str(), mcomm.get_rank());
+	}
+	sprintf(meta_data_delta_filename, "%s.size", delta_rel_name);
+	sprintf(meta_data_full_filename, "%s.size", full_rel_name);
+
 	sprintf(full_file_offset, "%s.offset", full_rel_name);
 	sprintf(delta_file_offset, "%s.offset", delta_rel_name);
 
@@ -147,7 +156,7 @@ void relation::parallel_IO(const char* filename_template, bool share)
 	}
 	uint64_t offset = offsets[mcomm.get_rank()];
 
-	if (mcomm.get_rank() == 0)
+	if (mcomm.get_rank() == 0 && separate_io == false && offset_io == true)
 	{
 		FILE *fp;
 		fp = fopen(full_file_offset, "w");
@@ -157,24 +166,35 @@ void relation::parallel_IO(const char* filename_template, bool share)
 	}
 
 	MPI_Status stas;
-//	MPI_Request req;
 	for (u32 i=0; i < buckets; i++)
 	{
 		vb_full[i].vector_buffer_create_empty();
 		std::vector<u64> prefix = {};
 		full[i].as_vector_buffer_recursive(&(vb_full[i]), prefix);
 
-		if (share == true)
+		if (share_io == true)
 		{
 			MPI_File fp;
-			MPI_File_open(mcomm.get_comm(), full_rel_name, MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &fp);
-			MPI_File_write_at_all(fp, offset, vb_full[i].buffer, vb_full[i].size, MPI_BYTE, &stas);
+			if (separate_io == false)
+			{
+				MPI_File_open(mcomm.get_comm(), full_rel_name, MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &fp);
+				MPI_File_write_at_all(fp, offset, vb_full[i].buffer, vb_full[i].size, MPI_BYTE, &stas);
+			}
+			else
+			{
+				MPI_File_open(MPI_COMM_SELF, full_rel_name, MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &fp);
+				MPI_File_write(fp, vb_full[i].buffer, vb_full[i].size, MPI_BYTE, &stas);
+			}
 			MPI_File_close(&fp);
 		}
 		else
 		{
 			int fp = open(full_rel_name, O_CREAT | O_WRONLY, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
-			u32 write_size = pwrite(fp, vb_full[i].buffer, vb_full[i].size, offset);
+			u32 write_size = 0;
+			if (separate_io == false)
+				write_size = pwrite(fp, vb_full[i].buffer, vb_full[i].size, offset);
+			else
+				write_size = write(fp, vb_full[i].buffer, vb_full[i].size);
 			if (write_size != vb_full[i].size)
 			{
 				std::cout << full_rel_name <<  " Wrong IO: rank: " << " " << vb_full[i].size  << std::endl;
@@ -182,7 +202,7 @@ void relation::parallel_IO(const char* filename_template, bool share)
 			}
 			close(fp);
 		}
-		if (mcomm.get_rank() == 0)
+		if (mcomm.get_rank() == 0 && separate_io == false && offset_io == false)
 		{
 			FILE *fp_outt2;
 			fp_outt2 = fopen(meta_data_full_filename, "w");
@@ -217,7 +237,7 @@ void relation::parallel_IO(const char* filename_template, bool share)
 	}
 	offset = offsets[mcomm.get_rank()];
 
-	if (mcomm.get_rank() == 0)
+	if (mcomm.get_rank() == 0 && separate_io == false && offset_io == true)
 	{
 		FILE *fp;
 		fp = fopen(delta_file_offset, "w");
@@ -232,17 +252,29 @@ void relation::parallel_IO(const char* filename_template, bool share)
 		std::vector<u64> prefix = {};
 		delta[i].as_vector_buffer_recursive(&(vb_delta[i]), prefix);
 
-		if (share == true)
+		if (share_io == true)
 		{
 			MPI_File fp;
-			MPI_File_open(mcomm.get_comm(), delta_rel_name, MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &fp);
-			MPI_File_write_at_all(fp, offset, vb_delta[i].buffer, vb_delta[i].size, MPI_BYTE, &stas);
+			if (separate_io == false)
+			{
+				MPI_File_open(mcomm.get_comm(), delta_rel_name, MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &fp);
+				MPI_File_write_at_all(fp, offset, vb_delta[i].buffer, vb_delta[i].size, MPI_BYTE, &stas);
+			}
+			else
+			{
+				MPI_File_open(MPI_COMM_SELF, delta_rel_name, MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &fp);
+				MPI_File_write(fp, vb_delta[i].buffer, vb_delta[i].size, MPI_BYTE, &stas);
+			}
 			MPI_File_close(&fp);
 		}
 		else
 		{
 			int fp = open(delta_rel_name, O_CREAT | O_WRONLY, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
-			u32 write_size = pwrite(fp, vb_delta[i].buffer, vb_delta[i].size, offset);
+			u32 write_size = 0;
+			if (separate_io == false)
+				write_size = pwrite(fp, vb_delta[i].buffer, vb_delta[i].size, offset);
+			else
+				write_size = write(fp, vb_delta[i].buffer, vb_delta[i].size);
 			if (write_size != vb_delta[i].size)
 			{
 				std::cout << delta_rel_name <<  " Wrong IO: rank: " << " " << vb_delta[i].size  << std::endl;
@@ -250,7 +282,7 @@ void relation::parallel_IO(const char* filename_template, bool share)
 			}
 			close(fp);
 		}
-		if (mcomm.get_rank() == 0)
+		if (mcomm.get_rank() == 0 && separate_io == false && offset_io == false)
 		{
 			FILE *fp_outt2;
 			fp_outt2 = fopen(meta_data_delta_filename, "w");
@@ -390,6 +422,19 @@ void relation::read_from_relation(relation* input, int full_delta)
 }
 #endif
 
+void relation::load_data_from_separate_files()
+{
+	file_io.parallel_read_input_relation_from_separate_files(arity, filename, mcomm.get_local_comm());
+
+	if (initailization_type == DELTA)
+		 populate_delta(file_io.get_hash_buffer_size(), file_io.get_hash_buffer());
+	else if (initailization_type == FULL)
+		populate_full(file_io.get_hash_buffer_size(), file_io.get_hash_buffer());
+
+	file_io.delete_hash_buffers();
+}
+
+
 void relation::load_data_from_file_with_offset()
 {
 	file_io.parallel_read_input_relation_from_file_with_offset(arity, filename, mcomm.get_local_comm());
@@ -521,10 +566,17 @@ void relation::initialize_relation(mpi_comm& mcomm)
     /// Main : Execute : init : buffer_init : end
 
     /// read data from file
-    if (offset_io == false)
-    	load_data_from_file();
+    if (restart_flag == true)
+    {
+		if (separate_io == true)
+			load_data_from_separate_files();
+		else if (offset_io == true)
+	    	load_data_from_file_with_offset();
+		else
+	    	load_data_from_file();
+    }
     else
-    	load_data_from_file_with_offset();
+    	load_data_from_file();
 }
 
 

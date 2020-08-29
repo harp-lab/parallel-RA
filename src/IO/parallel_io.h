@@ -39,6 +39,8 @@ public:
     void delete_raw_buffers()   {   if (entry_count != 0)        delete[] input_buffer;}
     void delete_hash_buffers()  {  delete[] hash_buffer;  }
 
+    /// read separate files for processes
+    void parallel_read_input_relation_from_separate_files(u32 arity, const char *fname, MPI_Comm lcomm);
 
     /// read file with offset
     void parallel_read_input_relation_from_file_with_offset(u32 arity, const char *fname, MPI_Comm lcomm);
