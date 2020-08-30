@@ -6,7 +6,7 @@
 
 
 #include "../parallel_RA_inc.h"
-#include <experimental/filesystem>
+//#include <experimental/filesystem>
 
 
 void LIE::add_relation(relation* rel)
@@ -291,17 +291,17 @@ bool LIE::execute ()
 
         /// check whether output directory exists
     	/// if it is, delete it and all its contains
-        if (mcomm.get_local_rank() == 0)
-        {
-			int64_t delete_num = 0;
-			if (std::experimental::filesystem::exists("./output") == true)
-			{
-				delete_num = std::experimental::filesystem::remove_all("./output");
-			#if DEBUG_OUTPUT
-				std::cout << "Deleted the old output folder with " << delete_num << " files." << std::endl;
-			#endif
-			}
-        }
+//        if (mcomm.get_local_rank() == 0)
+//        {
+//			int64_t delete_num = 0;
+//			if (std::experimental::filesystem::exists("./output") == true)
+//			{
+//				delete_num = std::experimental::filesystem::remove_all("./output");
+//			#if DEBUG_OUTPUT
+//				std::cout << "Deleted the old output folder with " << delete_num << " files." << std::endl;
+//			#endif
+//			}
+//        }
 
         /// create output directory for checkpoint dumps
     	if (enable_io == true && mcomm.get_local_rank() == 0)
