@@ -737,25 +737,24 @@ void RAM::execute_in_batches(int batch_size, std::vector<u32>& history, std::map
 
 
 #if DEBUG_OUTPUT
-//            if (mcomm.get_rank() == 0)
-//            {
-//                std::cout << "Current time INNER LOOP [" << loop_count_tracker << " " << inner_loop << "] "
-//                          << " Buf cre " << (allocate_buffers_end - allocate_buffers_start)
-//                          << " comp " << (compute_end - compute_start)
-//                          << " A2A " << (all_to_all_end - all_to_all_start)
-//                          << " Buf free " << (free_buffers_end - free_buffers_start)
-//                          << " newt " << (insert_in_newt_end - insert_in_newt_start)
-//                          << std::endl;
-//
-//                std::cout << "Running time INNER LOOP [" << loop_count_tracker << " " << inner_loop << "] "
-//                          << " Intra " << *running_intra_bucket_comm
-//                          << " Buf cre " << *running_buffer_allocate
-//                          << " comp " << *running_local_compute
-//                          << " A2A " << *running_all_to_all
-//                          << " Buf free " << *running_buffer_free
-//                          << " newt " << *running_insert_newt
-//                          << std::endl;
-//            }
+            if (mcomm.get_rank() == 0)
+            {
+                std::cout << "Current time INNER LOOP [" << loop_count_tracker << " " << inner_loop << "] "
+                          << " Buf cre " << (allocate_buffers_end - allocate_buffers_start)
+                          << " comp " << (compute_end - compute_start)
+                          << " A2A " << (all_to_all_end - all_to_all_start)
+                          << " Buf free " << (free_buffers_end - free_buffers_start)
+                          << " newt " << (insert_in_newt_end - insert_in_newt_start)
+                          << std::endl;
+
+                std::cout << "Running time INNER LOOP [" << loop_count_tracker << " " << inner_loop << "] "
+                          << " Buf cre " << *running_buffer_allocate
+                          << " comp " << *running_local_compute
+                          << " A2A " << *running_all_to_all
+                          << " Buf free " << *running_buffer_free
+                          << " newt " << *running_insert_newt
+                          << std::endl;
+            }
 #endif
             inner_loop++;
         }
@@ -768,21 +767,21 @@ void RAM::execute_in_batches(int batch_size, std::vector<u32>& history, std::map
         *running_time = *running_time + (insert_in_full_end - intra_start);
 
 #if DEBUG_OUTPUT
-//        if (mcomm.get_rank() == 0)
-//        {
-//            std::cout << "Current time OUTER LOOP [" << loop_count_tracker << " ] "
-//                      << " Intra " << (intra_end - intra_start)
-//                      << " full " << (insert_in_full_end - insert_in_full_start)
-//                      << " Total " << (insert_in_full_end - intra_start)
-//                      << " [ "
-//                      << *running_time
-//                      << " ]" << std::endl;
-//
-//            std::cout << "Running time OUTER LOOP [" << loop_count_tracker << "] "
-//                      << " Intra " << *running_intra_bucket_comm
-//                      << " full " << *running_insert_in_full
-//                      << " Total " << *running_intra_bucket_comm + *running_buffer_allocate + *running_local_compute + *running_all_to_all + *running_buffer_free + *running_insert_newt + *running_insert_in_full << std::endl;
-//        }
+        if (mcomm.get_rank() == 0)
+        {
+            std::cout << "Current time OUTER LOOP [" << loop_count_tracker << " ] "
+                      << " Intra " << (intra_end - intra_start)
+                      << " full " << (insert_in_full_end - insert_in_full_start)
+                      << " Total " << (insert_in_full_end - intra_start)
+                      << " [ "
+                      << *running_time
+                      << " ]" << std::endl;
+
+            std::cout << "Running time OUTER LOOP [" << loop_count_tracker << "] "
+                      << " Intra " << *running_intra_bucket_comm
+                      << " full " << *running_insert_in_full
+                      << " Total " << *running_intra_bucket_comm + *running_buffer_allocate + *running_local_compute + *running_all_to_all + *running_buffer_free + *running_insert_newt + *running_insert_in_full << std::endl;
+        }
 #endif
 
         batch_size--;
