@@ -46,12 +46,18 @@ private:
 
     bool separate_io;                                    /// whether write checkpoint dump separately for each process
 
+    int loop_counter;
+
+    std::vector<int> executed_scc_id;
+
 public:
 
     ~LIE();
 
     LIE()
     {
+    	executed_scc_id = {};
+    	loop_counter = 0;
     	separate_io = false;
     	offset_io = false;
     	share_io = false;
@@ -62,6 +68,14 @@ public:
         taskgraph = {{},{}};
         intern_map = {{},{}};
     }
+
+    void set_executed_scc_id(std::vector<int> id)     {executed_scc_id = id;}
+
+    std::vector<int> get_executed_scc_id()       {return executed_scc_id;}
+
+    void set_loop_counter(int count)      {loop_counter = count;}
+
+    int get_loop_counter()         {return loop_counter;}
 
     void enable_separate_io()      {separate_io = true;}
 

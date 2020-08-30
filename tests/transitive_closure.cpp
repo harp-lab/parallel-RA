@@ -90,6 +90,14 @@ int main(int argc, char **argv)
     lie->execute();
     lie->print_all_relation_size();
 
+    double write_cp_start = MPI_Wtime();
+    int loop_count = lie->get_loop_counter();
+    std::vector<int> executed_scc_id = lie->get_executed_scc_id();
+    lie->write_checkpoint_dump(loop_count, executed_scc_id);
+    double write_cp_end = MPI_Wtime();
+    if (mcomm.get_rank() == 0)
+    	std::cout << "Writing last checkpoint dump takes " << (write_cp_end - write_cp_start) << "(s)" << std::endl;
+
     delete lie;
 
     mcomm.destroy();
