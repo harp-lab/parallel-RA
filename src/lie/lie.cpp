@@ -153,9 +153,8 @@ void LIE::print_all_relation_size()
 
 void LIE::write_checkpoint_dump(int loop_counter, std::vector<int> executed_scc_id)
 {
-
 	char dir_name[1024];
-	sprintf(dir_name, "output/checkpoin-%d", loop_counter);
+	sprintf(dir_name, "%s/checkpoin-%d", output_dir, loop_counter);
 	char scc_metadata[1024];
 	sprintf(scc_metadata, "%s/scc_metadata", dir_name);
 	if (mcomm.get_local_rank() == 0)
@@ -192,6 +191,10 @@ bool LIE::execute ()
 //        lie_relations[i]->print();
 #endif
     }
+
+    /// create output directory for checkpoint dumps
+	if (enable_io == true && mcomm.get_local_rank() == 0)
+		mkdir(output_dir, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
 
 
 #if DEBUG_OUTPUT
@@ -288,24 +291,6 @@ bool LIE::execute ()
         }
 
         std::vector<u32> history;
-
-        /// check whether output directory exists
-    	/// if it is, delete it and all its contains
-//        if (mcomm.get_local_rank() == 0)
-//        {
-//			int64_t delete_num = 0;
-//			if (std::experimental::filesystem::exists("./output") == true)
-//			{
-//				delete_num = std::experimental::filesystem::remove_all("./output");
-//			#if DEBUG_OUTPUT
-//				std::cout << "Deleted the old output folder with " << delete_num << " files." << std::endl;
-//			#endif
-//			}
-//        }
-
-        /// create output directory for checkpoint dumps
-    	if (enable_io == true && mcomm.get_local_rank() == 0)
-    		mkdir("output", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
 
 #if DEBUG_OUTPUT
         if (mcomm.get_local_rank() == 0)

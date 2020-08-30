@@ -50,6 +50,8 @@ private:
 
     std::vector<int> executed_scc_id;
 
+    char output_dir[1024];
+
 public:
 
     ~LIE();
@@ -68,6 +70,8 @@ public:
         taskgraph = {{},{}};
         intern_map = {{},{}};
     }
+
+    void set_output_dir(char* output)   {sprintf(output_dir, "%s", output);}
 
     void set_executed_scc_id(std::vector<int> id)     {executed_scc_id = id;}
 

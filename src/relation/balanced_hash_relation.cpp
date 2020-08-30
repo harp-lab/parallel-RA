@@ -344,10 +344,6 @@ void relation::parallel_IO(const char* filename_template)
 
 	double max_total_time = 0;
 
-//	MPI_Reduce(&populate_metadata_time_full, &max_populate_time_full, 1, MPI_DOUBLE, MPI_MAX, 0, mcomm.get_comm());
-//	MPI_Reduce(&write_full_data_time, &max_full_time, 1, MPI_DOUBLE, MPI_MAX, 0, mcomm.get_comm());
-//	MPI_Reduce(&populate_metadata_time_delta, &max_populate_time_delta, 1, MPI_DOUBLE, MPI_MAX, 0, mcomm.get_comm());
-//	MPI_Reduce(&write_delta_data_time, &max_delta_time, 1, MPI_DOUBLE, MPI_MAX, 0, mcomm.get_comm());
 	MPI_Reduce(&total_time, &max_total_time, 1, MPI_DOUBLE, MPI_MAX, 0, mcomm.get_comm());
 
 	std::string write_io = (share_io == true)? "MPI IO": "POSIX IO";
@@ -357,8 +353,6 @@ void relation::parallel_IO(const char* filename_template)
 		write_metadata_time_full << ", " << write_full_data_time << "\n  DELTA [S] [PB] [PM] [WM] [WD], " <<  polulate_buffer_delta_time << ", " << delta_size << ", " << populate_metadata_time_delta
 		<< ", " <<  write_metadata_time_delta << ", " << write_delta_data_time << std::endl;
 }
-
-
 
 
 void relation::print()

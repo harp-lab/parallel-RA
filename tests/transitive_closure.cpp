@@ -6,11 +6,11 @@ int main(int argc, char **argv)
     mpi_comm mcomm;
     mcomm.create(argc, argv);    
 
-    if (argc != 2 && argc != 3)
+    if (argc != 3 && argc != 4)
     {
     	printf("argc %d\n", argc);
-        std::cout << "1. Usage: mpirun -n <process cout> ./TC <input data file>\n"
-        		"2. Restart: mpirun -n <process cout> ./TC --restart <checkpoint dump directory>" << std::endl;
+        std::cout << "1. Usage: mpirun -n <process cout> ./TC <input data file> <output_dir>\n"
+        		"2. Restart: mpirun -n <process cout> ./TC --restart <checkpoint dump directory> <output_dir>" << std::endl;
         MPI_Abort(mcomm.get_comm(), -1);
     }
 
@@ -21,18 +21,21 @@ int main(int argc, char **argv)
 
     bool restart_flag = false;
     char* dir_name;
-    if (argc == 3 && strcmp(argv[1], "--restart") == 0)
+    char* output_dir;
+    if (argc == 4 && strcmp(argv[1], "--restart") == 0)
     {
     	restart_flag = true;
     	dir_name = argv[2];
+    	output_dir = argv[3];
     	if ( dir_name[strlen(dir_name) - 1] == '/' ) dir_name[strlen(dir_name) - 1] = '\0';
     	sprintf(rel_path_212, "%s/%s_full", dir_name, "rel_path_2_1_2");
     	sprintf(rel_edge_212, "%s/%s_full", dir_name, "rel_edge_2_1_2");
     	sprintf(rel_path_21, "%s/%s_full", dir_name, "rel_path_2_1");
     	sprintf(rel_edge_22, "%s/%s_full", dir_name, "rel_edge_2_2");
     }
-    else if (argc == 2)
+    else if (argc == 3)
     {
+    	output_dir = argv[2];
     	sprintf(rel_path_212, "%s", "../data/g5955/path_2_1_2");
 		sprintf(rel_edge_212, "%s", argv[1]);
 		sprintf(rel_path_21, "%s", "../data/g5955/path_2_1");
@@ -80,9 +83,10 @@ int main(int argc, char **argv)
 	if (restart_flag == true)
 		lie->set_restart_dir_name(dir_name);
 
-	lie->enable_offset_io();
+//	lie->enable_offset_io();
 //	lie->enable_separate_io();
 	lie->enable_share_io();
+	lie->set_output_dir(output_dir);
     lie->set_restart_flag(restart_flag); // set restart flag
     lie->enable_IO();
     lie->set_comm(mcomm);
