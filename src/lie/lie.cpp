@@ -160,7 +160,6 @@ void LIE::write_checkpoint_dump(int loop_counter, std::vector<int> executed_scc_
 	sprintf(scc_metadata, "%s/scc_metadata", dir_name);
 	if (mcomm.get_local_rank() == 0)
 	{
-//		mkdir("output", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
 		mkdir(dir_name, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
 		FILE *fp;
 		fp = fopen(scc_metadata, "w");
@@ -320,8 +319,10 @@ bool LIE::execute ()
                 write_checkpoint_dump(loop_counter, executed_scc_id);
                 double write_cp_end = MPI_Wtime();
                 writing_checkpoint_dump_time = (write_cp_end - write_cp_start);
+                double max_write_cp_time = 0;
+                MPI_Reduce(&writing_checkpoint_dump_time, &max_write_cp_time, 1, MPI_DOUBLE, MPI_MAX, 0, mcomm.get_comm());
                 if (mcomm.get_local_rank() == 0)
-                	std::cout << "Writing checkpoint dump " << checkpoint_dumps_num << " takes " << writing_checkpoint_dump_time << "(s)" << std::endl;
+                	std::cout << "Writing checkpoint dump " << checkpoint_dumps_num << " takes " << max_write_cp_time << "(s)" << std::endl;
                 checkpoint_dumps_num++;
             }
 
@@ -348,8 +349,10 @@ bool LIE::execute ()
                     write_checkpoint_dump(loop_counter, executed_scc_id);
                     double write_cp_end = MPI_Wtime();
                     writing_checkpoint_dump_time = (write_cp_end - write_cp_start);
+                    double max_write_cp_time = 0;
+                    MPI_Reduce(&writing_checkpoint_dump_time, &max_write_cp_time, 1, MPI_DOUBLE, MPI_MAX, 0, mcomm.get_comm());
                     if (mcomm.get_local_rank() == 0)
-                        std::cout << "Writing checkpoint dump " << checkpoint_dumps_num << " takes " << writing_checkpoint_dump_time << "(s)" << std::endl;
+                        std::cout << "Writing checkpoint dump " << checkpoint_dumps_num << " takes " << max_write_cp_time << "(s)" << std::endl;
                     checkpoint_dumps_num++;
                 }
 

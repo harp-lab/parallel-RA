@@ -81,8 +81,8 @@ int main(int argc, char **argv)
 		lie->set_restart_dir_name(dir_name);
 
 	lie->enable_offset_io();
-	lie->enable_separate_io();
-	lie->enable_share_io();
+//	lie->enable_separate_io();
+//	lie->enable_share_io();
     lie->set_restart_flag(restart_flag); // set restart flag
     lie->enable_IO();
     lie->set_comm(mcomm);
@@ -95,8 +95,11 @@ int main(int argc, char **argv)
     std::vector<int> executed_scc_id = lie->get_executed_scc_id();
     lie->write_checkpoint_dump(loop_count, executed_scc_id);
     double write_cp_end = MPI_Wtime();
+    double writing_checkpoint_dump_time = (write_cp_end - write_cp_start);
+    double max_write_cp_time = 0;
+    MPI_Reduce(&writing_checkpoint_dump_time, &max_write_cp_time, 1, MPI_DOUBLE, MPI_MAX, 0, mcomm.get_comm());
     if (mcomm.get_rank() == 0)
-    	std::cout << "Writing last checkpoint dump takes " << (write_cp_end - write_cp_start) << "(s)" << std::endl;
+    	std::cout << "Writing last checkpoint dump takes " << max_write_cp_time << "(s)" << std::endl;
 
     delete lie;
 
