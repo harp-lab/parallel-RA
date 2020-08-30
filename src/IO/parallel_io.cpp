@@ -32,16 +32,27 @@ void parallel_io::parallel_read_input_relation_from_separate_files(u32 arity, co
 	uint64_t read_size = ftell(fp);
 	fseek(fp, 0, SEEK_SET);
 
-	hash_buffer = new u64[read_size/sizeof(u64)];
+    hash_buffer_size = read_size/sizeof(u64);
+	hash_buffer = new u64[hash_buffer_size];
 
-    u32 rb_size = fread(hash_buffer, 1, read_size, fp);
-    if (rb_size != read_size)
+    if (share_io == true)
     {
-        std::cout << data_filename <<  " Wrong IO: rank: " << rank << " " << rb_size << " " << read_size << std::endl;
-        MPI_Abort(lcomm, -1);
+    	MPI_Status stas;
+    	MPI_File fp;
+    	MPI_File_open(lcomm, data_filename, MPI_MODE_RDONLY, MPI_INFO_NULL, &fp);
+    	MPI_File_read_all(fp, hash_buffer, read_size, MPI_BYTE, &stas);
+    	MPI_File_close(&fp);
     }
-    hash_buffer_size = rb_size/sizeof(u64);
-	fclose(fp);
+    else
+    {
+		u32 rb_size = fread(hash_buffer, 1, read_size, fp);
+		if (rb_size != read_size)
+		{
+			std::cout << data_filename <<  " Wrong IO: rank: " << rank << " " << rb_size << " " << read_size << std::endl;
+			MPI_Abort(lcomm, -1);
+		}
+		fclose(fp);
+    }
 }
 
 
@@ -78,19 +89,30 @@ void parallel_io::parallel_read_input_relation_from_file_with_offset(u32 arity, 
     uint64_t read_offset = offsets[rank];
     uint64_t read_size = sizes[rank];
 
-    hash_buffer = new u64[read_size/sizeof(u64)];
+    hash_buffer_size = read_size/sizeof(u64);
+    hash_buffer = new u64[hash_buffer_size];
 
     char data_filename[1024];
     sprintf(data_filename, "%s", file_name);
-    int fp = open(data_filename, O_RDONLY);
-    u32 rb_size = pread(fp, hash_buffer, read_size, read_offset);
-    if (rb_size != read_size)
+    if (share_io == true)
     {
-        std::cout << data_filename <<  " Wrong IO: rank: " << rank << " " << rb_size << " " << read_size << " " << read_offset << std::endl;
-        MPI_Abort(lcomm, -1);
+    	MPI_Status stas;
+    	MPI_File fp;
+    	MPI_File_open(lcomm, data_filename, MPI_MODE_RDONLY, MPI_INFO_NULL, &fp);
+    	MPI_File_read_at_all(fp, read_offset, hash_buffer, read_size, MPI_BYTE, &stas);
+    	MPI_File_close(&fp);
     }
-    hash_buffer_size = rb_size/sizeof(u64);
-    close(fp);
+    else
+    {
+		int fp = open(data_filename, O_RDONLY);
+		u32 rb_size = pread(fp, hash_buffer, read_size, read_offset);
+		if (rb_size != read_size)
+		{
+			std::cout << data_filename <<  " Wrong IO: rank: " << rank << " " << rb_size << " " << read_size << " " << read_offset << std::endl;
+			MPI_Abort(lcomm, -1);
+		}
+	    close(fp);
+    }
 }
 
 void parallel_io::parallel_read_input_relation_from_file_to_local_buffer(u32 arity, const char *fname, MPI_Comm lcomm)
@@ -163,17 +185,30 @@ void parallel_io::parallel_read_input_relation_from_file_to_local_buffer(u32 ari
 
     char data_filename[1024];
     sprintf(data_filename, "%s", file_name);
-    int fp = open(data_filename, O_RDONLY);
 
-    input_buffer = new u64[entry_count * col_count];
-    u32 rb_size = pread(fp, input_buffer, entry_count * col_count * sizeof(u64), read_offset * col_count * sizeof(u64));
-    //std::cout << "Correct IO: rank: " << rank << " " << rb_size << " " <<  entry_count << " " << col_count << " " << read_offset << std::endl;
-    if (rb_size != entry_count * col_count * sizeof(u64))
+	input_buffer = new u64[entry_count * col_count];
+
+    if (share_io == true)
     {
-        std::cout << data_filename <<  " Wrong IO: rank: " << rank << " " << rb_size << " " <<  entry_count << " " << col_count << " " << read_offset << std::endl;
-        MPI_Abort(lcomm, -1);
+    	MPI_Status stas;
+    	MPI_File fp;
+    	MPI_File_open(lcomm, data_filename, MPI_MODE_RDONLY, MPI_INFO_NULL, &fp);
+    	MPI_File_read_at_all(fp, read_offset * col_count * sizeof(u64), input_buffer, entry_count * col_count * sizeof(u64), MPI_BYTE, &stas);
+    	MPI_File_close(&fp);
     }
-    close(fp);
+    else    ///POSIX IO
+    {
+		int fp = open(data_filename, O_RDONLY);
+		u32 rb_size = pread(fp, input_buffer, entry_count * col_count * sizeof(u64), read_offset * col_count * sizeof(u64));
+		//std::cout << "Correct IO: rank: " << rank << " " << rb_size << " " <<  entry_count << " " << col_count << " " << read_offset << std::endl;
+		if (rb_size != entry_count * col_count * sizeof(u64))
+		{
+			std::cout << data_filename <<  " Wrong IO: rank: " << rank << " " << rb_size << " " <<  entry_count << " " << col_count << " " << read_offset << std::endl;
+			MPI_Abort(lcomm, -1);
+		}
+		close(fp);
+    }
+
 
     //u32 rb_g_size = 0;
     //MPI_Allreduce(&rb_size, &rb_g_size, 1, MPI_INT, MPI_SUM, lcomm);

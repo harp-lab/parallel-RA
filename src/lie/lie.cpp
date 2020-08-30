@@ -174,7 +174,6 @@ void LIE::write_checkpoint_dump(int loop_counter, std::vector<int> executed_scc_
 }
 
 
-
 bool LIE::execute ()
 {
     /// Main : Execute : init : start
@@ -197,7 +196,27 @@ bool LIE::execute ()
 
 #if DEBUG_OUTPUT
     if (mcomm.get_local_rank() == 0)
+    {
+    	if (restart_flag == true)
+    	{
+    		if (separate_io == true)
+    			std::cout << "Read Local Data without MetaData" << std::endl;
+    		else if (offset_io == true)
+    			std::cout << "Read Global Data with Offset MetaData" << std::endl;
+    		else
+    			std::cout << "Read Global Data with Size MetaData" << std::endl;
+    	}
+    	else
+    	{
+    		if (separate_io == true)
+    			std::cout << "Write Local Data without MetaData" << std::endl;
+    		else if (offset_io == true)
+    			std::cout << "Write Global Data with Offset MetaData" << std::endl;
+    		else
+    			std::cout << "Write Global Data with Size MetaData" << std::endl;
+    	}
         std::cout << "----------------- Initialization Complete ---------------------" << std::endl << std::endl;
+    }
 #endif
 
     /// Executable task
@@ -313,7 +332,7 @@ bool LIE::execute ()
             executable_task->execute_in_batches(batch_size, history, intern_map, &running_time, &running_intra_bucket_comm, &running_buffer_allocate, &running_local_compute, &running_all_to_all, &running_buffer_free, &running_insert_newt, &running_insert_in_full);
             loop_counter++;
             executed_scc_id.push_back(executable_task->get_id());
-            if (enable_io == true && loop_counter % 5 == 0)
+            if (enable_io == true && loop_counter % 200 == 0)
             {
             	double write_cp_start = MPI_Wtime();
                 write_checkpoint_dump(loop_counter, executed_scc_id);
@@ -343,7 +362,7 @@ bool LIE::execute ()
                 delta_in_scc = history[history.size()-2];
                 if (delta_in_scc == 0)
                 	executed_scc_id.push_back(executable_task->get_id());
-                if (enable_io == true && loop_counter % 5 == 0)
+                if (enable_io == true && loop_counter % 200 == 0)
                 {
                 	double write_cp_start = MPI_Wtime();
                     write_checkpoint_dump(loop_counter, executed_scc_id);

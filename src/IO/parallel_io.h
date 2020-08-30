@@ -28,9 +28,13 @@ private:
     int hash_buffer_size;
     u64* hash_buffer;
 
+    bool share_io;
+
 public:
 
     parallel_io();
+
+    void set_share_io(bool share)  { share_io = share;}
 
     u64* get_hash_buffer()  {  return hash_buffer;  }
     int get_hash_buffer_size()  {  return hash_buffer_size;  }
