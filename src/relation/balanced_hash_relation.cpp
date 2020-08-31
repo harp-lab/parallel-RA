@@ -172,20 +172,21 @@ void relation::parallel_IO(const char* filename_template)
 	uint64_t offset = 0;
 	uint64_t offsets[mcomm.get_nprocs()];
 	uint64_t total_size = 0;
+
+	double populate_metadata_start = MPI_Wtime();
+	MPI_Allgather(&full_size, 1, MPI_LONG_LONG, sizes, 1, MPI_LONG_LONG, mcomm.get_comm());
+	for (int i = 0; i < mcomm.get_nprocs(); i++)
+	{
+		offsets[i] = total_size;
+		total_size += sizes[i];
+	}
+	offset = offsets[mcomm.get_rank()];
+	double populate_metadata_end = MPI_Wtime();
+	populate_metadata_time_full = (populate_metadata_end - populate_metadata_start);
+
 	if (separate_io == false)
 	{
-		double populate_metadata_start = MPI_Wtime();
-		MPI_Allgather(&full_size, 1, MPI_LONG_LONG, sizes, 1, MPI_LONG_LONG, mcomm.get_comm());
-		for (int i = 0; i < mcomm.get_nprocs(); i++)
-		{
-			offsets[i] = total_size;
-			total_size += sizes[i];
-		}
-		offset = offsets[mcomm.get_rank()];
-		double populate_metadata_end = MPI_Wtime();
-		populate_metadata_time_full = (populate_metadata_end - populate_metadata_start);
-
-		if (mcomm.get_rank() == 0)
+		if (mcomm.get_rank() == 0 && total_size > 0)
 		{
 			double write_metadata_start = MPI_Wtime();
 			FILE *fp;
@@ -209,43 +210,46 @@ void relation::parallel_IO(const char* filename_template)
 
 	double write_full_data_start = MPI_Wtime();
  	MPI_Status stas;
-	if (share_io == true)  /// write data out with MPI collective IO
+	if (total_size > 0)
 	{
-		MPI_File fp;
-		MPI_Info info;
-		MPI_Info_create(&info);
-//		MPI_Info_set(info, "stripe_count", "48");
-//		MPI_Info_set(info, "stripe_size", "8388608");
-//		MPI_Info_set(info, "romio_cb_write" , "enable");
-		if (separate_io == false)
+		if (share_io == true)  /// write data out with MPI collective IO
 		{
-			MPI_File_open(mcomm.get_comm(), full_rel_name, MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &fp);
-			MPI_File_write_at_all(fp, offset, full_buffer, full_size, MPI_BYTE, &stas);
+			MPI_File fp;
+			MPI_Info info;
+			MPI_Info_create(&info);
+	//		MPI_Info_set(info, "stripe_count", "48");
+	//		MPI_Info_set(info, "stripe_size", "8388608");
+	//		MPI_Info_set(info, "romio_cb_write" , "enable");
+			if (separate_io == false)
+			{
+				MPI_File_open(mcomm.get_comm(), full_rel_name, MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &fp);
+				MPI_File_write_at_all(fp, offset, full_buffer, full_size, MPI_BYTE, &stas);
+			}
+			else
+			{
+				MPI_File_open(MPI_COMM_SELF, full_rel_name, MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &fp);
+				MPI_File_write_all(fp, full_buffer, full_size, MPI_BYTE, &stas);
+			}
+	//		MPI_Info_free(&info);
+			MPI_File_close(&fp);
 		}
-		else
+		else  /// write data out with POSIX IO
 		{
-			MPI_File_open(MPI_COMM_SELF, full_rel_name, MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &fp);
-			MPI_File_write_all(fp, full_buffer, full_size, MPI_BYTE, &stas);
+			int fp = open(full_rel_name, O_CREAT | O_WRONLY, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+			u32 write_size = 0;
+			if (separate_io == false)
+				write_size = pwrite(fp, full_buffer, full_size, offset);
+			else
+				write_size = write(fp, full_buffer, full_size);
+			if (write_size != full_size)
+			{
+				std::cout << full_rel_name <<  " Wrong IO: rank: " << " " << full_size  << std::endl;
+				MPI_Abort(mcomm.get_local_comm(), -1);
+			}
+			close(fp);
 		}
-//		MPI_Info_free(&info);
-		MPI_File_close(&fp);
+		free(full_buffer);
 	}
-	else  /// write data out with POSIX IO
-	{
-		int fp = open(full_rel_name, O_CREAT | O_WRONLY, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
-		u32 write_size = 0;
-		if (separate_io == false)
-			write_size = pwrite(fp, full_buffer, full_size, offset);
-		else
-			write_size = write(fp, full_buffer, full_size);
-		if (write_size != full_size)
-		{
-			std::cout << full_rel_name <<  " Wrong IO: rank: " << " " << full_size  << std::endl;
-			MPI_Abort(mcomm.get_local_comm(), -1);
-		}
-		close(fp);
-	}
-	free(full_buffer);
 	double write_full_data_end = MPI_Wtime();
 	write_full_data_time = (write_full_data_end - write_full_data_start);
 
@@ -273,23 +277,23 @@ void relation::parallel_IO(const char* filename_template)
 	double polulate_buffer_delta_end = MPI_Wtime();
 	polulate_buffer_delta_time = polulate_buffer_delta_end - polulate_buffer_delta_start;
 
+	/// calculate offset for each process
+	total_size = 0;
+	memset(offsets, 0,  mcomm.get_nprocs()*sizeof(uint64_t));
+	populate_metadata_start = MPI_Wtime();
+	MPI_Allgather(&delta_size, 1, MPI_LONG_LONG, sizes, 1, MPI_LONG_LONG, mcomm.get_comm());
+	for (int i = 0; i < mcomm.get_nprocs(); i++)
+	{
+		offsets[i] = total_size;
+		total_size += sizes[i];
+	}
+	offset = offsets[mcomm.get_rank()];
+	populate_metadata_end = MPI_Wtime();
+	populate_metadata_time_delta = (populate_metadata_end - populate_metadata_start);
+
 	if (separate_io == false)
 	{
-		/// calculate offset for each process
-		double populate_metadata_start = MPI_Wtime();
-		MPI_Allgather(&delta_size, 1, MPI_LONG_LONG, sizes, 1, MPI_LONG_LONG, mcomm.get_comm());
-		memset(offsets, 0,  mcomm.get_nprocs()*sizeof(uint64_t));
-		total_size = 0;
-		for (int i = 0; i < mcomm.get_nprocs(); i++)
-		{
-			offsets[i] = total_size;
-			total_size += sizes[i];
-		}
-		offset = offsets[mcomm.get_rank()];
-		double populate_metadata_end = MPI_Wtime();
-		populate_metadata_time_delta = (populate_metadata_end - populate_metadata_start);
-
-		if (mcomm.get_rank() == 0)
+		if (mcomm.get_rank() == 0 && total_size > 0)
 		{
 			double write_metadata_start = MPI_Wtime();
 			FILE *fp;
@@ -312,44 +316,47 @@ void relation::parallel_IO(const char* filename_template)
 	}
 
 	double write_delta_data_start = MPI_Wtime();
-	if (share_io == true)
+	if (total_size > 0)
 	{
-		MPI_File fp;
-//		MPI_Info info;
-//		MPI_Info_create(&info);
-//		MPI_Info_set(info, "stripe_count", "48");
-//		MPI_Info_set(info, "stripe_size", "8388608");
-//		MPI_Info_set(info, "romio_cb_write" , "enable") ;
-		if (separate_io == false)
+		if (share_io == true)
 		{
-			MPI_File_open(mcomm.get_comm(), delta_rel_name, MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &fp);
-			MPI_File_write_at_all(fp, offset, delta_buffer, delta_size, MPI_BYTE, &stas);
-		}
-		else
-		{
-			MPI_File_open(MPI_COMM_SELF, delta_rel_name, MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &fp);
-			MPI_File_write_all(fp, delta_buffer, delta_size, MPI_BYTE, &stas);
-		}
-//		MPI_Info_free(&info);
-		MPI_File_close(&fp);
+			MPI_File fp;
+	//		MPI_Info info;
+	//		MPI_Info_create(&info);
+	//		MPI_Info_set(info, "stripe_count", "48");
+	//		MPI_Info_set(info, "stripe_size", "8388608");
+	//		MPI_Info_set(info, "romio_cb_write" , "enable") ;
+			if (separate_io == false)
+			{
+				MPI_File_open(mcomm.get_comm(), delta_rel_name, MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &fp);
+				MPI_File_write_at_all(fp, offset, delta_buffer, delta_size, MPI_BYTE, &stas);
+			}
+			else
+			{
+				MPI_File_open(MPI_COMM_SELF, delta_rel_name, MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &fp);
+				MPI_File_write_all(fp, delta_buffer, delta_size, MPI_BYTE, &stas);
+			}
+	//		MPI_Info_free(&info);
+			MPI_File_close(&fp);
 
-	}
-	else
-	{
-		int fp = open(delta_rel_name, O_CREAT | O_WRONLY, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
-		u32 write_size = 0;
-		if (separate_io == false)
-			write_size = pwrite(fp, delta_buffer, delta_size, offset);
-		else
-			write_size = write(fp, delta_buffer, delta_size);
-		if (write_size != delta_size)
-		{
-			std::cout << delta_rel_name <<  " Wrong IO: rank: " << " " << delta_size << std::endl;
-			MPI_Abort(mcomm.get_local_comm(), -1);
 		}
-		close(fp);
+		else
+		{
+			int fp = open(delta_rel_name, O_CREAT | O_WRONLY, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+			u32 write_size = 0;
+			if (separate_io == false)
+				write_size = pwrite(fp, delta_buffer, delta_size, offset);
+			else
+				write_size = write(fp, delta_buffer, delta_size);
+			if (write_size != delta_size)
+			{
+				std::cout << delta_rel_name <<  " Wrong IO: rank: " << " " << delta_size << std::endl;
+				MPI_Abort(mcomm.get_local_comm(), -1);
+			}
+			close(fp);
+		}
+		free(delta_buffer);
 	}
-	free(delta_buffer);
 	double write_delta_data_end = MPI_Wtime();
 	write_delta_data_time = (write_delta_data_end - write_delta_data_start);
 	double total_end = MPI_Wtime();
@@ -698,11 +705,15 @@ void relation::initialize_relation(mpi_comm& mcomm)
     }
     /// Main : Execute : init : buffer_init : end
     file_io.set_share_io(share_io);
+
     /// read data from file
     if (restart_flag == true)
     {
 		if (separate_io == true)
+		{
+			sprintf((char*)filename, "%s_%d", filename, mcomm.get_local_rank());
 			load_data_from_separate_files();
+		}
 		else if (offset_io == true)
 	    	load_data_from_file_with_offset();
 		else

@@ -22,7 +22,7 @@ void parallel_io::parallel_read_input_relation_from_separate_files(u32 arity, co
 	file_name = fname;
 
 	char data_filename[1024];
-	sprintf(data_filename, "%s_%d", file_name, rank);
+	sprintf(data_filename, "%s", file_name);
 
 	FILE * fp;
 	fp = fopen(data_filename, "r");
@@ -32,6 +32,8 @@ void parallel_io::parallel_read_input_relation_from_separate_files(u32 arity, co
 	uint64_t read_size = ftell(fp);
 	fseek(fp, 0, SEEK_SET);
 
+	std::cout << data_filename << ", " << read_size << "\n";
+
     hash_buffer_size = read_size/sizeof(u64);
 	hash_buffer = new u64[hash_buffer_size];
 
@@ -40,7 +42,7 @@ void parallel_io::parallel_read_input_relation_from_separate_files(u32 arity, co
     	MPI_Status stas;
     	MPI_File fp;
     	MPI_File_open(lcomm, data_filename, MPI_MODE_RDONLY, MPI_INFO_NULL, &fp);
-    	MPI_File_read_all(fp, hash_buffer, read_size, MPI_BYTE, &stas);
+    	MPI_File_read(fp, hash_buffer, read_size, MPI_BYTE, &stas);
     	MPI_File_close(&fp);
     }
     else
@@ -170,7 +172,8 @@ void parallel_io::parallel_read_input_relation_from_file_to_local_buffer(u32 ari
     if (read_offset > global_row_count)
     {
         entry_count = 0;
-        return;
+        read_offset = 0;
+//        return;
     }
 
     if (read_offset + ceil((float)global_row_count / nprocs) > global_row_count)
@@ -180,8 +183,8 @@ void parallel_io::parallel_read_input_relation_from_file_to_local_buffer(u32 ari
 
     assert((int)arity+1 == col_count);
 
-    if (entry_count == 0)
-        return;
+//    if (entry_count == 0)
+//        return;
 
     char data_filename[1024];
     sprintf(data_filename, "%s", file_name);

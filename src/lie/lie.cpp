@@ -277,15 +277,21 @@ bool LIE::execute ()
 				char delta_filename[1024];
         		sprintf(delta_filename, "%s/%s_delta", restart_dir_name, scc_relation[i]->get_debug_id().c_str());
 
+        		if (separate_io == true)
+        			sprintf(delta_filename, "%s_%d", delta_filename, mcomm.get_local_rank());
+
         		scc_relation[i]->set_filename(delta_filename);
         		scc_relation[i]->set_initailization_type(0);
 
-        		if (separate_io == true)
-        			scc_relation[i]->load_data_from_separate_files();
-        		else if (offset_io == true)
-        	    	scc_relation[i]->load_data_from_file_with_offset();
-        		else
-        	    	scc_relation[i]->load_data_from_file();
+        		if (access(delta_filename, F_OK) != -1)
+        		{
+					if (separate_io == true)
+						scc_relation[i]->load_data_from_separate_files();
+					else if (offset_io == true)
+						scc_relation[i]->load_data_from_file_with_offset();
+					else
+						scc_relation[i]->load_data_from_file();
+        		}
         	}
         }
 
