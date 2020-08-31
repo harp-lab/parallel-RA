@@ -214,20 +214,20 @@ void relation::parallel_IO(const char* filename_template)
 		MPI_File fp;
 		MPI_Info info;
 		MPI_Info_create(&info);
-		MPI_Info_set(info, "stripe_count", "48");
-		MPI_Info_set(info, "stripe_size", "8388608");
-		MPI_Info_set(info, "romio_cb_write" , "enable");
+//		MPI_Info_set(info, "stripe_count", "48");
+//		MPI_Info_set(info, "stripe_size", "8388608");
+//		MPI_Info_set(info, "romio_cb_write" , "enable");
 		if (separate_io == false)
 		{
-			MPI_File_open(mcomm.get_comm(), full_rel_name, MPI_MODE_CREATE | MPI_MODE_WRONLY, info, &fp);
+			MPI_File_open(mcomm.get_comm(), full_rel_name, MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &fp);
 			MPI_File_write_at_all(fp, offset, full_buffer, full_size, MPI_BYTE, &stas);
 		}
 		else
 		{
-			MPI_File_open(MPI_COMM_SELF, full_rel_name, MPI_MODE_CREATE | MPI_MODE_WRONLY, info, &fp);
+			MPI_File_open(MPI_COMM_SELF, full_rel_name, MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &fp);
 			MPI_File_write_all(fp, full_buffer, full_size, MPI_BYTE, &stas);
 		}
-		MPI_Info_free(&info);
+//		MPI_Info_free(&info);
 		MPI_File_close(&fp);
 	}
 	else  /// write data out with POSIX IO
@@ -315,22 +315,22 @@ void relation::parallel_IO(const char* filename_template)
 	if (share_io == true)
 	{
 		MPI_File fp;
-		MPI_Info info;
-		MPI_Info_create(&info);
-		MPI_Info_set(info, "stripe_count", "48");
-		MPI_Info_set(info, "stripe_size", "8388608");
-		MPI_Info_set(info, "romio_cb_write" , "enable") ;
+//		MPI_Info info;
+//		MPI_Info_create(&info);
+//		MPI_Info_set(info, "stripe_count", "48");
+//		MPI_Info_set(info, "stripe_size", "8388608");
+//		MPI_Info_set(info, "romio_cb_write" , "enable") ;
 		if (separate_io == false)
 		{
-			MPI_File_open(mcomm.get_comm(), delta_rel_name, MPI_MODE_CREATE | MPI_MODE_WRONLY, info, &fp);
+			MPI_File_open(mcomm.get_comm(), delta_rel_name, MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &fp);
 			MPI_File_write_at_all(fp, offset, delta_buffer, delta_size, MPI_BYTE, &stas);
 		}
 		else
 		{
-			MPI_File_open(MPI_COMM_SELF, delta_rel_name, MPI_MODE_CREATE | MPI_MODE_WRONLY, info, &fp);
+			MPI_File_open(MPI_COMM_SELF, delta_rel_name, MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &fp);
 			MPI_File_write_all(fp, delta_buffer, delta_size, MPI_BYTE, &stas);
 		}
-		MPI_Info_free(&info);
+//		MPI_Info_free(&info);
 		MPI_File_close(&fp);
 
 	}
