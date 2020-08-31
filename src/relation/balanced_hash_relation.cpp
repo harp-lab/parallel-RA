@@ -216,6 +216,7 @@ void relation::parallel_IO(const char* filename_template)
 		MPI_Info_create(&info);
 		MPI_Info_set(info, "stripe_count", "48");
 		MPI_Info_set(info, "stripe_size", "8388608");
+		MPI_Info_set(info, "romio_cb_write" , "enable");
 		if (separate_io == false)
 		{
 			MPI_File_open(mcomm.get_comm(), full_rel_name, MPI_MODE_CREATE | MPI_MODE_WRONLY, info, &fp);
@@ -318,6 +319,7 @@ void relation::parallel_IO(const char* filename_template)
 		MPI_Info_create(&info);
 		MPI_Info_set(info, "stripe_count", "48");
 		MPI_Info_set(info, "stripe_size", "8388608");
+		MPI_Info_set(info, "romio_cb_write" , "enable") ;
 		if (separate_io == false)
 		{
 			MPI_File_open(mcomm.get_comm(), delta_rel_name, MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &fp);
