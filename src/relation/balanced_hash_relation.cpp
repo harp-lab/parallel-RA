@@ -322,12 +322,12 @@ void relation::parallel_IO(const char* filename_template)
 		MPI_Info_set(info, "romio_cb_write" , "enable") ;
 		if (separate_io == false)
 		{
-			MPI_File_open(mcomm.get_comm(), delta_rel_name, MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &fp);
+			MPI_File_open(mcomm.get_comm(), delta_rel_name, MPI_MODE_CREATE | MPI_MODE_WRONLY, info, &fp);
 			MPI_File_write_at_all(fp, offset, delta_buffer, delta_size, MPI_BYTE, &stas);
 		}
 		else
 		{
-			MPI_File_open(MPI_COMM_SELF, delta_rel_name, MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &fp);
+			MPI_File_open(MPI_COMM_SELF, delta_rel_name, MPI_MODE_CREATE | MPI_MODE_WRONLY, info, &fp);
 			MPI_File_write_all(fp, delta_buffer, delta_size, MPI_BYTE, &stas);
 		}
 		MPI_Info_free(&info);

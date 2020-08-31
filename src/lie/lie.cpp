@@ -196,7 +196,6 @@ bool LIE::execute ()
 	if (enable_io == true && mcomm.get_local_rank() == 0)
 		mkdir(output_dir, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
 
-
 #if DEBUG_OUTPUT
     if (mcomm.get_local_rank() == 0)
     {
