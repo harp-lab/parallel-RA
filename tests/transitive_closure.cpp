@@ -86,6 +86,7 @@ int main(int argc, char **argv)
 //	lie->enable_offset_io();
 //	lie->enable_separate_io();
 	lie->enable_share_io();
+
 	lie->set_output_dir(output_dir);
     lie->set_restart_flag(restart_flag); // set restart flag
     lie->enable_IO();
