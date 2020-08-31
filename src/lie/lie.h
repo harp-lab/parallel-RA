@@ -52,12 +52,15 @@ private:
 
     char output_dir[1024];
 
+    int cp_iteration;
+
 public:
 
     ~LIE();
 
     LIE()
     {
+    	cp_iteration = 0;
     	executed_scc_id = {};
     	loop_counter = 0;
     	separate_io = false;
@@ -70,6 +73,8 @@ public:
         taskgraph = {{},{}};
         intern_map = {{},{}};
     }
+
+    void set_cp_iteration(int iteration)       {cp_iteration = iteration;}
 
     void set_output_dir(char* output)   {sprintf(output_dir, "%s", output);}
 
