@@ -100,8 +100,12 @@ void parallel_io::parallel_read_input_relation_from_file_with_offset(u32 arity, 
     {
     	MPI_Status stas;
     	MPI_File fp;
-    	MPI_File_open(lcomm, data_filename, MPI_MODE_RDONLY, MPI_INFO_NULL, &fp);
+    	MPI_Info info;
+    	MPI_Info_create(&info);
+    	MPI_Info_set(info, "romio_cb_read" , "enable") ;
+    	MPI_File_open(lcomm, data_filename, MPI_MODE_RDONLY, info, &fp);
     	MPI_File_read_at_all(fp, read_offset, hash_buffer, read_size, MPI_BYTE, &stas);
+    	MPI_Info_free(&info);
     	MPI_File_close(&fp);
     }
     else
@@ -195,8 +199,12 @@ void parallel_io::parallel_read_input_relation_from_file_to_local_buffer(u32 ari
     {
     	MPI_Status stas;
     	MPI_File fp;
-    	MPI_File_open(lcomm, data_filename, MPI_MODE_RDONLY, MPI_INFO_NULL, &fp);
+    	MPI_Info info;
+    	MPI_Info_create(&info);
+    	MPI_Info_set(info, "romio_cb_read" , "enable") ;
+    	MPI_File_open(lcomm, data_filename, MPI_MODE_RDONLY, info, &fp);
     	MPI_File_read_at_all(fp, read_offset * col_count * sizeof(u64), input_buffer, entry_count * col_count * sizeof(u64), MPI_BYTE, &stas);
+    	MPI_Info_free(&info);
     	MPI_File_close(&fp);
     }
     else    ///POSIX IO
