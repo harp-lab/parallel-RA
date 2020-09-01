@@ -354,8 +354,8 @@ void relation::parallel_IO(const char* filename_template)
 			{
 				MPI_Info info;
 				MPI_Info_create(&info);
-				MPI_Info_set(info, "striping_unit", "48");
-				MPI_Info_set(info, "striping_factor", "8388608");
+				MPI_Info_set(info, "striping_factor", "48");
+				MPI_Info_set(info, "striping_unit", "8388608");
 				MPI_Info_set(info, "romio_cb_write" , "enable") ;
 				if (separate_io == false)
 				{
