@@ -401,8 +401,8 @@ void relation::parallel_IO(const char* filename_template)
 	std::string write_io = (share_io == true)? "MPI IO": "POSIX IO";
 
 	if (mcomm.get_rank() == 0)
-		std::cout << "Write " << get_debug_id() << " (" << write_io << ") " << total_time << " :\n  FULL [S] [PB] [PM] [WM] [WD], " << polulate_buffer_full_time << ", " << full_size << ", " << populate_metadata_time_full << ", " <<
-		write_metadata_time_full << ", " << write_full_data_time << "\n  DELTA [S] [PB] [PM] [WM] [WD], " <<  polulate_buffer_delta_time << ", " << delta_size << ", " << populate_metadata_time_delta
+		std::cout << "Write " << get_debug_id() << " (" << write_io << ") " << total_time << " :\n  FULL [S] [PB] [PM] [WM] [WD], " << full_size << ", " << polulate_buffer_full_time<< ", " << populate_metadata_time_full << ", " <<
+		write_metadata_time_full << ", " << write_full_data_time << "\n  DELTA [S] [PB] [PM] [WM] [WD], " <<  delta_size << ", " << polulate_buffer_delta_time << ", " << populate_metadata_time_delta
 		<< ", " <<  write_metadata_time_delta << ", " << write_delta_data_time << std::endl;
 }
 
