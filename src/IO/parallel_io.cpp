@@ -179,11 +179,13 @@ void parallel_io::parallel_read_input_relation_from_file_to_local_buffer(u32 ari
         read_offset = 0;
 //        return;
     }
-
-    if (read_offset + ceil((float)global_row_count / nprocs) > global_row_count)
-        entry_count = global_row_count - read_offset;
     else
-        entry_count = (int) ceil((float)global_row_count / nprocs);
+    {
+		if (read_offset + ceil((float)global_row_count / nprocs) > global_row_count)
+			entry_count = global_row_count - read_offset;
+		else
+			entry_count = (int) ceil((float)global_row_count / nprocs);
+    }
 
     assert((int)arity+1 == col_count);
 
@@ -192,6 +194,8 @@ void parallel_io::parallel_read_input_relation_from_file_to_local_buffer(u32 ari
 
     char data_filename[1024];
     sprintf(data_filename, "%s", file_name);
+
+//    std::cout << data_filename << ", " << rank << ", " << read_offset << ", " << entry_count << std::endl;
 
 	input_buffer = new u64[entry_count * col_count];
 
