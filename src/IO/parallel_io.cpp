@@ -198,6 +198,8 @@ void parallel_io::parallel_read_input_relation_from_file_to_local_buffer(u32 ari
 //    std::cout << data_filename << ", " << rank << ", " << read_offset << ", " << entry_count << std::endl;
 
 	input_buffer = new u64[entry_count * col_count];
+    uint64_t offset = read_offset * col_count * sizeof(u64);
+    uint64_t read_size = entry_count * col_count * sizeof(u64);
 
     if (share_io == true)
     {
@@ -207,7 +209,7 @@ void parallel_io::parallel_read_input_relation_from_file_to_local_buffer(u32 ari
     	MPI_Info_create(&info);
     	MPI_Info_set(info, "romio_cb_read" , "enable") ;
     	MPI_File_open(lcomm, data_filename, MPI_MODE_RDONLY, info, &fp);
-    	MPI_File_read_at_all(fp, read_offset * col_count * sizeof(u64), input_buffer, entry_count * col_count * sizeof(u64), MPI_BYTE, &stas);
+    	MPI_File_read_at_all(fp, offset, input_buffer, read_size, MPI_BYTE, &stas);
     	MPI_Info_free(&info);
     	MPI_File_close(&fp);
     }
