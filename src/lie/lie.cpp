@@ -154,7 +154,7 @@ void LIE::print_all_relation_size()
 void LIE::write_checkpoint_dump(int loop_counter, std::vector<int> executed_scc_id)
 {
 	char dir_name[1024];
-	sprintf(dir_name, "%s/checkpoin-%d", output_dir, loop_counter);
+	sprintf(dir_name, "%s/checkpoint-%d", output_dir, loop_counter);
 	char scc_metadata[1024];
 	sprintf(scc_metadata, "%s/scc_metadata", dir_name);
 	if (mcomm.get_local_rank() == 0)

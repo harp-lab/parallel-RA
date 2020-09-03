@@ -177,7 +177,6 @@ void parallel_io::parallel_read_input_relation_from_file_to_local_buffer(u32 ari
     {
         entry_count = 0;
         read_offset = 0;
-//        return;
     }
     else
     {
@@ -189,13 +188,8 @@ void parallel_io::parallel_read_input_relation_from_file_to_local_buffer(u32 ari
 
     assert((int)arity+1 == col_count);
 
-//    if (entry_count == 0)
-//        return;
-
     char data_filename[1024];
     sprintf(data_filename, "%s", file_name);
-
-//    std::cout << data_filename << ", " << rank << ", " << read_offset << ", " << entry_count << std::endl;
 
 	input_buffer = new u64[entry_count * col_count];
     uint64_t offset = read_offset * col_count * sizeof(u64);
