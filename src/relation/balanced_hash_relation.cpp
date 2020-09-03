@@ -337,7 +337,7 @@ void relation::parallel_IO(const char* filename_template)
 		if (share_io == true)
 		{
 			MPI_File fp;
-			if (total_size < 1048576)
+			if (total_size_delta < 1048576)
 			{
 				if (separate_io == false)
 				{
