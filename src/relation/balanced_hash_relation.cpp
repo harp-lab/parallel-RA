@@ -171,14 +171,14 @@ void relation::parallel_IO(const char* filename_template)
 	/// calculate the offset for each process
 	uint64_t offset = 0;
 	uint64_t offsets[mcomm.get_nprocs()];
-	uint64_t total_size = 0;
+	uint64_t total_size_full = 0;
 
 	double populate_metadata_start = MPI_Wtime();
 	MPI_Allgather(&full_size, 1, MPI_LONG_LONG, sizes, 1, MPI_LONG_LONG, mcomm.get_comm());
 	for (int i = 0; i < mcomm.get_nprocs(); i++)
 	{
-		offsets[i] = total_size;
-		total_size += sizes[i];
+		offsets[i] = total_size_full;
+		total_size_full += sizes[i];
 	}
 	offset = offsets[mcomm.get_rank()];
 	double populate_metadata_end = MPI_Wtime();
@@ -186,7 +186,7 @@ void relation::parallel_IO(const char* filename_template)
 
 	if (separate_io == false)
 	{
-		if (mcomm.get_rank() == 0 && total_size > 0)
+		if (mcomm.get_rank() == 0 && total_size_full > 0)
 		{
 			double write_metadata_start = MPI_Wtime();
 			FILE *fp;
@@ -200,7 +200,7 @@ void relation::parallel_IO(const char* filename_template)
 			else /// write size metadata out
 			{
 				fp = fopen(meta_data_full_filename, "w");
-				fprintf (fp, "%d\n%d", (int)(total_size/((arity+1)*sizeof(u64))), (int)arity+1);
+				fprintf (fp, "%d\n%d", (int)(total_size_full/((arity+1)*sizeof(u64))), (int)arity+1);
 				fclose(fp);
 			}
 			double write_metadata_end = MPI_Wtime();
@@ -210,12 +210,12 @@ void relation::parallel_IO(const char* filename_template)
 
 	double write_full_data_start = MPI_Wtime();
  	MPI_Status stas;
-	if (total_size > 0)
+	if (total_size_full > 0)
 	{
 		if (share_io == true)  /// write data out with MPI collective IO
 		{
 			MPI_File fp;
-			if (total_size < 1048576)
+			if (total_size_full < 1048576)
 			{
 				if (separate_io == false)
 				{
@@ -294,14 +294,14 @@ void relation::parallel_IO(const char* filename_template)
 	polulate_buffer_delta_time = polulate_buffer_delta_end - polulate_buffer_delta_start;
 
 	/// calculate offset for each process
-	total_size = 0;
+	uint64_t total_size_delta = 0;
 	memset(offsets, 0,  mcomm.get_nprocs()*sizeof(uint64_t));
 	populate_metadata_start = MPI_Wtime();
 	MPI_Allgather(&delta_size, 1, MPI_LONG_LONG, sizes, 1, MPI_LONG_LONG, mcomm.get_comm());
 	for (int i = 0; i < mcomm.get_nprocs(); i++)
 	{
-		offsets[i] = total_size;
-		total_size += sizes[i];
+		offsets[i] = total_size_delta;
+		total_size_delta += sizes[i];
 	}
 	offset = offsets[mcomm.get_rank()];
 	populate_metadata_end = MPI_Wtime();
@@ -309,7 +309,7 @@ void relation::parallel_IO(const char* filename_template)
 
 	if (separate_io == false)
 	{
-		if (mcomm.get_rank() == 0 && total_size > 0)
+		if (mcomm.get_rank() == 0 && total_size_delta > 0)
 		{
 			double write_metadata_start = MPI_Wtime();
 			FILE *fp;
@@ -323,7 +323,7 @@ void relation::parallel_IO(const char* filename_template)
 			else /// write size metadata out
 			{
 				fp = fopen(meta_data_delta_filename, "w");
-				fprintf (fp, "%d\n%d", (int)(total_size/((arity+1)*sizeof(u64))), (int)arity+1);
+				fprintf (fp, "%d\n%d", (int)(total_size_delta/((arity+1)*sizeof(u64))), (int)arity+1);
 				fclose(fp);
 			}
 			double write_metadata_end = MPI_Wtime();
@@ -332,7 +332,7 @@ void relation::parallel_IO(const char* filename_template)
 	}
 
 	double write_delta_data_start = MPI_Wtime();
-	if (total_size > 0)
+	if (total_size_delta > 0)
 	{
 		if (share_io == true)
 		{
@@ -401,8 +401,8 @@ void relation::parallel_IO(const char* filename_template)
 	std::string write_io = (share_io == true)? "MPI IO": "POSIX IO";
 
 	if (mcomm.get_rank() == 0)
-		std::cout << "Write " << get_debug_id() << " (" << write_io << ") " << total_time << " :\n  FULL [S] [PB] [PM] [WM] [WD], " << full_size << ", " << polulate_buffer_full_time<< ", " << populate_metadata_time_full << ", " <<
-		write_metadata_time_full << ", " << write_full_data_time << "\n  DELTA [S] [PB] [PM] [WM] [WD], " <<  delta_size << ", " << polulate_buffer_delta_time << ", " << populate_metadata_time_delta
+		std::cout << "Write " << get_debug_id() << " (" << write_io << ") " << total_time << " :\n  FULL [S] [PB] [PM] [WM] [WD], " << total_size_full << ", " << polulate_buffer_full_time<< ", " << populate_metadata_time_full << ", " <<
+		write_metadata_time_full << ", " << write_full_data_time << "\n  DELTA [S] [PB] [PM] [WM] [WD], " <<  total_size_delta << ", " << polulate_buffer_delta_time << ", " << populate_metadata_time_delta
 		<< ", " <<  write_metadata_time_delta << ", " << write_delta_data_time << std::endl;
 }
 
@@ -410,8 +410,8 @@ void relation::parallel_IO(const char* filename_template)
 void relation::print()
 {
     u32 buckets = get_bucket_count();
-    if (mcomm.get_rank() == 0)
-    {
+//    if (mcomm.get_rank() == 0)
+//    {
         vector_buffer *vb_full = new vector_buffer[buckets];
         for (u32 i=0; i < buckets; i++)
         {
@@ -420,7 +420,7 @@ void relation::print()
             full[i].as_vector_buffer_recursive(&(vb_full[i]), prefix);
 
             if (vb_full[i].size != 0)
-                std::cout << get_debug_id() << " " << mcomm.get_rank() << " FULL Rows " << vb_full[i].size/(sizeof(u64) * (arity + 1)) << " columns " << arity + 1 << std::endl;
+            	std::cout << get_debug_id() << " " << mcomm.get_rank() << " FULL Rows " << vb_full[i].size/(sizeof(u64) * (arity + 1)) << " columns " << arity + 1 << std::endl;
             for (u32 j=0; j < vb_full[i].size/sizeof(u64); j = j + arity+1)
             {
                 if (j % (arity+1) == 0)
@@ -495,7 +495,7 @@ void relation::print()
         }
         delete[] vb_newt;
         */
-    }
+//    }
 }
 
 

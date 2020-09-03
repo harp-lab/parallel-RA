@@ -170,7 +170,7 @@ void parallel_io::parallel_read_input_relation_from_file_to_local_buffer(u32 ari
     //    std::cout << "Filename " << meta_data_filename << " Row Count " << global_row_count << " Column count " << col_count << std::endl;
 
     /* Read all data in parallel */
-    int read_offset;
+    uint64_t read_offset;
     read_offset = ceil((float)global_row_count / nprocs) * rank;
 
     if (read_offset > global_row_count)
@@ -216,9 +216,8 @@ void parallel_io::parallel_read_input_relation_from_file_to_local_buffer(u32 ari
     else    ///POSIX IO
     {
 		int fp = open(data_filename, O_RDONLY);
-		u32 rb_size = pread(fp, input_buffer, entry_count * col_count * sizeof(u64), read_offset * col_count * sizeof(u64));
-		//std::cout << "Correct IO: rank: " << rank << " " << rb_size << " " <<  entry_count << " " << col_count << " " << read_offset << std::endl;
-		if (rb_size != entry_count * col_count * sizeof(u64))
+		u32 rb_size = pread(fp, input_buffer, read_size, offset);
+		if (rb_size != read_size)
 		{
 			std::cout << data_filename <<  " Wrong IO: rank: " << rank << " " << rb_size << " " <<  entry_count << " " << col_count << " " << read_offset << std::endl;
 			MPI_Abort(lcomm, -1);
