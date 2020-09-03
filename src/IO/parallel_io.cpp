@@ -32,8 +32,6 @@ void parallel_io::parallel_read_input_relation_from_separate_files(u32 arity, co
 	uint64_t read_size = ftell(fp);
 	fseek(fp, 0, SEEK_SET);
 
-	std::cout << data_filename << ", " << read_size << "\n";
-
     hash_buffer_size = read_size/sizeof(u64);
 	hash_buffer = new u64[hash_buffer_size];
 
