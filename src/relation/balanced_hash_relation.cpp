@@ -182,7 +182,7 @@ void relation::parallel_IO(const char* filename_template)
 	}
 	offset = offsets[mcomm.get_rank()];
 	double populate_metadata_end = MPI_Wtime();
-	populate_metadata_time_full = (populate_metadata_end - populate_metadata_start);
+	populate_metadata_time_full = (separate_io == true)? 0: (populate_metadata_end - populate_metadata_start);
 
 	if (separate_io == false)
 	{
@@ -305,7 +305,7 @@ void relation::parallel_IO(const char* filename_template)
 	}
 	offset = offsets[mcomm.get_rank()];
 	populate_metadata_end = MPI_Wtime();
-	populate_metadata_time_delta = (populate_metadata_end - populate_metadata_start);
+	populate_metadata_time_delta = (separate_io == true)? 0: (populate_metadata_end - populate_metadata_start);
 
 	if (separate_io == false)
 	{
@@ -393,19 +393,29 @@ void relation::parallel_IO(const char* filename_template)
 	write_delta_data_time = (write_delta_data_end - write_delta_data_start);
 	double total_end = MPI_Wtime();
 	total_time = total_end - total_start;
+	if (separate_io == true)
+		total_time -= (populate_metadata_time_full + populate_metadata_time_delta);
 
-	double max_total_time = 0;
+//	double max_total_time = 0;
+//	double max_write_delta_data_time = 0;
+	double max_write_full_data_time = 0;
 
-	MPI_Allreduce(&total_time, &max_total_time, 1, MPI_DOUBLE, MPI_MAX, mcomm.get_local_comm());
+	MPI_Allreduce(&write_full_data_time, &max_write_full_data_time, 1, MPI_DOUBLE, MPI_MAX, mcomm.get_local_comm());
+//	MPI_Allreduce(&write_delta_data_time, &max_write_delta_data_time, 1, MPI_DOUBLE, MPI_MAX, mcomm.get_local_comm());
 
 	std::string write_io = (share_io == true)? "MPI IO": "POSIX IO";
 
-	if (max_total_time == total_time)
+	if (max_write_full_data_time == write_full_data_time)
 	{
 		fprintf(stderr, "%s, (%s) %f:\n FULL [S] [PB] [PM] [WM] [WD] %llu, %f, %f, %f, %f\n DELTA [S] [PB] [PM] [WM] [WD] %llu, %f, %f, %f, %f\n",
-				get_debug_id().c_str(), write_io.c_str(), max_total_time, total_size_full, polulate_buffer_full_time, populate_metadata_time_full, write_metadata_time_full, write_full_data_time,
-				total_size_delta, polulate_buffer_delta_time, populate_metadata_time_delta, write_metadata_time_delta, write_delta_data_time);
+						get_debug_id().c_str(), write_io.c_str(), total_time, total_size_full, polulate_buffer_full_time, populate_metadata_time_full, write_metadata_time_full, write_full_data_time,
+						total_size_delta, polulate_buffer_delta_time, populate_metadata_time_delta, write_metadata_time_delta, write_delta_data_time);
 	}
+
+//	if (max_total_time == total_time)
+//	{
+//
+//	}
 //		std::cout << "Write " << get_debug_id() << " (" << write_io << ") " << max_total_time << ", " << total_time << " :\n  FULL [S] [PB] [PM] [WM] [WD], " << total_size_full << ", " << polulate_buffer_full_time<< ", " << populate_metadata_time_full << ", " <<
 //		write_metadata_time_full << ", " << write_full_data_time << "\n  DELTA [S] [PB] [PM] [WM] [WD], " <<  total_size_delta << ", " << polulate_buffer_delta_time << ", " << populate_metadata_time_delta
 //		<< ", " <<  write_metadata_time_delta << ", " << write_delta_data_time << std::endl;

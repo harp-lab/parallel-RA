@@ -689,10 +689,10 @@ void RAM::execute_in_batches(int batch_size, std::vector<u32>& history, std::map
 
     while (batch_size != 0)
     {
-//#if DEBUG_OUTPUT
-//        if (mcomm.get_rank() == 0)
-//            std::cout << "--------------FIXED POINT ITERATION " << loop_count_tracker << "--------------" << std::endl;
-//#endif
+#if DEBUG_OUTPUT
+        if (mcomm.get_rank() == 0)
+            std::cout << "--------------FIXED POINT ITERATION " << loop_count_tracker << "--------------" << std::endl;
+#endif
 
 
         double intra_start = MPI_Wtime();
