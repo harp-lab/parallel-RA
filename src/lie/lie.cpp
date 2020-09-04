@@ -196,30 +196,30 @@ bool LIE::execute ()
 	if (enable_io == true && mcomm.get_local_rank() == 0)
 		mkdir(output_dir, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
 
-#if DEBUG_OUTPUT
-    if (mcomm.get_local_rank() == 0)
-    {
-    	if (restart_flag == true)
-    	{
-    		if (separate_io == true)
-    			std::cout << "Read Local Data without MetaData" << std::endl;
-    		else if (offset_io == true)
-    			std::cout << "Read Global Data with Offset MetaData" << std::endl;
-    		else
-    			std::cout << "Read Global Data with Size MetaData" << std::endl;
-    	}
-    	else
-    	{
-    		if (separate_io == true)
-    			std::cout << "Write Local Data without MetaData" << std::endl;
-    		else if (offset_io == true)
-    			std::cout << "Write Global Data with Offset MetaData" << std::endl;
-    		else
-    			std::cout << "Write Global Data with Size MetaData" << std::endl;
-    	}
-        std::cout << "----------------- Initialization Complete ---------------------" << std::endl << std::endl;
-    }
-#endif
+//#if DEBUG_OUTPUT
+//    if (mcomm.get_local_rank() == 0)
+//    {
+//    	if (restart_flag == true)
+//    	{
+//    		if (separate_io == true)
+//    			std::cout << "Read Local Data without MetaData" << std::endl;
+//    		else if (offset_io == true)
+//    			std::cout << "Read Global Data with Offset MetaData" << std::endl;
+//    		else
+//    			std::cout << "Read Global Data with Size MetaData" << std::endl;
+//    	}
+//    	else
+//    	{
+//    		if (separate_io == true)
+//    			std::cout << "Write Local Data without MetaData" << std::endl;
+//    		else if (offset_io == true)
+//    			std::cout << "Write Global Data with Offset MetaData" << std::endl;
+//    		else
+//    			std::cout << "Write Global Data with Size MetaData" << std::endl;
+//    	}
+//        std::cout << "----------------- Initialization Complete ---------------------" << std::endl << std::endl;
+//    }
+//#endif
 
     /// Executable task
     RAM* executable_task = one_runnable_tasks();
@@ -298,8 +298,8 @@ bool LIE::execute ()
         std::vector<u32> history;
 
 #if DEBUG_OUTPUT
-        if (mcomm.get_local_rank() == 0)
-            std::cout << "-------------------Executing SCC " << executable_task->get_id() << "------------------" << std::endl;
+//        if (mcomm.get_local_rank() == 0)
+//            std::cout << "-------------------Executing SCC " << executable_task->get_id() << "------------------" << std::endl;
 #endif
 
         /// if case is for rules (acopy and copy) that requires only one iteration

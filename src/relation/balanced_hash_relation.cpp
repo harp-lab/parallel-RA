@@ -396,14 +396,19 @@ void relation::parallel_IO(const char* filename_template)
 
 	double max_total_time = 0;
 
-	MPI_Reduce(&total_time, &max_total_time, 1, MPI_DOUBLE, MPI_MAX, 0, mcomm.get_comm());
+	MPI_Allreduce(&total_time, &max_total_time, 1, MPI_DOUBLE, MPI_MAX, mcomm.get_local_comm());
 
 	std::string write_io = (share_io == true)? "MPI IO": "POSIX IO";
 
-	if (mcomm.get_rank() == 0)
-		std::cout << "Write " << get_debug_id() << " (" << write_io << ") " << total_time << " :\n  FULL [S] [PB] [PM] [WM] [WD], " << total_size_full << ", " << polulate_buffer_full_time<< ", " << populate_metadata_time_full << ", " <<
-		write_metadata_time_full << ", " << write_full_data_time << "\n  DELTA [S] [PB] [PM] [WM] [WD], " <<  total_size_delta << ", " << polulate_buffer_delta_time << ", " << populate_metadata_time_delta
-		<< ", " <<  write_metadata_time_delta << ", " << write_delta_data_time << std::endl;
+	if (max_total_time == total_time)
+	{
+		fprintf(stderr, "%s, (%s) %f:\n FULL [S] [PB] [PM] [WM] [WD] %llu, %f, %f, %f, %f\n DELTA [S] [PB] [PM] [WM] [WD] %llu, %f, %f, %f, %f\n",
+				get_debug_id().c_str(), write_io.c_str(), max_total_time, total_size_full, polulate_buffer_full_time, populate_metadata_time_full, write_metadata_time_full, write_full_data_time,
+				total_size_delta, polulate_buffer_delta_time, populate_metadata_time_delta, write_metadata_time_delta, write_delta_data_time);
+	}
+//		std::cout << "Write " << get_debug_id() << " (" << write_io << ") " << max_total_time << ", " << total_time << " :\n  FULL [S] [PB] [PM] [WM] [WD], " << total_size_full << ", " << polulate_buffer_full_time<< ", " << populate_metadata_time_full << ", " <<
+//		write_metadata_time_full << ", " << write_full_data_time << "\n  DELTA [S] [PB] [PM] [WM] [WD], " <<  total_size_delta << ", " << polulate_buffer_delta_time << ", " << populate_metadata_time_delta
+//		<< ", " <<  write_metadata_time_delta << ", " << write_delta_data_time << std::endl;
 }
 
 
