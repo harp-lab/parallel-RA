@@ -59,8 +59,10 @@ void parallel_io::parallel_read_input_relation_from_file_with_offset(u32 arity, 
     char offset_filename[1024];
     sprintf(offset_filename, "%s.offset", file_name);
 
-    uint64_t offsets[nprocs];    /// the offset for each process
-    uint64_t sizes[nprocs];      /// the size for each process
+//    uint64_t offsets[nprocs];    /// the offset for each process
+//    uint64_t sizes[nprocs];      /// the size for each process
+    uint64_t read_offset = 0;
+    uint64_t read_size = 0;
 
     int a;
     uint64_t b, c;
@@ -69,8 +71,14 @@ void parallel_io::parallel_read_input_relation_from_file_with_offset(u32 arity, 
     {
     	while(myfile >> a >> b >> c)
     	{
-    		offsets[a] = b;
-    		sizes[a] = c;
+    		if (rank == a)
+    		{
+    			read_offset = b;
+    			read_size = c;
+    			break;
+    		}
+//    		offsets[a] = b;
+//    		sizes[a] = c;
     	}
         myfile.close();
     }
@@ -79,8 +87,8 @@ void parallel_io::parallel_read_input_relation_from_file_with_offset(u32 arity, 
     	std::cout << "ERROR: Cannot read " << offset_filename << std::endl;
     	MPI_Abort(lcomm, -1);
     }
-    uint64_t read_offset = offsets[rank];
-    uint64_t read_size = sizes[rank];
+//    uint64_t read_offset = offsets[rank];
+//    uint64_t read_size = sizes[rank];
 
     hash_buffer_size = read_size/sizeof(u64);
     hash_buffer = new u64[hash_buffer_size];
