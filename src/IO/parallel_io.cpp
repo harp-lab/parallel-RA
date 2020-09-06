@@ -59,36 +59,30 @@ void parallel_io::parallel_read_input_relation_from_file_with_offset(u32 arity, 
     char offset_filename[1024];
     sprintf(offset_filename, "%s.offset", file_name);
 
-//    uint64_t offsets[nprocs];    /// the offset for each process
-//    uint64_t sizes[nprocs];      /// the size for each process
-    uint64_t read_offset = 0;
-    uint64_t read_size = 0;
+    uint64_t offsets[nprocs];    /// the offset for each process
+    uint64_t sizes[nprocs];      /// the size for each process
+//    uint64_t read_offset = 0;
+//    uint64_t read_size = 0;
 
-    int a;
-    uint64_t b, c;
-    std::ifstream myfile (offset_filename);
-    if (myfile.is_open())
+    if (rank == 0)
     {
-    	while(myfile >> a >> b >> c)
-    	{
-    		if (rank == a)
-    		{
-    			read_offset = b;
-    			read_size = c;
-    			break;
-    		}
-//    		offsets[a] = b;
-//    		sizes[a] = c;
-    	}
-        myfile.close();
+		int a;
+		uint64_t b, c;
+		std::ifstream myfile (offset_filename);
+		if (myfile.is_open())
+		{
+			while(myfile >> a >> b >> c)
+			{
+				offsets[a] = b;
+				sizes[a] = c;
+			}
+			myfile.close();
+		}
     }
-    else
-    {
-    	std::cout << "ERROR: Cannot read " << offset_filename << std::endl;
-    	MPI_Abort(lcomm, -1);
-    }
-//    uint64_t read_offset = offsets[rank];
-//    uint64_t read_size = sizes[rank];
+    MPI_Bcast(offsets, nprocs, MPI_LONG_LONG, 0, lcomm);
+    MPI_Bcast(sizes, nprocs, MPI_LONG_LONG, 0, lcomm);
+    uint64_t read_offset = offsets[rank];
+    uint64_t read_size = sizes[rank];
 
     hash_buffer_size = read_size/sizeof(u64);
     hash_buffer = new u64[hash_buffer_size];
