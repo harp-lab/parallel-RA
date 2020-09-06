@@ -330,8 +330,8 @@ bool LIE::execute ()
                 writing_checkpoint_dump_time = (write_cp_end - write_cp_start);
                 double max_write_cp_time = 0;
                 MPI_Reduce(&writing_checkpoint_dump_time, &max_write_cp_time, 1, MPI_DOUBLE, MPI_MAX, 0, mcomm.get_comm());
-//                if (mcomm.get_local_rank() == 0)
-//                	std::cout << "Writing checkpoint dump " << checkpoint_dumps_num << " takes " << max_write_cp_time << "(s)" << std::endl;
+                if (mcomm.get_local_rank() == 0)
+                	std::cout << "Writing checkpoint dump " << checkpoint_dumps_num << " takes " << max_write_cp_time << "(s)" << std::endl;
                 checkpoint_dumps_num++;
             }
 
@@ -360,8 +360,8 @@ bool LIE::execute ()
                     writing_checkpoint_dump_time = (write_cp_end - write_cp_start);
                     double max_write_cp_time = 0;
                     MPI_Reduce(&writing_checkpoint_dump_time, &max_write_cp_time, 1, MPI_DOUBLE, MPI_MAX, 0, mcomm.get_comm());
-//                    if (mcomm.get_local_rank() == 0)
-//                        std::cout << "Writing checkpoint dump " << checkpoint_dumps_num << " takes " << max_write_cp_time << "(s)" << std::endl;
+                    if (mcomm.get_local_rank() == 0)
+                        std::cout << "Writing checkpoint dump " << checkpoint_dumps_num << " takes " << max_write_cp_time << "(s)" << std::endl;
                     checkpoint_dumps_num++;
                 }
 
