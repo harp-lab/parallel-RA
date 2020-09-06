@@ -168,24 +168,25 @@ void relation::parallel_IO(const char* filename_template)
 	double polulate_buffer_full_end = MPI_Wtime();
 	polulate_buffer_full_time = polulate_buffer_full_end - polulate_buffer_full_start;
 
-	/// calculate the offset for each process
+
 	uint64_t offset = 0;
 	uint64_t offsets[mcomm.get_nprocs()];
-	uint64_t total_size_full = 0;
-
-	double populate_metadata_start = MPI_Wtime();
-	MPI_Allgather(&full_size, 1, MPI_LONG_LONG, sizes, 1, MPI_LONG_LONG, mcomm.get_comm());
-	for (int i = 0; i < mcomm.get_nprocs(); i++)
+	if (separate_io == false) /// write shared file
 	{
-		offsets[i] = total_size_full;
-		total_size_full += sizes[i];
-	}
-	offset = offsets[mcomm.get_rank()];
-	double populate_metadata_end = MPI_Wtime();
-	populate_metadata_time_full = (separate_io == true)? 0: (populate_metadata_end - populate_metadata_start);
+		/// calculate the offset for each process
+		uint64_t total_size_full = 0;
+		double populate_metadata_start = MPI_Wtime();
+		MPI_Allgather(&full_size, 1, MPI_LONG_LONG, sizes, 1, MPI_LONG_LONG, mcomm.get_comm());
+		for (int i = 0; i < mcomm.get_nprocs(); i++)
+		{
+			offsets[i] = total_size_full;
+			total_size_full += sizes[i];
+		}
+		offset = offsets[mcomm.get_rank()];
+		double populate_metadata_end = MPI_Wtime();
+		populate_metadata_time_full = populate_metadata_end - populate_metadata_start;
 
-	if (separate_io == false)
-	{
+		/// write metadata out
 		if (mcomm.get_rank() == 0 && total_size_full > 0)
 		{
 			double write_metadata_start = MPI_Wtime();
@@ -206,57 +207,55 @@ void relation::parallel_IO(const char* filename_template)
 			double write_metadata_end = MPI_Wtime();
 			write_metadata_time_full = (write_metadata_end - write_metadata_start);
 		}
-	}
 
-	double write_full_data_start = MPI_Wtime();
- 	MPI_Status stas;
-	if (total_size_full > 0)
-	{
-		if (share_io == true)  /// write data out with MPI collective IO
+		/// write data out
+		double write_full_data_start = MPI_Wtime();
+		if (total_size_full > 0)
 		{
-			MPI_File fp;
-			if (total_size_full < 1073741824)
+			if (share_io == true)  /// MPI collective IO
 			{
-				if (separate_io == false)
+				MPI_File fp;
+				MPI_Status stas;
+				if (total_size_full < 1073741824)
 				{
 					MPI_File_open(mcomm.get_comm(), full_rel_name, MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &fp);
 					MPI_File_write_at_all(fp, offset, full_buffer, full_size, MPI_BYTE, &stas);
 				}
 				else
 				{
-					MPI_File_open(MPI_COMM_SELF, full_rel_name, MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &fp);
-					MPI_File_write_all(fp, full_buffer, full_size, MPI_BYTE, &stas);
-				}
-			}
-			else
-			{
-				MPI_Info info;
-				MPI_Info_create(&info);
-				MPI_Info_set(info, "striping_factor", "48");
-				MPI_Info_set(info, "striping_unit", "8388608");
-				MPI_Info_set(info, "romio_cb_write" , "enable");
-				if (separate_io == false)
-				{
+					MPI_Info info;
+					MPI_Info_create(&info);
+					MPI_Info_set(info, "striping_factor", "48");
+					MPI_Info_set(info, "striping_unit", "8388608");
+					MPI_Info_set(info, "romio_cb_write" , "enable");
 					MPI_File_open(mcomm.get_comm(), full_rel_name, MPI_MODE_CREATE | MPI_MODE_WRONLY, info, &fp);
 					MPI_File_write_at_all(fp, offset, full_buffer, full_size, MPI_BYTE, &stas);
+					MPI_Info_free(&info);
 				}
-				else
-				{
-					MPI_File_open(MPI_COMM_SELF, full_rel_name, MPI_MODE_CREATE | MPI_MODE_WRONLY, info, &fp);
-					MPI_File_write_all(fp, full_buffer, full_size, MPI_BYTE, &stas);
-				}
-				MPI_Info_free(&info);
+				MPI_File_close(&fp);
 			}
-			MPI_File_close(&fp);
+			else /// POSIX IO
+			{
+				int fp = open(full_rel_name, O_CREAT | O_WRONLY, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+				u32 write_size = pwrite(fp, full_buffer, full_size, offset);
+				if (write_size != full_size)
+				{
+					std::cout << full_rel_name <<  " Wrong IO: rank: " << " " << full_size  << std::endl;
+					MPI_Abort(mcomm.get_local_comm(), -1);
+				}
+				close(fp);
+			}
 		}
-		else  /// write data out with POSIX IO
+		double write_full_data_end = MPI_Wtime();
+		write_full_data_time = (write_full_data_end - write_full_data_start);
+	}
+	else /// write separated files
+	{
+		double write_full_data_start = MPI_Wtime();
+		if (full_size > 0)
 		{
 			int fp = open(full_rel_name, O_CREAT | O_WRONLY, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
-			u32 write_size = 0;
-			if (separate_io == false)
-				write_size = pwrite(fp, full_buffer, full_size, offset);
-			else
-				write_size = write(fp, full_buffer, full_size);
+			u32 write_size = write(fp, full_buffer, full_size);
 			if (write_size != full_size)
 			{
 				std::cout << full_rel_name <<  " Wrong IO: rank: " << " " << full_size  << std::endl;
@@ -264,10 +263,11 @@ void relation::parallel_IO(const char* filename_template)
 			}
 			close(fp);
 		}
-		free(full_buffer);
+		double write_full_data_end = MPI_Wtime();
+		write_full_data_time = (write_full_data_end - write_full_data_start);
 	}
-	double write_full_data_end = MPI_Wtime();
-	write_full_data_time = (write_full_data_end - write_full_data_start);
+	free(full_buffer);
+
 
 	/// get buffer and size for each process
 	vector_buffer *vb_delta = new vector_buffer[buckets];
@@ -293,22 +293,23 @@ void relation::parallel_IO(const char* filename_template)
 	double polulate_buffer_delta_end = MPI_Wtime();
 	polulate_buffer_delta_time = polulate_buffer_delta_end - polulate_buffer_delta_start;
 
-	/// calculate offset for each process
-	uint64_t total_size_delta = 0;
-	memset(offsets, 0,  mcomm.get_nprocs()*sizeof(uint64_t));
-	populate_metadata_start = MPI_Wtime();
-	MPI_Allgather(&delta_size, 1, MPI_LONG_LONG, sizes, 1, MPI_LONG_LONG, mcomm.get_comm());
-	for (int i = 0; i < mcomm.get_nprocs(); i++)
-	{
-		offsets[i] = total_size_delta;
-		total_size_delta += sizes[i];
-	}
-	offset = offsets[mcomm.get_rank()];
-	populate_metadata_end = MPI_Wtime();
-	populate_metadata_time_delta = (separate_io == true)? 0: (populate_metadata_end - populate_metadata_start);
 
 	if (separate_io == false)
 	{
+		/// calculate offset for each process
+		uint64_t total_size_delta = 0;
+		memset(offsets, 0,  mcomm.get_nprocs()*sizeof(uint64_t));
+		double populate_metadata_start = MPI_Wtime();
+		MPI_Allgather(&delta_size, 1, MPI_LONG_LONG, sizes, 1, MPI_LONG_LONG, mcomm.get_comm());
+		for (int i = 0; i < mcomm.get_nprocs(); i++)
+		{
+			offsets[i] = total_size_delta;
+			total_size_delta += sizes[i];
+		}
+		offset = offsets[mcomm.get_rank()];
+		double populate_metadata_end = MPI_Wtime();
+		populate_metadata_time_delta = (populate_metadata_end - populate_metadata_start);
+
 		if (mcomm.get_rank() == 0 && total_size_delta > 0)
 		{
 			double write_metadata_start = MPI_Wtime();
@@ -329,57 +330,54 @@ void relation::parallel_IO(const char* filename_template)
 			double write_metadata_end = MPI_Wtime();
 			write_metadata_time_delta = (write_metadata_end - write_metadata_start);
 		}
-	}
 
-	double write_delta_data_start = MPI_Wtime();
-	if (total_size_delta > 0)
-	{
-		if (share_io == true)
+		double write_delta_data_start = MPI_Wtime();
+		if (total_size_delta > 0)
 		{
-			MPI_File fp;
-			if (total_size_delta < 1048576)
+			if (share_io == true)
 			{
-				if (separate_io == false)
+				MPI_File fp;
+				MPI_Status stas;
+				if (total_size_delta < 1073741824)
 				{
 					MPI_File_open(mcomm.get_comm(), delta_rel_name, MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &fp);
 					MPI_File_write_at_all(fp, offset, delta_buffer, delta_size, MPI_BYTE, &stas);
 				}
 				else
 				{
-					MPI_File_open(MPI_COMM_SELF, delta_rel_name, MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &fp);
-					MPI_File_write_all(fp, delta_buffer, delta_size, MPI_BYTE, &stas);
+					MPI_Info info;
+					MPI_Info_create(&info);
+					MPI_Info_set(info, "striping_factor", "48");
+					MPI_Info_set(info, "striping_unit", "8388608");
+					MPI_Info_set(info, "romio_cb_write" , "enable") ;
+					MPI_File_open(mcomm.get_comm(), delta_rel_name, MPI_MODE_CREATE | MPI_MODE_WRONLY, info, &fp);
+					MPI_File_write_at_all(fp, offset, delta_buffer, delta_size, MPI_BYTE, &stas);
+					MPI_Info_free(&info);
 				}
+				MPI_File_close(&fp);
 			}
 			else
 			{
-				MPI_Info info;
-				MPI_Info_create(&info);
-				MPI_Info_set(info, "striping_factor", "48");
-				MPI_Info_set(info, "striping_unit", "8388608");
-				MPI_Info_set(info, "romio_cb_write" , "enable") ;
-				if (separate_io == false)
+				int fp = open(delta_rel_name, O_CREAT | O_WRONLY, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+				u32 write_size = pwrite(fp, delta_buffer, delta_size, offset);
+				if (write_size != delta_size)
 				{
-					MPI_File_open(mcomm.get_comm(), delta_rel_name, MPI_MODE_CREATE | MPI_MODE_WRONLY, info, &fp);
-					MPI_File_write_at_all(fp, offset, delta_buffer, delta_size, MPI_BYTE, &stas);
+					std::cout << delta_rel_name <<  " Wrong IO: rank: " << " " << delta_size << std::endl;
+					MPI_Abort(mcomm.get_local_comm(), -1);
 				}
-				else
-				{
-					MPI_File_open(MPI_COMM_SELF, delta_rel_name, MPI_MODE_CREATE | MPI_MODE_WRONLY, info, &fp);
-					MPI_File_write_all(fp, delta_buffer, delta_size, MPI_BYTE, &stas);
-				}
-				MPI_Info_free(&info);
+				close(fp);
 			}
-			MPI_File_close(&fp);
-
 		}
-		else
+		double write_delta_data_end = MPI_Wtime();
+		write_delta_data_time = (write_delta_data_end - write_delta_data_start);
+	}
+	else
+	{
+		double write_delta_data_start = MPI_Wtime();
+		if (delta_size > 0)
 		{
 			int fp = open(delta_rel_name, O_CREAT | O_WRONLY, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
-			u32 write_size = 0;
-			if (separate_io == false)
-				write_size = pwrite(fp, delta_buffer, delta_size, offset);
-			else
-				write_size = write(fp, delta_buffer, delta_size);
+			u32 write_size = write(fp, delta_buffer, delta_size);
 			if (write_size != delta_size)
 			{
 				std::cout << delta_rel_name <<  " Wrong IO: rank: " << " " << delta_size << std::endl;
@@ -387,38 +385,33 @@ void relation::parallel_IO(const char* filename_template)
 			}
 			close(fp);
 		}
-		free(delta_buffer);
+		double write_delta_data_end = MPI_Wtime();
+		write_delta_data_time = (write_delta_data_end - write_delta_data_start);
 	}
-	double write_delta_data_end = MPI_Wtime();
-	write_delta_data_time = (write_delta_data_end - write_delta_data_start);
+	free(delta_buffer);
+
 	double total_end = MPI_Wtime();
 	total_time = total_end - total_start;
-	if (separate_io == true)
-		total_time -= (populate_metadata_time_full + populate_metadata_time_delta);
 
-//	double max_total_time = 0;
-//	double max_write_delta_data_time = 0;
-	double max_write_full_data_time = 0;
-
-	MPI_Allreduce(&write_full_data_time, &max_write_full_data_time, 1, MPI_DOUBLE, MPI_MAX, mcomm.get_local_comm());
-//	MPI_Allreduce(&write_delta_data_time, &max_write_delta_data_time, 1, MPI_DOUBLE, MPI_MAX, mcomm.get_local_comm());
+	double max_total_time = 0;
+	MPI_Allreduce(&total_time, &max_total_time, 1, MPI_DOUBLE, MPI_MAX, mcomm.get_local_comm());
 
 	std::string write_io = (share_io == true)? "MPI IO": "POSIX IO";
 
 	if (separate_io == true)
 	{
-		if (max_write_full_data_time == write_full_data_time)
+		if (max_total_time == total_time)
 		{
 			fprintf(stderr, "%s, (%s) %f:\n FULL [S] [PB] [PM] [WM] [WD] %llu, %f, %f, %f, %f\n DELTA [S] [PB] [PM] [WM] [WD] %llu, %f, %f, %f, %f\n",
-					get_debug_id().c_str(), write_io.c_str(), total_time, total_size_full, polulate_buffer_full_time, populate_metadata_time_full, write_metadata_time_full, write_full_data_time,
-					total_size_delta, polulate_buffer_delta_time, populate_metadata_time_delta, write_metadata_time_delta, write_delta_data_time);
+					get_debug_id().c_str(), write_io.c_str(), total_time, full_size, polulate_buffer_full_time, populate_metadata_time_full, write_metadata_time_full, write_full_data_time,
+					delta_size, polulate_buffer_delta_time, populate_metadata_time_delta, write_metadata_time_delta, write_delta_data_time);
 		}
 	}
 	else
 	{
 		if (mcomm.get_rank() == 0)
-			std::cout << "Write " << get_debug_id() << " (" << write_io << ") " << total_time << ", " << total_time << " :\n  FULL [S] [PB] [PM] [WM] [WD], " << total_size_full << ", " << polulate_buffer_full_time<< ", " << populate_metadata_time_full << ", " <<
-			write_metadata_time_full << ", " << write_full_data_time << "\n  DELTA [S] [PB] [PM] [WM] [WD], " <<  total_size_delta << ", " << polulate_buffer_delta_time << ", " << populate_metadata_time_delta
+			std::cout << "Write " << get_debug_id() << " (" << write_io << ") " << total_time << ", " << total_time << " :\n  FULL [S] [PB] [PM] [WM] [WD], " << full_size << ", " << polulate_buffer_full_time<< ", " << populate_metadata_time_full << ", " <<
+			write_metadata_time_full << ", " << write_full_data_time << "\n  DELTA [S] [PB] [PM] [WM] [WD], " <<  delta_size << ", " << polulate_buffer_delta_time << ", " << populate_metadata_time_delta
 			<< ", " <<  write_metadata_time_delta << ", " << write_delta_data_time << std::endl;
 	}
 }
@@ -551,7 +544,6 @@ void relation::read_from_relation(relation* input, int full_delta)
 
 void relation::load_data_from_separate_files()
 {
-	double total_start = MPI_Wtime();
 	double read_data_start = MPI_Wtime();
 	file_io.parallel_read_input_relation_from_separate_files(arity, filename, mcomm.get_local_comm());
 	double read_data_end = MPI_Wtime();
@@ -564,26 +556,20 @@ void relation::load_data_from_separate_files()
 
 	file_io.delete_hash_buffers();
 
-    double total_end = MPI_Wtime();
-    double total_time = total_end - total_start;
-
     double max_read_data_time = 0;
-    double max_total_time = 0;
     MPI_Reduce(&read_data_time, &max_read_data_time, 1, MPI_DOUBLE, MPI_MAX, 0, mcomm.get_local_comm());
-    MPI_Reduce(&total_time, &max_total_time, 1, MPI_DOUBLE, MPI_MAX, 0, mcomm.get_local_comm());
 
     std::string read_io = (share_io == true)? "MPI IO": "POSIX IO";
     std::string type = (initailization_type == DELTA)? "DELTA": "FULL";
 
     if (mcomm.get_rank() == 0 && restart_flag == true)
-    	std::cout << "Read " << get_debug_id() << " (" << read_io << ") " << max_total_time << " :\n  " << type << " [RD], " <<
+    	std::cout << "Read " << get_debug_id() << " (" << read_io << ") :\n  " << type << " [RD], " <<
 		max_read_data_time << std::endl;
 }
 
 
 void relation::load_data_from_file_with_offset()
 {
-	double total_start = MPI_Wtime();
 	double read_data_start = MPI_Wtime();
 	file_io.parallel_read_input_relation_from_file_with_offset(arity, filename, mcomm.get_local_comm());
 	double read_data_end = MPI_Wtime();
@@ -596,19 +582,14 @@ void relation::load_data_from_file_with_offset()
 
 	file_io.delete_hash_buffers();
 
-    double total_end = MPI_Wtime();
-    double total_time = total_end - total_start;
-
     double max_read_data_time = 0;
-    double max_total_time = 0;
     MPI_Reduce(&read_data_time, &max_read_data_time, 1, MPI_DOUBLE, MPI_MAX, 0, mcomm.get_local_comm());
-    MPI_Reduce(&total_time, &max_total_time, 1, MPI_DOUBLE, MPI_MAX, 0, mcomm.get_local_comm());
 
     std::string read_io = (share_io == true)? "MPI IO": "POSIX IO";
     std::string type = (initailization_type == DELTA)? "DELTA": "FULL";
 
     if (mcomm.get_rank() == 0 && restart_flag == true)
-    	std::cout << "Read " << get_debug_id() << " (" << read_io << ") " << max_total_time << " :\n  " << type << " [RD], " <<
+    	std::cout << "Read " << get_debug_id() << " (" << read_io << ") :\n  " << type << " [RD], " <<
 		max_read_data_time << std::endl;
 }
 
@@ -618,7 +599,6 @@ void relation::load_data_from_file()
     if (initailization_type != -1)
     {
         /// Main : Execute : init : io : end
-    	double total_start = MPI_Wtime();
     	double read_data_start = MPI_Wtime();
         file_io.parallel_read_input_relation_from_file_to_local_buffer(arity, filename, mcomm.get_local_comm());
         double read_data_end = MPI_Wtime();
@@ -640,21 +620,16 @@ void relation::load_data_from_file()
 
         file_io.delete_hash_buffers();
 
-        double total_end = MPI_Wtime();
-        double total_time = total_end - total_start;
-
         double max_read_data_time = 0;
         double max_all_to_all_time = 0;
-        double max_total_time = 0;
         MPI_Reduce(&read_data_time, &max_read_data_time, 1, MPI_DOUBLE, MPI_MAX, 0, mcomm.get_local_comm());
         MPI_Reduce(&all_to_all_time, &max_all_to_all_time, 1, MPI_DOUBLE, MPI_MAX, 0, mcomm.get_local_comm());
-        MPI_Reduce(&total_time, &max_total_time, 1, MPI_DOUBLE, MPI_MAX, 0, mcomm.get_local_comm());
 
         std::string read_io = (share_io == true)? "MPI IO": "POSIX IO";
         std::string type = (initailization_type == DELTA)? "DELTA": "FULL";
 
         if (mcomm.get_rank() == 0 && restart_flag == true)
-        	std::cout << "Read " << get_debug_id() << " (" << read_io << ") " << max_total_time << " :\n  " << type << " [RD] [AC], " <<
+        	std::cout << "Read " << get_debug_id() << " (" << read_io << ") :\n " << type << " [RD] [AC], " <<
 			max_read_data_time << ", " << max_all_to_all_time << std::endl;
 
         //int f_size = get_full_element_count();

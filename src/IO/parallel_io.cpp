@@ -24,35 +24,28 @@ void parallel_io::parallel_read_input_relation_from_separate_files(u32 arity, co
 	char data_filename[1024];
 	sprintf(data_filename, "%s", file_name);
 
+	uint64_t read_size = 0;
+	hash_buffer_size = 0;
+
 	FILE * fp;
 	fp = fopen(data_filename, "r");
-	if (fp == NULL)
-		perror ("Error opening file");
-	fseek(fp, 0, SEEK_END);
-	uint64_t read_size = ftell(fp);
-	fseek(fp, 0, SEEK_SET);
+	if (fp)
+	{
+		fseek(fp, 0, SEEK_END);
+		read_size = ftell(fp);
+		fseek(fp, 0, SEEK_SET);
 
-    hash_buffer_size = read_size/sizeof(u64);
-	hash_buffer = new u64[hash_buffer_size];
+	    hash_buffer_size = read_size/sizeof(u64);
+		hash_buffer = new u64[hash_buffer_size];
 
-    if (share_io == true)
-    {
-    	MPI_Status stas;
-    	MPI_File fp;
-    	MPI_File_open(lcomm, data_filename, MPI_MODE_RDONLY, MPI_INFO_NULL, &fp);
-    	MPI_File_read(fp, hash_buffer, read_size, MPI_BYTE, &stas);
-    	MPI_File_close(&fp);
-    }
-    else
-    {
 		u32 rb_size = fread(hash_buffer, 1, read_size, fp);
 		if (rb_size != read_size)
 		{
 			std::cout << data_filename <<  " Wrong IO: rank: " << rank << " " << rb_size << " " << read_size << std::endl;
 			MPI_Abort(lcomm, -1);
 		}
-		fclose(fp);
-    }
+	}
+	fclose(fp);
 }
 
 

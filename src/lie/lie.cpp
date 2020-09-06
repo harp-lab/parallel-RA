@@ -283,14 +283,18 @@ bool LIE::execute ()
         		scc_relation[i]->set_filename(delta_filename);
         		scc_relation[i]->set_initailization_type(0);
 
-        		if (access(delta_filename, F_OK) != -1)
+        		int is_access = access(delta_filename, F_OK);
+        		int access_sum = 0;
+        		MPI_Allreduce(&is_access, &access_sum, 1, MPI_INT, MPI_SUM, mcomm.get_local_comm());
+
+        		if (access_sum + mcomm.get_local_nprocs() > 0)
         		{
-					if (separate_io == true)
-						scc_relation[i]->load_data_from_separate_files();
-					else if (offset_io == true)
-						scc_relation[i]->load_data_from_file_with_offset();
-					else
-						scc_relation[i]->load_data_from_file();
+        			if (separate_io == true)
+        				scc_relation[i]->load_data_from_separate_files();
+        			else if (offset_io == true)
+        				scc_relation[i]->load_data_from_file_with_offset();
+        			else
+        				scc_relation[i]->load_data_from_file();
         		}
         	}
         }
