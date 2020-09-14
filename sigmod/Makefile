@@ -1,0 +1,43 @@
+object:	../src/buffer/*.cpp ../src/comm/*.cpp ../src/IO/*.cpp ../src/lie/*.cpp ../src/RA/*.cpp ../src/RAM/*.cpp ../src/relation/*.cpp ../tests/transitive_closure.cpp
+
+	mpic++ -std=c++11 -O3 ../src/buffer/vector_buffer.cpp -c
+	mpic++ -std=c++11 -O3 ../src/comm/all_to_all_comm.cpp -c
+	mpic++ -std=c++11 -O3 ../src/comm/comm.cpp -c
+	mpic++ -std=c++11 -O3 ../src/comm/intra_bucket_comm.cpp -c
+	mpic++ -std=c++11 -O3 ../src/IO/parallel_io.cpp -c
+	mpic++ -std=c++11 -O3 ../src/lie/lie.cpp -c
+	mpic++ -std=c++11 -O3 ../src/RA/parallel_acopy.cpp -c
+	mpic++ -std=c++11 -O3 ../src/RA/parallel_copy.cpp -c
+	mpic++ -std=c++11 -O3 ../src/RA/parallel_join.cpp -c
+	mpic++ -std=c++11 -O3 ../src/RA/parallel_copy_filter.cpp -c
+	mpic++ -std=c++11 -O3 ../src/RAM/RA_tasks.cpp -c
+	mpic++ -std=c++11 -O3 ../src/relation/balanced_hash_relation.cpp -c
+	mpic++ -std=c++11 -O3 ../src/relation/google_btree_relation.cpp -c
+	mpic++ -std=c++11 -O3 ../src/relation/relation_load_balancer.cpp -c
+	mpic++ -std=c++11 -O3 -o wc-150-7 ./worstcase-150-terms-7-m.cpp *.o
+	mpic++ -std=c++11 -O3 -o wc-160-7 ./worstcase-160-terms-7-m.cpp *.o
+	mpic++ -std=c++11 -O3 -o wc-170-7 ./worstcase-170-terms-7-m.cpp *.o
+	mpic++ -std=c++11 -O3 -o wc-180-7 ./worstcase-180-terms-7-m.cpp *.o
+	mpic++ -std=c++11 -O3 -o wc-190-7 ./worstcase-190-terms-7-m.cpp *.o
+	mpic++ -std=c++11 -O3 -o wc-200-7 ./worstcase-200-terms-7-m.cpp *.o
+	mpic++ -std=c++11 -O3 -o wc-210-7 ./worstcase-210-terms-7-m.cpp *.o
+	mpic++ -std=c++11 -O3 -o wc-220-7 ./worstcase-220-terms-7-m.cpp *.o
+	mpic++ -std=c++11 -O3 -o wc-230-7 ./worstcase-230-terms-7-m.cpp *.o
+	mpic++ -std=c++11 -O3 -o wc-240-7 ./worstcase-240-terms-7-m.cpp *.o
+	mpic++ -std=c++11 -O3 -o wc-250-7 ./worstcase-250-terms-7-m.cpp *.o
+	mpic++ -std=c++11 -O3 -o wc-260-7 ./worstcase-260-terms-7-m.cpp *.o
+	mpic++ -std=c++11 -O3 -o wc-270-7 ./worstcase-270-terms-7-m.cpp *.o
+	mpic++ -std=c++11 -O3 -o wc-280-7 ./worstcase-280-terms-7-m.cpp *.o
+	mpic++ -std=c++11 -O3 -o wc-290-7 ./worstcase-290-terms-7-m.cpp *.o
+	mpic++ -std=c++11 -O3 -o wc-300-7 ./worstcase-300-terms-7-m.cpp *.o
+	mpic++ -std=c++11 -O3 -o wc-310-7 ./worstcase-310-terms-7-m.cpp *.o
+	mpic++ -std=c++11 -O3 -o wc-320-7 ./worstcase-320-terms-7-m.cpp *.o
+	mpic++ -std=c++11 -O3 -o wc-330-7 ./worstcase-330-terms-7-m.cpp *.o
+	mpic++ -std=c++11 -O3 -o wc-340-7 ./worstcase-340-terms-7-m.cpp *.o
+	mpic++ -std=c++11 -O3 -o wc-350-7 ./worstcase-350-terms-7-m.cpp *.o
+	mpic++ -std=c++11 -O3 -o wc-360-7 ./worstcase-360-terms-7-m.cpp *.o
+	mpic++ -std=c++11 -O3 -o wc-370-7 ./worstcase-370-terms-7-m.cpp *.o
+	mpic++ -std=c++11 -O3 -o wc-380-7 ./worstcase-380-terms-7-m.cpp *.o
+	mpic++ -std=c++11 -O3 -o wc-390-7 ./worstcase-390-terms-7-m.cpp *.o
+	mpic++ -std=c++11 -O3 -o wc-400-7 ./worstcase-400-terms-7-m.cpp *.o
+	rm *.o
