@@ -389,7 +389,7 @@ lie->add_scc_dependance(scc4509, scc4505);
 
 
 
-    lie->set_debug_output_filename(argv[2]);
+    lie->set_debug_output_filename(argv[1]);
     lie->set_comm(mcomm);
     lie->set_batch_size(1);
     lie->execute();

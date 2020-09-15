@@ -56,7 +56,7 @@ public:
     void enable_IO()    {enable_io = true;}
 
 
-    void set_debug_output_filename(std::string dfn)    {debug_file_name = dfn;}
+    void set_debug_output_filename(std::string dfn)    {debug_file_name = std::string(dfn);}
 
 
     void print_all_relation_size();
