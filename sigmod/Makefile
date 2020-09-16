@@ -14,6 +14,15 @@ object:	../src/buffer/*.cpp ../src/comm/*.cpp ../src/IO/*.cpp ../src/lie/*.cpp .
 	mpic++ -std=c++11 -O3 ../src/relation/balanced_hash_relation.cpp -c
 	mpic++ -std=c++11 -O3 ../src/relation/google_btree_relation.cpp -c
 	mpic++ -std=c++11 -O3 ../src/relation/relation_load_balancer.cpp -c
+	mpic++ -std=c++11 -O3 -o wc-60-7 ./worstcase-60-terms-7-m.cpp *.o
+	mpic++ -std=c++11 -O3 -o wc-70-7 ./worstcase-70-terms-7-m.cpp *.o
+	mpic++ -std=c++11 -O3 -o wc-80-7 ./worstcase-80-terms-7-m.cpp *.o
+	mpic++ -std=c++11 -O3 -o wc-90-7 ./worstcase-90-terms-7-m.cpp *.o
+	mpic++ -std=c++11 -O3 -o wc-100-7 ./worstcase-100-terms-7-m.cpp *.o	
+	mpic++ -std=c++11 -O3 -o wc-110-7 ./worstcase-110-terms-7-m.cpp *.o
+	mpic++ -std=c++11 -O3 -o wc-120-7 ./worstcase-120-terms-7-m.cpp *.o
+	mpic++ -std=c++11 -O3 -o wc-130-7 ./worstcase-130-terms-7-m.cpp *.o
+	mpic++ -std=c++11 -O3 -o wc-140-7 ./worstcase-140-terms-7-m.cpp *.o
 	mpic++ -std=c++11 -O3 -o wc-150-7 ./worstcase-150-terms-7-m.cpp *.o
 	mpic++ -std=c++11 -O3 -o wc-160-7 ./worstcase-160-terms-7-m.cpp *.o
 	mpic++ -std=c++11 -O3 -o wc-170-7 ./worstcase-170-terms-7-m.cpp *.o
