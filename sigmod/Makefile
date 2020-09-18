@@ -14,6 +14,7 @@ object:	../src/buffer/*.cpp ../src/comm/*.cpp ../src/IO/*.cpp ../src/lie/*.cpp .
 	mpic++ -std=c++11 -O3 ../src/relation/balanced_hash_relation.cpp -c
 	mpic++ -std=c++11 -O3 ../src/relation/google_btree_relation.cpp -c
 	mpic++ -std=c++11 -O3 ../src/relation/relation_load_balancer.cpp -c
+	mpic++ -std=c++11 -O3 -o clique ./5clique.cpp *.o
 	mpic++ -std=c++11 -O3 -o wc-60-7 ./worstcase-60-terms-7-m.cpp *.o
 	mpic++ -std=c++11 -O3 -o wc-70-7 ./worstcase-70-terms-7-m.cpp *.o
 	mpic++ -std=c++11 -O3 -o wc-80-7 ./worstcase-80-terms-7-m.cpp *.o

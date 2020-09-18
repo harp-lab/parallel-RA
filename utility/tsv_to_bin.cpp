@@ -43,10 +43,10 @@ int main(int argc, char **argv)
             continue;
         }
 
-        pwrite(fp_out, &val1, sizeof(unsigned long long), offset);
+        pwrite(fp_out, &val2, sizeof(unsigned long long), offset);
         offset = offset + sizeof(unsigned long long);
 
-        pwrite(fp_out, &val2, sizeof(unsigned long long), offset);
+        pwrite(fp_out, &val1, sizeof(unsigned long long), offset);
         offset = offset + sizeof(unsigned long long);
 
         pwrite(fp_out, &row_count, sizeof(unsigned long long), offset);

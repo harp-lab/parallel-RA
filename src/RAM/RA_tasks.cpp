@@ -273,7 +273,7 @@ u32 RAM::local_compute(int* offset)
     u32 join_tuples_duplicates = 0;
     u32 total_join_tuples = 0;
     u32 counter = 0;
-    int threshold = 32768;
+    int threshold = 3276800;
 
     for (std::vector<parallel_RA*>::iterator it = RA_list.begin() ; it != RA_list.end(); ++it)
     {
@@ -770,8 +770,8 @@ void RAM::execute_in_batches(int batch_size, std::vector<u32>& history, std::map
         double insert_in_full_start = MPI_Wtime();
         local_insert_in_full();
         double insert_in_full_end = MPI_Wtime();
-
         *running_insert_in_full = *running_insert_in_full + (insert_in_full_end - insert_in_full_start);
+
         *running_time = *running_time + (insert_in_full_end - intra_start);
 
 #if DEBUG_OUTPUT
