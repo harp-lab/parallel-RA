@@ -141,16 +141,16 @@ void LIE::print_all_relation_size()
         relation* curr_relation = lie_relations[i];
         if (mcomm.get_local_rank() == 0)
         {
-            //std::cout << curr_relation->get_debug_id() << ": {" << curr_relation->get_arity() << "}. (" << global_total_facts[i] << " total facts)" << std::endl;
-            debug_buffer.push_back(curr_relation->get_debug_id() + ": {" + std::to_string(curr_relation->get_arity()) + "}. (" + std::to_string(global_total_facts[i]) + " total facts)\n");
+            std::cout << curr_relation->get_debug_id() << ": {" << curr_relation->get_arity() << "}. (" << global_total_facts[i] << " total facts)" << std::endl;
+            //debug_buffer.push_back(curr_relation->get_debug_id() + ": {" + std::to_string(curr_relation->get_arity()) + "}. (" + std::to_string(global_total_facts[i]) + " total facts)\n");
         }
         total_facts = total_facts + global_total_facts[i];
     }
 
     if (mcomm.get_local_rank() == 0)
     {
-        debug_buffer.push_back("Total facts across all relations " + std::to_string(total_facts) + "\n\n");
-        //std::cout << "Total facts across all relations " << total_facts << std::endl << std::endl;
+        //debug_buffer.push_back("Total facts across all relations " + std::to_string(total_facts) + "\n\n");
+        std::cout << "Total facts across all relations " << total_facts << std::endl << std::endl;
     }
 }
 
@@ -285,11 +285,11 @@ bool LIE::execute ()
         executable_task = one_runnable_tasks();
     }
 
-    std::ofstream myfile;
-    myfile.open (debug_file_name);
-    for (std::string n : debug_buffer)
-        myfile << n;
-    myfile.close();
+    //std::ofstream myfile;
+    //myfile.open (debug_file_name);
+    //for (std::string n : debug_buffer)
+    //    myfile << n;
+    //myfile.close();
 
     return true;
 }
