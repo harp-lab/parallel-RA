@@ -86,14 +86,14 @@ int main(int argc, char **argv)
 	if (restart_flag == true)
 		lie->set_restart_dir_name(dir_name);
 
-	lie->enable_offset_io();
+//	lie->enable_offset_io();
 //	lie->enable_separate_io();
 	lie->enable_share_io();
 
 	lie->set_cp_iteration(cp_iteration);
 	lie->set_output_dir(output_dir);
     lie->set_restart_flag(restart_flag); // set restart flag
-    lie->enable_IO();
+//    lie->enable_IO();
     lie->set_comm(mcomm);
     lie->set_batch_size(1);
     lie->execute();

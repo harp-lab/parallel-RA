@@ -61,8 +61,6 @@ void parallel_io::parallel_read_input_relation_from_file_with_offset(u32 arity, 
 
     uint64_t offsets[nprocs];    /// the offset for each process
     uint64_t sizes[nprocs];      /// the size for each process
-//    uint64_t read_offset = 0;
-//    uint64_t read_size = 0;
 
     if (rank == 0)
     {
