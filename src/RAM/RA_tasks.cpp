@@ -748,7 +748,6 @@ void RAM::execute_in_batches(int batch_size, std::vector<u32>& history, std::map
                           << std::endl;
 
                 std::cout << "Running time INNER LOOP [" << loop_count_tracker << " " << inner_loop << "] "
-                          << " Intra " << *running_intra_bucket_comm
                           << " Buf cre " << *running_buffer_allocate
                           << " comp " << *running_local_compute
                           << " A2A " << *running_all_to_all

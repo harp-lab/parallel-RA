@@ -58,6 +58,11 @@ private:
     mpi_comm mcomm;                             /// comm related
     parallel_io file_io;                        /// to handle parallel IO
 
+    bool offset_io;
+    bool share_io;
+    bool separate_io;
+    bool restart_flag;
+
 
 public:
 
@@ -83,7 +88,17 @@ public:
         delta_bucket_element_count=0;
     }
 
+    void set_restart_flag(bool restart)    {restart_flag = restart;}
 
+    void set_offset_io(bool offset)   {offset_io = offset;}
+
+    void set_share_io(bool share)   {share_io = share;}
+
+    void set_separate_io(bool separate)   {separate_io = separate;}
+
+    const char* get_filename()       {return filename;}
+
+    void set_filename(char* file)       {sprintf((char*)filename, "%s", file);}
 
     /// set comm
     void set_mcomm(mpi_comm& mc)    {mcomm = mc;}
@@ -164,6 +179,12 @@ public:
     void populate_full(int buffer_size, u64* buffer);
     void populate_delta (int buffer_size, u64* buffer);
     void finalize_relation();
+
+
+    /// load data from file into full or delta buffer
+    void load_data_from_file();
+    void load_data_from_file_with_offset();
+    void load_data_from_separate_files();
 
 
     /// for task parallelism, copying relation from exiting comm to output_comm
