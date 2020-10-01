@@ -86,6 +86,7 @@ int main(int argc, char **argv)
 	if (restart_flag == true)
 		lie->set_restart_dir_name(dir_name);
 
+
 //	lie->enable_offset_io();
 //	lie->enable_separate_io();
 	lie->enable_share_io();
