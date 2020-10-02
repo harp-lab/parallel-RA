@@ -38,7 +38,7 @@ private:
 
     bool restart_flag;
 
-    char restart_dir_name[1024];                          /// the directory of restart
+    std::string restart_dir_name;                          /// the directory of restart
 
     bool share_io;                                        /// whether using MPI collective IO to write file
 
@@ -50,7 +50,7 @@ private:
 
     std::vector<int> executed_scc_id;
 
-    char output_dir[1024];
+    std::string output_dir;
 
     int cp_iteration;
 
@@ -76,7 +76,7 @@ public:
 
     void set_cp_iteration(int iteration)       {cp_iteration = iteration;}
 
-    void set_output_dir(char* output)   {sprintf(output_dir, "%s", output);}
+    void set_output_dir(std::string output)   {output_dir = output;}
 
     void set_executed_scc_id(std::vector<int> id)     {executed_scc_id = id;}
 
@@ -92,7 +92,7 @@ public:
 
     void enable_share_io()    {share_io = true;}
 
-    void set_restart_dir_name(char* path)  {sprintf(restart_dir_name, "%s", path);}
+    void set_restart_dir_name(std::string path)  {restart_dir_name = path;}
 
     void set_restart_flag(bool flag)   {restart_flag = flag;}
 

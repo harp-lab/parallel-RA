@@ -14,21 +14,21 @@ parallel_io::parallel_io()
     hash_buffer_size=0;
 }
 
-void parallel_io::parallel_read_input_relation_from_separate_files(u32 arity, const char *fname, MPI_Comm lcomm)
+void parallel_io::parallel_read_input_relation_from_separate_files(u32 arity, std::string fname, MPI_Comm lcomm)
 {
     int rank, nprocs;
     MPI_Comm_rank(lcomm, &rank);
     MPI_Comm_size(lcomm, &nprocs);
 	file_name = fname;
 
-	char data_filename[1024];
-	sprintf(data_filename, "%s", file_name);
+    std::string data_filename;
+    data_filename = file_name;
 
 	uint64_t read_size = 0;
 	hash_buffer_size = 0;
 
 	FILE * fp;
-	fp = fopen(data_filename, "r");
+    fp = fopen(data_filename.c_str(), "r");
 	if (fp)
 	{
 		fseek(fp, 0, SEEK_END);
@@ -49,15 +49,15 @@ void parallel_io::parallel_read_input_relation_from_separate_files(u32 arity, co
 }
 
 
-void parallel_io::parallel_read_input_relation_from_file_with_offset(u32 arity, const char *fname, MPI_Comm lcomm)
+void parallel_io::parallel_read_input_relation_from_file_with_offset(u32 arity, std::string fname, MPI_Comm lcomm)
 {
     int rank, nprocs;
     MPI_Comm_rank(lcomm, &rank);
     MPI_Comm_size(lcomm, &nprocs);
     file_name = fname;
 
-    char offset_filename[1024];
-    sprintf(offset_filename, "%s.offset", file_name);
+    std::string offset_filename;
+    offset_filename = file_name + ".offset";
 
     uint64_t offsets[nprocs];    /// the offset for each process
     uint64_t sizes[nprocs];      /// the size for each process
@@ -85,8 +85,8 @@ void parallel_io::parallel_read_input_relation_from_file_with_offset(u32 arity, 
     hash_buffer_size = read_size/sizeof(u64);
     hash_buffer = new u64[hash_buffer_size];
 
-    char data_filename[1024];
-    sprintf(data_filename, "%s", file_name);
+    std::string data_filename;
+    data_filename = file_name;
     if (share_io == true)
     {
     	MPI_Status stas;
@@ -94,14 +94,14 @@ void parallel_io::parallel_read_input_relation_from_file_with_offset(u32 arity, 
     	MPI_Info info;
     	MPI_Info_create(&info);
     	MPI_Info_set(info, "romio_cb_read" , "enable") ;
-    	MPI_File_open(lcomm, data_filename, MPI_MODE_RDONLY, info, &fp);
+        MPI_File_open(lcomm, data_filename.c_str(), MPI_MODE_RDONLY, info, &fp);
     	MPI_File_read_at_all(fp, read_offset, hash_buffer, read_size, MPI_BYTE, &stas);
     	MPI_Info_free(&info);
     	MPI_File_close(&fp);
     }
     else
     {
-		int fp = open(data_filename, O_RDONLY);
+        int fp = open(data_filename.c_str(), O_RDONLY);
 		u32 rb_size = pread(fp, hash_buffer, read_size, read_offset);
 		if (rb_size != read_size)
 		{
@@ -112,7 +112,7 @@ void parallel_io::parallel_read_input_relation_from_file_with_offset(u32 arity, 
     }
 }
 
-void parallel_io::parallel_read_input_relation_from_file_to_local_buffer(u32 arity, const char *fname, MPI_Comm lcomm)
+void parallel_io::parallel_read_input_relation_from_file_to_local_buffer(u32 arity, std::string fname, MPI_Comm lcomm)
 {
     int rank, nprocs;
     MPI_Comm_rank(lcomm, &rank);
@@ -121,8 +121,8 @@ void parallel_io::parallel_read_input_relation_from_file_to_local_buffer(u32 ari
     int global_row_count;
 
     /* Read the metadata file containing the total number of rows and columns */
-    char meta_data_filename[1024];
-    sprintf(meta_data_filename, "%s.size", file_name);
+    std::string meta_data_filename;
+    meta_data_filename = file_name + ".size";
 
 #if 0
     FILE *fp_in;
@@ -139,7 +139,7 @@ void parallel_io::parallel_read_input_relation_from_file_to_local_buffer(u32 ari
     std::string line2;
     if (rank == 0)
     {
-        std::ifstream myfile (meta_data_filename);
+        std::ifstream myfile (meta_data_filename.c_str());
         if (myfile.is_open())
         {
             getline (myfile,line1);
@@ -164,7 +164,7 @@ void parallel_io::parallel_read_input_relation_from_file_to_local_buffer(u32 ari
     uint64_t read_offset;
     read_offset = ceil((float)global_row_count / nprocs) * rank;
 
-    if (read_offset > global_row_count)
+    if (read_offset > (uint64_t)global_row_count)
     {
         entry_count = 0;
         read_offset = 0;
@@ -179,8 +179,8 @@ void parallel_io::parallel_read_input_relation_from_file_to_local_buffer(u32 ari
 
     assert((int)arity+1 == col_count);
 
-    char data_filename[1024];
-    sprintf(data_filename, "%s", file_name);
+    std::string data_filename;
+    data_filename = file_name;
 
 	input_buffer = new u64[entry_count * col_count];
     uint64_t offset = read_offset * col_count * sizeof(u64);
@@ -193,14 +193,14 @@ void parallel_io::parallel_read_input_relation_from_file_to_local_buffer(u32 ari
     	MPI_Info info;
     	MPI_Info_create(&info);
     	MPI_Info_set(info, "romio_cb_read" , "enable") ;
-    	MPI_File_open(lcomm, data_filename, MPI_MODE_RDONLY, info, &fp);
+        MPI_File_open(lcomm, data_filename.c_str(), MPI_MODE_RDONLY, info, &fp);
     	MPI_File_read_at_all(fp, offset, input_buffer, read_size, MPI_BYTE, &stas);
     	MPI_Info_free(&info);
     	MPI_File_close(&fp);
     }
     else    ///POSIX IO
     {
-		int fp = open(data_filename, O_RDONLY);
+        int fp = open(data_filename.c_str(), O_RDONLY);
 		u32 rb_size = pread(fp, input_buffer, read_size, offset);
 		if (rb_size != read_size)
 		{
@@ -233,7 +233,7 @@ void parallel_io::parallel_read_input_relation_from_file_to_local_buffer(u32 ari
 
 
 
-void parallel_io::buffer_data_to_hash_buffer_col(u32 arity, const char *fname, u32 join_column_count, u32 buckets, u32** sub_bucket_rank, u32* sub_bucket_count, MPI_Comm comm)
+void parallel_io::buffer_data_to_hash_buffer_col(u32 arity, u32 join_column_count, u32 buckets, u32** sub_bucket_rank, u32* sub_bucket_count, MPI_Comm comm)
 {
 
     int nprocs, rank;

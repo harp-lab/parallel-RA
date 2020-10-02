@@ -8,7 +8,7 @@
 #include "../parallel_RA_inc.h"
 
 
-void parallel_copy_filter::local_copy_filter(u32 buckets, google_relation* input, u32* input_bucket_map, relation* output, std::vector<int> reorder_map, u32 arity, u32 join_column_count, all_to_all_buffer& copy_filter_buffer, int ra_counter)
+void parallel_copy_filter::local_copy_filter(u32 buckets, google_relation* input, u32* input_bucket_map, relation* output, std::vector<int> reorder_map, u32 arity, u32 join_column_count, all_to_allv_buffer& copy_filter_buffer, int ra_counter)
 {
     u32* output_sub_bucket_count = output->get_sub_bucket_per_bucket_count();
     u32** output_sub_bucket_rank = output->get_sub_bucket_rank();

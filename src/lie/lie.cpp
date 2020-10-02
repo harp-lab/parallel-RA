@@ -153,16 +153,18 @@ void LIE::print_all_relation_size()
 
 void LIE::write_checkpoint_dump(int loop_counter, std::vector<int> executed_scc_id)
 {
-	char dir_name[1024];
-	sprintf(dir_name, "%s/checkpoint-%d", output_dir, loop_counter);
-	char scc_metadata[1024];
-	sprintf(scc_metadata, "%s/scc_metadata", dir_name);
+    std::string dir_name;
+    dir_name = output_dir + "/checkpoint-" + std::to_string(loop_counter);
+
+    std::string scc_metadata;
+    scc_metadata = dir_name + "/scc_metadata";
+    std::cout << "scc_metadata " << scc_metadata << std::endl;
 	if (mcomm.get_local_rank() == 0)
 	{
-		mkdir(dir_name, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+        mkdir(dir_name.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
 		FILE *fp;
-		fp = fopen(scc_metadata, "w");
-		for (int i = 0; i < executed_scc_id.size(); i++)
+        fp = fopen(scc_metadata.c_str(), "w");
+        for (int i = 0; i < (int)executed_scc_id.size(); i++)
 			fprintf (fp, "%d\n", executed_scc_id[i]);
 		fclose(fp);
 	}
@@ -194,7 +196,7 @@ bool LIE::execute ()
 
     /// create output directory for checkpoint dumps
 	if (enable_io == true && mcomm.get_local_rank() == 0)
-		mkdir(output_dir, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+        mkdir(output_dir.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
 
 #if DEBUG_OUTPUT
     if (mcomm.get_local_rank() == 0)
@@ -230,9 +232,9 @@ bool LIE::execute ()
     /* Read scc metadate if it restarts from checkpoint */
     if (restart_flag == true)
     {
-    	char scc_metadata[1024];
-    	sprintf(scc_metadata, "%s/scc_metadata", restart_dir_name);
-    	int a;
+        int a;
+        std::string scc_metadata;
+        scc_metadata = restart_dir_name + "/scc_metadata";
     	std::ifstream file(scc_metadata);
     	if (file.is_open())
     	{
@@ -274,16 +276,16 @@ bool LIE::execute ()
         {
         	for (u32 i = 0 ; i < scc_relation_count; i++)
         	{
-				char delta_filename[1024];
-        		sprintf(delta_filename, "%s/%s_delta", restart_dir_name, scc_relation[i]->get_debug_id().c_str());
+                std::string delta_filename;
+                delta_filename = restart_dir_name + "/" + scc_relation[i]->get_debug_id().c_str() + "_delta";
 
         		if (separate_io == true)
-        			sprintf(delta_filename, "%s_%d", delta_filename, mcomm.get_local_rank());
+                    delta_filename = delta_filename + "_" + std::to_string(mcomm.get_local_rank());
 
         		scc_relation[i]->set_filename(delta_filename);
         		scc_relation[i]->set_initailization_type(0);
 
-        		int is_access = access(delta_filename, F_OK);
+                int is_access = access(delta_filename.c_str(), F_OK);
         		int access_sum = 0;
         		MPI_Allreduce(&is_access, &access_sum, 1, MPI_INT, MPI_SUM, mcomm.get_local_comm());
 

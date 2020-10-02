@@ -94,7 +94,7 @@ int main(int argc, char **argv)
 	lie->set_cp_iteration(cp_iteration);
 	lie->set_output_dir(output_dir);
     lie->set_restart_flag(restart_flag); // set restart flag
-//    lie->enable_IO();
+    lie->enable_IO();
     lie->set_comm(mcomm);
     lie->set_batch_size(1);
     lie->execute();

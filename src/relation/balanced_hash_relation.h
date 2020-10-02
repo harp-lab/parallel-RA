@@ -26,7 +26,7 @@ private:
 
     std::string debug_id;
     int initailization_type = -1;               /// used when task balancing is required
-    const char* filename = NULL;                /// Name of file to open
+    std::string filename = NULL;                /// Name of file to open
 
 
     int last_rank;                              /// Used to store last rank
@@ -74,14 +74,14 @@ public:
     /// "rel_path_2_1_2": name of relation
     /// "/var/tmp/g13236/path_2_1_2": location of data file that gets loaded in the relation
     /// FULL: load in FULL (other option is to loadin DELTA, but we alwys load in FULL)
-    relation (u32 jcc, bool is_c, u32 ar, u32 tg, const char* fname, int version)
+    relation (u32 jcc, bool is_c, u32 ar, u32 tg, std::string fname, int version)
         :join_column_count(jcc), is_canonical(is_c), arity(ar), intern_tag(tg), initailization_type(version), filename(fname)
     {
         full_element_count=0;
         delta_bucket_element_count=0;
     }
 
-    relation (u32 jcc, bool is_c, u32 ar, u32 tg, const char* did, const char* fname, int version)
+    relation (u32 jcc, bool is_c, u32 ar, u32 tg, std::string did, std::string fname, int version)
         :join_column_count(jcc), is_canonical(is_c), arity(ar), intern_tag(tg), debug_id(did), initailization_type(version), filename(fname)
     {
         full_element_count=0;
@@ -96,9 +96,9 @@ public:
 
     void set_separate_io(bool separate)   {separate_io = separate;}
 
-    const char* get_filename()       {return filename;}
+    std::string get_filename()       {return filename;}
 
-    void set_filename(char* file)       {sprintf((char*)filename, "%s", file);}
+    void set_filename(std::string file)       {filename =file;}
 
     /// set comm
     void set_mcomm(mpi_comm& mc)    {mcomm = mc;}
@@ -165,8 +165,8 @@ public:
     void print();
 
 
-    void serial_IO(const char* filename_template);
-    void parallel_IO(const char* filename_template);
+    void serial_IO(std::string filename_template);
+    void parallel_IO(std::string filename_template);
 
 
     /// used for initialization of dynamic relations
