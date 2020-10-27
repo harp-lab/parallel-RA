@@ -74,7 +74,7 @@ public:
                     google_relation *input1, u32 i1_size, int input1_buffer_width,
                     std::vector<int> reorder_map_array,
                     relation* output,
-                    all_to_all_buffer& join_buffer,
+                    all_to_allv_buffer& join_buffer,
                     int counter,
                     int join_colun_count,
                     u32* local_join_duplicates,

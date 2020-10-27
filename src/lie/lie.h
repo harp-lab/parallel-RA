@@ -36,6 +36,23 @@ private:
 
     bool enable_io;
 
+    bool restart_flag;
+
+    std::string restart_dir_name;                          /// the directory of restart
+
+    bool share_io;                                        /// whether using MPI collective IO to write file
+
+    bool offset_io;										 /// whether read checkpoint dump with offset
+
+    bool separate_io;                                    /// whether write checkpoint dump separately for each process
+
+    int loop_counter;
+
+    std::vector<int> executed_scc_id;
+
+    std::string output_dir;
+
+    int cp_iteration;
 
 public:
 
@@ -43,12 +60,41 @@ public:
 
     LIE()
     {
+    	cp_iteration = 0;
+    	executed_scc_id = {};
+    	loop_counter = 0;
+    	separate_io = false;
+    	offset_io = false;
+    	share_io = false;
+    	restart_flag = false;
         enable_io = false;
         lie_relation_count = 0;
         lie_sccs_count = 0;
         taskgraph = {{},{}};
         intern_map = {{},{}};
     }
+
+    void set_cp_iteration(int iteration)       {cp_iteration = iteration;}
+
+    void set_output_dir(std::string output)   {output_dir = output;}
+
+    void set_executed_scc_id(std::vector<int> id)     {executed_scc_id = id;}
+
+    std::vector<int> get_executed_scc_id()       {return executed_scc_id;}
+
+    void set_loop_counter(int count)      {loop_counter = count;}
+
+    int get_loop_counter()         {return loop_counter;}
+
+    void enable_separate_io()      {separate_io = true;}
+
+    void enable_offset_io()    {offset_io = true;}
+
+    void enable_share_io()    {share_io = true;}
+
+    void set_restart_dir_name(std::string path)  {restart_dir_name = path;}
+
+    void set_restart_flag(bool flag)   {restart_flag = flag;}
 
     void enable_IO()    {enable_io = true;}
 
@@ -91,6 +137,8 @@ public:
 
     /// Runs all tasks within the LIE, following the dependence as set by taskgraph
     bool execute();
+
+    void write_checkpoint_dump(int loop_counter, std::vector<int> executed_scc_id);
 };
 
 #endif

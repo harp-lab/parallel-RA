@@ -61,7 +61,7 @@ void all_to_all_comm(vector_buffer* vectorized_send_buffer, int vectorized_send_
 
 
 
-void comm_compaction_all_to_all(all_to_all_buffer compute_buffer, int **recv_buffer_offset_size, u64 **recv_buffer, MPI_Comm comm)
+void comm_compaction_all_to_all(all_to_allv_buffer compute_buffer, int **recv_buffer_offset_size, u64 **recv_buffer, MPI_Comm comm)
 {
     u32 RA_count = compute_buffer.ra_count;
     int nprocs = compute_buffer.nprocs;

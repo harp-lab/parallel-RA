@@ -435,7 +435,6 @@ u32 RAM::local_compute(int* offset)
             }
             else if (current_ra->get_join_input0_graph_type() == FULL && current_ra->get_join_input1_graph_type() == FULL)
             {
-
                 join_completed = join_completed & current_ra->local_join(threshold, &(offset[counter]),
                                                                          RIGHT,
                                                                          get_bucket_count(),
@@ -494,7 +493,7 @@ u32 RAM::local_compute(int* offset)
 
 void RAM::all_to_all()
 {
-    comm_compaction_all_to_all(compute_buffer, &cumulative_all_to_all_recv_process_size_array, &cumulative_all_to_all_buffer, mcomm.get_local_comm());
+    comm_compaction_all_to_all(compute_buffer, &cumulative_all_to_allv_recv_process_size_array, &cumulative_all_to_allv_buffer, mcomm.get_local_comm());
 }
 
 
@@ -526,7 +525,7 @@ void RAM::local_insert_in_newt(std::map<u64, u64>& intern_map)
     {
         successful_insert = 0;
         u32 ra_id = k % RA_count;
-        u32 elements_to_read = cumulative_all_to_all_recv_process_size_array[k];
+        u32 elements_to_read = cumulative_all_to_allv_recv_process_size_array[k];
         relation* output;
 
         if (RA_list[ra_id]->get_RA_type() == COPY)
@@ -545,12 +544,12 @@ void RAM::local_insert_in_newt(std::map<u64, u64>& intern_map)
 
             for (u32 x = starting; x < starting + elements_to_read; x = x + width)
             {
-                if (output->find_in_full(cumulative_all_to_all_buffer + x, width) == false &&
-                        output->find_in_delta(cumulative_all_to_all_buffer + x, width) == false &&
-                        output->find_in_newt(cumulative_all_to_all_buffer + x, width) == false)
+                if (output->find_in_full(cumulative_all_to_allv_buffer + x, width) == false &&
+                        output->find_in_delta(cumulative_all_to_allv_buffer + x, width) == false &&
+                        output->find_in_newt(cumulative_all_to_allv_buffer + x, width) == false)
                 {
                     for (u32 i = 0; i < width; i++)
-                        tuple[i] = cumulative_all_to_all_buffer[x+i];
+                        tuple[i] = cumulative_all_to_allv_buffer[x+i];
 
                     relation_id = output->get_intern_tag();
                     relation_id = relation_id<<46;
@@ -580,10 +579,10 @@ void RAM::local_insert_in_newt(std::map<u64, u64>& intern_map)
             successful_insert = 0;
             for (u32 x = starting; x < starting + elements_to_read; x = x + width)
             {
-                if (output->find_in_full(cumulative_all_to_all_buffer + x, width) == false && output->find_in_delta(cumulative_all_to_all_buffer + x, width) == false)
+                if (output->find_in_full(cumulative_all_to_allv_buffer + x, width) == false && output->find_in_delta(cumulative_all_to_allv_buffer + x, width) == false)
                 {
                     for (u32 i = 0; i < width; i++)
-                        tuple[i] = cumulative_all_to_all_buffer[x+i];
+                        tuple[i] = cumulative_all_to_allv_buffer[x+i];
 
                     if (output->insert_in_newt(tuple) == true)
                         successful_insert++;
@@ -594,8 +593,8 @@ void RAM::local_insert_in_newt(std::map<u64, u64>& intern_map)
         //std::cout << output->get_debug_id() << " successful insert " << successful_insert << std::endl;
     }
 
-    delete[] cumulative_all_to_all_recv_process_size_array;
-    delete[] cumulative_all_to_all_buffer;
+    delete[] cumulative_all_to_allv_recv_process_size_array;
+    delete[] cumulative_all_to_allv_buffer;
 }
 
 
@@ -748,7 +747,6 @@ void RAM::execute_in_batches(int batch_size, std::vector<u32>& history, std::map
                           << std::endl;
 
                 std::cout << "Running time INNER LOOP [" << loop_count_tracker << " " << inner_loop << "] "
-                          << " Intra " << *running_intra_bucket_comm
                           << " Buf cre " << *running_buffer_allocate
                           << " comp " << *running_local_compute
                           << " A2A " << *running_all_to_all

@@ -26,7 +26,7 @@ private:
 
     std::string debug_id;
     int initailization_type = -1;               /// used when task balancing is required
-    const char* filename = NULL;                /// Name of file to open
+    std::string filename = NULL;                /// Name of file to open
 
 
     int last_rank;                              /// Used to store last rank
@@ -58,6 +58,11 @@ private:
     mpi_comm mcomm;                             /// comm related
     parallel_io file_io;                        /// to handle parallel IO
 
+    bool offset_io;
+    bool share_io;
+    bool separate_io;
+    bool restart_flag;
+
 
 public:
 
@@ -69,21 +74,31 @@ public:
     /// "rel_path_2_1_2": name of relation
     /// "/var/tmp/g13236/path_2_1_2": location of data file that gets loaded in the relation
     /// FULL: load in FULL (other option is to loadin DELTA, but we alwys load in FULL)
-    relation (u32 jcc, bool is_c, u32 ar, u32 tg, const char* fname, int version)
+    relation (u32 jcc, bool is_c, u32 ar, u32 tg, std::string fname, int version)
         :join_column_count(jcc), is_canonical(is_c), arity(ar), intern_tag(tg), initailization_type(version), filename(fname)
     {
         full_element_count=0;
         delta_bucket_element_count=0;
     }
 
-    relation (u32 jcc, bool is_c, u32 ar, u32 tg, const char* did, const char* fname, int version)
+    relation (u32 jcc, bool is_c, u32 ar, u32 tg, std::string did, std::string fname, int version)
         :join_column_count(jcc), is_canonical(is_c), arity(ar), intern_tag(tg), debug_id(did), initailization_type(version), filename(fname)
     {
         full_element_count=0;
         delta_bucket_element_count=0;
     }
 
+    void set_restart_flag(bool restart)    {restart_flag = restart;}
 
+    void set_offset_io(bool offset)   {offset_io = offset;}
+
+    void set_share_io(bool share)   {share_io = share;}
+
+    void set_separate_io(bool separate)   {separate_io = separate;}
+
+    std::string get_filename()       {return filename;}
+
+    void set_filename(std::string file)       {filename =file;}
 
     /// set comm
     void set_mcomm(mpi_comm& mc)    {mcomm = mc;}
@@ -150,8 +165,8 @@ public:
     void print();
 
 
-    void serial_IO(const char* filename_template);
-    void parallel_IO(const char* filename_template);
+    void serial_IO(std::string filename_template);
+    void parallel_IO(std::string filename_template);
 
 
     /// used for initialization of dynamic relations
@@ -164,6 +179,12 @@ public:
     void populate_full(int buffer_size, u64* buffer);
     void populate_delta (int buffer_size, u64* buffer);
     void finalize_relation();
+
+
+    /// load data from file into full or delta buffer
+    void load_data_from_file();
+    void load_data_from_file_with_offset();
+    void load_data_from_separate_files();
 
 
     /// for task parallelism, copying relation from exiting comm to output_comm

@@ -35,10 +35,10 @@ private:
     u64 *intra_bucket_buf_output_size;                      /// results of intra-bucket comm
     u64 **intra_bucket_buf_output;
 
-    all_to_all_buffer compute_buffer;                       /// result of compute
+    all_to_allv_buffer compute_buffer;                       /// result of compute
 
-    u64 *cumulative_all_to_all_buffer;                      /// result of all to all comm
-    int* cumulative_all_to_all_recv_process_size_array;
+    u64 *cumulative_all_to_allv_buffer;                      /// result of all to all comm
+    int* cumulative_all_to_allv_recv_process_size_array;
 
     mpi_comm mcomm;                                         /// comm related
 
