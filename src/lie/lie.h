@@ -14,7 +14,7 @@ class LIE
 {
 private:
 
-    u32 batch_size;                                                 /// Number of iterations between two fixed-point checks
+    u32 batch_size=10;                                                 /// Number of iterations between two fixed-point checks
     double batch_time;                                              /// Wallclock time between two fixed-point checks
     mpi_comm mcomm;                                                 /// MPI class
 

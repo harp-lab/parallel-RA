@@ -53,6 +53,9 @@ typedef wchar_t c16;
 
 #define DEBUG_OUTPUT 1
 
+#include "shmap/shmap.h"
+//#include "shmap/strie/strie.h"
+//#include "shmap/sbtree/sbtree.h"
 #include "log/logger.h"
 #include "hash/hash.h"
 #include "comm/comm.h"
@@ -61,6 +64,7 @@ typedef wchar_t c16;
 #include "comm/all_to_allv_comm.h"
 #include "comm/all_to_all_comm.h"
 #include "relation/google_btree_relation.h"
+
 
 
 #include "relation/balanced_hash_relation.h"

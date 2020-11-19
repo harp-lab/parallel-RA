@@ -12,6 +12,8 @@
 
 struct google_relation {
 
+    //strie<>
+    //sbtree_root<u64, google_relation *> next = {};
     btree::btree_map<u64, google_relation *> next = {};
     bool is_end = false;
 

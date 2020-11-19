@@ -3,7 +3,7 @@
 
 // Uncomment the first line to use our map, the second to use google's
 #include "shmap.h"
-//#include "shmap_goog.h"
+#include "shmap_goog.h"
 
 
 #include <cstdlib>
