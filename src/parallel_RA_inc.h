@@ -58,6 +58,7 @@ typedef wchar_t c16;
 #include "comm/comm.h"
 #include "buffer/vector_buffer.h"
 #include "IO/parallel_io.h"
+#include "comm/all_to_allv_comm.h"
 #include "comm/all_to_all_comm.h"
 #include "relation/google_btree_relation.h"
 

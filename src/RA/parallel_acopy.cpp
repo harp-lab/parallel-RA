@@ -18,14 +18,23 @@ void parallel_acopy::local_acopy(u32 buckets, google_relation* input, u32* input
 
     for (u32 i = 0; i < buckets; i++)
         if (input_bucket_map[i] == 1)
-            input[i].as_all_to_all_acopy_buffer(acopy_buffer, {}, reorder_map, ra_counter, buckets, output_sub_bucket_count, output_sub_bucket_rank, arity, join_column_count, output->get_join_column_count(), output->get_is_canonical());
+            input[i].as_all_to_allv_acopy_buffer(acopy_buffer, {}, reorder_map, ra_counter, buckets, output_sub_bucket_count, output_sub_bucket_rank, arity, join_column_count, output->get_join_column_count(), output->get_is_canonical());
 
-#if 0
-    std::cout << mcomm.get_local_rank() << " --------------- "
-              << acopy_buffer.cumulative_tuple_process_map[0] << " "
-              << acopy_buffer.cumulative_tuple_process_map[1] << " "
-              << std::endl;
-#endif
+    return;
+}
+
+
+void parallel_acopy::local_acopy_with_threshold(int threshold, int RA_count, u32 buckets, google_relation* input, u32* input_bucket_map, relation* output, std::vector<int> reorder_map, u32 arity, u32 join_column_count, all_to_all_buffer& acopy_buffer, int ra_counter)
+{
+    u32* output_sub_bucket_count = output->get_sub_bucket_per_bucket_count();
+    u32** output_sub_bucket_rank = output->get_sub_bucket_rank();
+
+    acopy_buffer.width[ra_counter] = reorder_map.size();
+    assert(acopy_buffer.width[ra_counter] == (int)output->get_arity()+1);
+
+    for (u32 i = 0; i < buckets; i++)
+        if (input_bucket_map[i] == 1)
+            input[i].as_all_to_all_acopy_buffer(threshold, RA_count, acopy_buffer, {}, reorder_map, ra_counter, buckets, output_sub_bucket_count, output_sub_bucket_rank, arity, join_column_count, output->get_join_column_count(), output->get_is_canonical());
 
     return;
 }

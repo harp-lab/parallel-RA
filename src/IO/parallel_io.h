@@ -40,7 +40,8 @@ public:
     int get_hash_buffer_size()  {  return hash_buffer_size;  }
 
 
-    void delete_raw_buffers()   {   if (entry_count != 0)        delete[] input_buffer;}
+    //void delete_raw_buffers()   {   if (entry_count != 0)        delete[] input_buffer;}
+    void delete_raw_buffers()   {   delete[] input_buffer;}
     void delete_hash_buffers()  {  delete[] hash_buffer;  }
 
     /// read separate files for processes

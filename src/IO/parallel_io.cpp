@@ -182,6 +182,7 @@ void parallel_io::parallel_read_input_relation_from_file_to_local_buffer(u32 ari
     std::string data_filename;
     data_filename = file_name;
 
+    //std::cout << "Buffer size " << entry_count << " " << col_count << std::endl;
 	input_buffer = new u64[entry_count * col_count];
     uint64_t offset = read_offset * col_count * sizeof(u64);
     uint64_t read_size = entry_count * col_count * sizeof(u64);
@@ -209,6 +210,8 @@ void parallel_io::parallel_read_input_relation_from_file_to_local_buffer(u32 ari
 		}
 		close(fp);
     }
+
+    //delete input_buffer;
 
 
     //u32 rb_g_size = 0;

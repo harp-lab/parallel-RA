@@ -37,6 +37,7 @@ public:
     int get_copy_input0_graph_type() {return copy_input0_graph_type;}
     void get_copy_rename_index(std::vector<int>* projection_reorder_index_array) {*projection_reorder_index_array = this->copy_reorder_index_array;}
     void local_copy(u32 buckets, google_relation* input, u32* input_bucket_map, relation* output, std::vector<int> reorder_map, u32 arity, u32 join_column_count, all_to_allv_buffer& copy_buffer, int ra_counter);
+    void local_copy_with_threshold(int threshold, int ra_count, u32 buckets, google_relation* input, u32* input_bucket_map, relation* output, std::vector<int> reorder_map, u32 arity, u32 join_column_count, all_to_all_buffer& copy_buffer, int ra_counter);
 };
 
 #endif
