@@ -18,6 +18,7 @@ private:
     double batch_time;                                              /// Wallclock time between two fixed-point checks
     mpi_comm mcomm;                                                 /// MPI class
 
+    std::string app_name;
     u32 lie_relation_count;
     relation *lie_relations[64];
 
@@ -103,6 +104,9 @@ public:
 
     /// Sets the communicator object
     void set_comm(mpi_comm comm)   { mcomm = comm;  }
+
+
+    void set_name(std::string name)   { app_name = name;  }
 
 
     /// Batch size

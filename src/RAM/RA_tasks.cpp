@@ -1083,7 +1083,7 @@ void RAM::io_all_relation(int status)
 }
 
 
-void RAM::execute_in_batches(int batch_size, std::vector<u32>& history, std::map<u64, u64>& intern_map, double *running_time, double *running_intra_bucket_comm, double *running_buffer_allocate, double *running_local_compute, double *running_all_to_all, double *running_buffer_free, double *running_insert_newt, double *running_insert_in_full, double *running_fp)
+void RAM::execute_in_batches(std::string name, int batch_size, std::vector<u32>& history, std::map<u64, u64>& intern_map, double *running_time, double *running_intra_bucket_comm, double *running_buffer_allocate, double *running_local_compute, double *running_all_to_all, double *running_buffer_free, double *running_insert_newt, double *running_insert_in_full, double *running_fp)
 {
     int inner_loop = 0;
     u32 RA_count = RA_list.size();
@@ -1141,7 +1141,7 @@ void RAM::execute_in_batches(int batch_size, std::vector<u32>& history, std::map
 #if DEBUG_OUTPUT
             if (mcomm.get_rank() == 0)
             {
-                std::cout << mcomm.get_local_nprocs() << " Current time INNER LOOP [" << loop_count_tracker << " " << inner_loop << "] "
+                std::cout << name << " " << mcomm.get_local_nprocs() << " Current time INNER LOOP [" << loop_count_tracker << " " << inner_loop << "] "
                           << " Buf cre " << (allocate_buffers_end - allocate_buffers_start)
                           << " comp " << (compute_end - compute_start)
                           << " A2A " << (all_to_all_end - all_to_all_start)
@@ -1149,7 +1149,7 @@ void RAM::execute_in_batches(int batch_size, std::vector<u32>& history, std::map
                           << " newt " << (insert_in_newt_end - insert_in_newt_start)
                           << std::endl;
 
-                std::cout << mcomm.get_local_nprocs() << " Running time INNER LOOP [" << loop_count_tracker << " " << inner_loop << "] "
+                std::cout << name << " "  << mcomm.get_local_nprocs() << " Running time INNER LOOP [" << loop_count_tracker << " " << inner_loop << "] "
                           << " Buf cre " << *running_buffer_allocate
                           << " comp " << *running_local_compute
                           << " A2A " << *running_all_to_all
@@ -1171,7 +1171,7 @@ void RAM::execute_in_batches(int batch_size, std::vector<u32>& history, std::map
 #if DEBUG_OUTPUT
         if (mcomm.get_rank() == 0)
         {
-            std::cout << mcomm.get_local_nprocs()<< " Current time OUTER LOOP [" << loop_count_tracker << " ] "
+            std::cout  << name << " " << mcomm.get_local_nprocs()<< " Current time OUTER LOOP [" << loop_count_tracker << " ] "
                       << " Intra " << (intra_end - intra_start)
                       << " full " << (insert_in_full_end - insert_in_full_start)
                       << " Total " << (insert_in_full_end - intra_start)
@@ -1179,7 +1179,7 @@ void RAM::execute_in_batches(int batch_size, std::vector<u32>& history, std::map
                       << *running_time
                       << " ]" << std::endl;
 
-            std::cout << mcomm.get_local_nprocs() << " Running time OUTER LOOP [" << loop_count_tracker << "] "
+            std::cout  << name << " " << mcomm.get_local_nprocs() << " Running time OUTER LOOP [" << loop_count_tracker << "] "
                       << " Intra " << *running_intra_bucket_comm
                       << " full " << *running_insert_in_full
                       << " Total " << *running_intra_bucket_comm + *running_buffer_allocate + *running_local_compute + *running_all_to_all + *running_buffer_free + *running_insert_newt + *running_insert_in_full << std::endl;
@@ -1203,7 +1203,7 @@ void RAM::execute_in_batches(int batch_size, std::vector<u32>& history, std::map
 
     if (mcomm.get_rank() == 0)
     {
-        std::cout << mcomm.get_local_nprocs() << " Fixed Point [" << loop_count_tracker << "] "
+        std::cout << name << " " << mcomm.get_local_nprocs() << " Fixed Point [" << loop_count_tracker << "] "
                   << (fp_end - fp_start)
                   << " "
                   << *running_fp
