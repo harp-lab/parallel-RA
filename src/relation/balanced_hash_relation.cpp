@@ -656,9 +656,16 @@ void relation::initialize_relation(mpi_comm& mcomm)
     newt_element_count = 0;
     full_element_count = 0;
     delta_element_count = 0;
+
+#ifdef GOOGLE_MAP
     delta = new google_relation[buckets];
     full = new google_relation[buckets];
     newt = new google_relation[buckets];
+#else
+    delta = new shmap_relation[buckets];
+    full = new shmap_relation[buckets];
+    newt = new shmap_relation[buckets];
+#endif
 
     sub_bucket_per_bucket_count = new u32[buckets];
     for (u32 b = 0; b < buckets; b++)
@@ -812,6 +819,7 @@ void relation::finalize_relation()
 
     for (u32 i = 0; i < buckets; i++)
     {
+
         full[i].remove_tuple();
         delta[i].remove_tuple();
         newt[i].remove_tuple();
@@ -1200,7 +1208,12 @@ void relation::local_insert_in_delta()
         memset(newt_sub_bucket_element_count[b], 0, sub_bucket_per_bucket_count[b] * sizeof(u32));
     }
 
+#ifdef GOOGLE_MAP
     newt = new google_relation[buckets];
+#else
+    newt = new shmap_relation[buckets];
+#endif
+
     //for(u32 i=0; i<buckets; i++)
     //    newt[i] = new google_relation();
     newt_element_count = 0;

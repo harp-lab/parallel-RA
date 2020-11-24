@@ -5,9 +5,7 @@
 
 
 
-#ifndef _PARALLEL_IO_H
-#define _PARALLEL_IO_H
-
+#pragma once
 
 class parallel_io
 {
@@ -58,5 +56,3 @@ public:
     /// move tuples to the appropriate process
     void buffer_data_to_hash_buffer_col(u32 arity, u32 join_column_count, u32 buckets, u32** sub_bucket_rank, u32* sub_bucket_count, MPI_Comm lcomm);
 };
-
-#endif

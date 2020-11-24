@@ -4,7 +4,8 @@
 
 //#include <iostream> //for testing
 //#include <bitset> //for testing
-#include "../parallel_RA_inc.h" //for u16, etc
+#pragma once
+#include "../compat.h" //for u16, etc
 
 template<class V>
 class shmap

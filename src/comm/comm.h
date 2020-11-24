@@ -3,9 +3,7 @@
  * Copyright (c) Sidharth Kumar, et al, see License.md
  */
 
-#ifndef __comm_H__
-#define __comm_H__
-
+#pragma once
 
 class mpi_comm
 {
@@ -76,5 +74,3 @@ public:
     /// MPI_Finalize
     void destroy();
 };
-
-#endif

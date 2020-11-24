@@ -180,6 +180,14 @@ bool LIE::execute ()
     /// Main : Execute : init : start
     mcomm.set_local_comm(MPI_COMM_WORLD);
 
+#ifdef GOOGLE_MAP
+    if (mcomm.get_local_rank() == 0)
+        std::cout << "Using Google maps"  << std::endl;
+#else
+    if (mcomm.get_local_rank() == 0)
+        std::cout << "Using Tom's Shmap" << std::endl;
+#endif
+
     /// Initialize all relations
     for (u32 i = 0 ; i < lie_relation_count; i++)
     {

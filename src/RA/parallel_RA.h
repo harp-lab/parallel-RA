@@ -5,9 +5,7 @@
 
 
 
-#ifndef PARALLEL_RA_H
-#define PARALLEL_RA_H
-
+#pragma once
 
 
 class parallel_RA
@@ -65,5 +63,3 @@ public:
     /// JOIN, COPY, ACOPY
     u32 get_RA_type()   {return RA_type;}
 };
-
-#endif

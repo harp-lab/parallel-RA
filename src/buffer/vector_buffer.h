@@ -3,9 +3,7 @@
  * Copyright (c) Sidharth Kumar, et al, see License.md
  */
 
-#ifndef __vector_buffer_H__
-#define __vector_buffer_H__
-
+#pragma once
 
 
 /* A resizeable buffer, similar to std::vector */
@@ -22,7 +20,3 @@ struct vector_buffer
   void vector_buffer_append(const unsigned char *data, const uint64_t size);
   void vector_buffer_resize(const uint64_t size);
 };
-
-
-
-#endif

@@ -8,7 +8,9 @@
  */
 
 //#include <iostream> //for testing
-#include "../../parallel_RA_inc.h" //for u16, etc
+#pragma once
+//#include "../../parallel_RA_inc.h" //for u16, etc
+#include "../../compat.h" //for u16, etc
 
 #define DEFAULT_BT_WIDTH 256
 

@@ -9,7 +9,10 @@
 
 //#include <iostream> //for testing
 //#include <bitset> //for testing
-#include "../parallel_RA_inc.h" //for u16, etc
+#pragma once
+//#include "../parallel_RA_inc.h" //for u16, etc
+#include "../compat.h" //for u16, etc
+
 #include "strie/strie.h"
 #include "sbtree/sbtree.h"
 

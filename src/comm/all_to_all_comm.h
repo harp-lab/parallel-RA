@@ -4,10 +4,9 @@
  */
 
 
-#ifndef __all_to_all_comm_H__
-#define __all_to_all_comm_H__
+#pragma once
 
-
+#if 0
 /// Struct to transmit data for multiple relations at once for an all to all communication
 struct all_to_all_buffer
 {
@@ -38,13 +37,10 @@ struct all_to_all_buffer
     /// cumulative_tuple_process_map is of size nprocs, cumulative_tuple_process_map[i] contains number of tuples to be transmitted to rank-i process, across all Relation Algebra (RA) rules
     int *cumulative_tuple_process_map;
 };
-
+#endif
 
 
 
 //void all_to_all_comm(vector_buffer* vectorized_send_buffer, int vectorized_send_buffer_size, int* send_counts, int *outer_hash_buffer_size, u64 **recv_buffer, MPI_Comm comm);
 
 //void comm_compaction_all_to_all(all_to_allv_buffer compute_buffer, int **recv_buffer_offset_size, u64 **recv_buffer, MPI_Comm comm);
-
-
-#endif

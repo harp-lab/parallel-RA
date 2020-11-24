@@ -4,8 +4,7 @@
  */
 
 
-#ifndef HASH__H
-#define HASH__H
+#pragma once
 
 
 /// Based on the FNV-1a hash function
@@ -29,5 +28,3 @@ inline u64 tuple_hash(const u64* start_ptr, u64 prefix_len)
     }
     return hash;
 }
-
-#endif

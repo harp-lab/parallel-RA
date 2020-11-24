@@ -121,7 +121,6 @@ void RAM::load_balance()
 
 
 
-
 u64 RAM::intra_bucket_comm_execute()
 {
     u64 total_data_moved = 0;

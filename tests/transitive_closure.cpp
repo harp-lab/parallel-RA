@@ -64,6 +64,7 @@ int main(int argc, char **argv)
 
 
 
+
     RAM* scc13237 = new RAM(true, 1);
     scc13237->add_relation(rel_edge_2_2, false);
     scc13237->add_relation(rel_path_2_1, true);
@@ -73,16 +74,19 @@ int main(int argc, char **argv)
 
 
 
+
     RAM* scc13238 = new RAM(false, 3);
     scc13238->add_relation(rel_edge_2_2, true);
     scc13238->add_relation(rel_edge_2_1_2, true);
     scc13238->add_rule(new parallel_acopy(rel_edge_2_2, rel_edge_2_1_2, DELTA, {1, 2, 0}));
 
 
+
     RAM* scc13239 = new RAM(false, 2);
     scc13239->add_relation(rel_edge_2_1_2, false);
     scc13239->add_relation(rel_path_2_1_2, true);
     scc13239->add_rule(new parallel_copy(rel_path_2_1_2, rel_edge_2_1_2, FULL, {0, 1}));
+
 
     LIE* lie = new LIE();
     lie->add_relation(rel_path_2_1_2);

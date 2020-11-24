@@ -5,9 +5,9 @@
 
 
 
-#ifndef __balanced_hash_relation_H__
-#define __balanced_hash_relation_H__
+#pragma once
 
+#include "../ds.h"
 
 enum {LEFT=0, RIGHT};
 enum {DELTA=0, FULL, FULL_AND_DELTA};
@@ -31,17 +31,30 @@ private:
 
     int last_rank;                              /// Used to store last rank
 
+
+#ifdef GOOGLE_MAP
     google_relation *newt;                     /// Newt
+#else
+    shmap_relation *newt;                     /// Newt
+#endif
     u32 newt_element_count;
     u32 **newt_sub_bucket_element_count;
     u32 *newt_bucket_element_count;
 
+#ifdef GOOGLE_MAP
     google_relation *full;                     /// Full
+#else
+    shmap_relation *full;                     /// Full
+#endif
     u32 full_element_count;
     u32 **full_sub_bucket_element_count;
     u32 *full_bucket_element_count;
 
+#ifdef GOOGLE_MAP
     google_relation *delta;                    /// Delta
+#else
+    shmap_relation *delta;                     /// Delta
+#endif
     u32 delta_element_count;
     u32 **delta_sub_bucket_element_count;
     u32 *delta_bucket_element_count;
@@ -145,11 +158,15 @@ public:
 
     u32 get_intern_tag()    {return intern_tag;}
 
-
+#ifdef GOOGLE_MAP
     google_relation* get_full() {return full;}
     google_relation* get_newt() {return newt;}
     google_relation* get_delta()    {return delta;}
-
+#else
+    shmap_relation* get_full() {return full;}
+    shmap_relation* get_newt() {return newt;}
+    shmap_relation* get_delta()    {return delta;}
+#endif
 
     void set_delta_element_count(int val)   {delta_element_count = val;}
     int get_delta_element_count()   {return delta_element_count;}
@@ -214,6 +231,3 @@ public:
     bool load_balance_merge_full_and_delta(float rf);
     bool load_balance_split_full_and_delta(float rf);
 };
-
-
-#endif

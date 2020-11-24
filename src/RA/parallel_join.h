@@ -5,9 +5,8 @@
 
 
 
-#ifndef PARALLEL_JOIN_H
-#define PARALLEL_JOIN_H
-
+#pragma once
+#include "../ds.h"
 
 class parallel_join: public parallel_RA {
 
@@ -66,7 +65,7 @@ public:
     relation* get_join_output() {return join_output_table;}
     void get_join_projection_index(std::vector<int>* projection_reorder_index_array)    {*projection_reorder_index_array = this->projection_reorder_index_array; }
 
-
+#ifdef GOOGLE_MAP
     bool local_join(int threshold, int* offset,
                     int join_order,
                     u32 buckets,
@@ -93,7 +92,32 @@ public:
                                    int join_column_count,
                                    u32* global_join_duplicates,
                                    u32* global_join_inserts);
-};
+#else
+    bool local_join(int threshold, int* offset,
+                    int join_order,
+                    u32 buckets,
+                    int input0_buffer_size, int input0_buffer_width, u64 *input0_buffer,
+                    shmap_relation *input1, u32 i1_size, int input1_buffer_width,
+                    std::vector<int> reorder_map_array,
+                    relation* output,
+                    all_to_allv_buffer& join_buffer,
+                    int counter,
+                    int join_colun_count,
+                    u32* local_join_duplicates,
+                    u32* local_join_inserts);
 
 
+    bool local_join_with_threshold(int threshold, int RA_count, int* offset,
+                                   int join_order,
+                                   u32 buckets,
+                                   int input0_buffer_size, int input0_buffer_width, u64 *input0_buffer,
+                                   shmap_relation *input1, u32 i1_size, int input1_buffer_width,
+                                   std::vector<int> reorder_map_array,
+                                   relation* output,
+                                   all_to_all_buffer& join_buffer,
+                                   int counter,
+                                   int join_column_count,
+                                   u32* global_join_duplicates,
+                                   u32* global_join_inserts);
 #endif
+};

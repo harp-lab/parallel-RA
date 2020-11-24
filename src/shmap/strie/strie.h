@@ -9,7 +9,9 @@
 
 //#include <iostream> //for testing
 //#include <bitset> //for testing
-#include "../../parallel_RA_inc.h" //for u16, etc
+#pragma once
+//#include "../../parallel_RA_inc.h" //for u16, etc
+#include "../../compat.h" //for u16, etc
 
 template<u16 W, class V>
 class strie_node
@@ -157,7 +159,7 @@ public:
           
           /* reallocate */
           fullnode* bignode = (fullnode*)calloc(1,sizeof(fullnode) + (count<<1)*sizeof(V) - sizeof(V));
-          memcpy(bignode, ptr.node, sizeof(fullnode) - sizeof(V) + count*sizeof(V));
+          memcpy((void*)bignode, (void*)ptr.node, sizeof(fullnode) - sizeof(V) + count*sizeof(V));
           free(ptr.node);
           ptr.node = bignode;
         }
