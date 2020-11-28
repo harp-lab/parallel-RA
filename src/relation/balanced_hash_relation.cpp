@@ -1123,12 +1123,10 @@ int relation::insert_delta_in_full()
                     insert_success++;
             }
             delta[i].remove_tuple();
+
             input_buffer[i].vector_buffer_free();
         }
     }
-    //if (get_debug_id() == "rel_edge_2_2" || get_debug_id() == "rel_edge_2_1_2")
-    //if (mcomm.get_local_rank() == 0)
-    //    std::cout << "[" << get_debug_id() << "] inserting delta in full insert_success " << insert_success << std::endl;
 
     set_delta_element_count(0);
     delete[] input_buffer;
@@ -1151,7 +1149,6 @@ int relation::insert_full_in_delta()
         {
             std::vector<u64> prefix = {};
             full[i].as_vector_buffer_recursive(&(input_buffer[i]), prefix);
-            //std::cout << debug_id << " SIZE OF BUFFER " << (&input_buffer[i])->size << std::endl;
             for (u64 j = 0; j < (&input_buffer[i])->size / sizeof(u64); j=j+(arity+1))
             {
                 if (insert_in_delta ( (u64*)( (input_buffer[i].buffer) + (j*sizeof(u64)) )) == true)

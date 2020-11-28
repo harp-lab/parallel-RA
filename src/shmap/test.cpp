@@ -42,7 +42,7 @@ int main()
   {
     shmap<void*> t;
     t.insert(0,0); 
-    for (u64 i = 0; i < 29999000; ++i)
+    for (u64 i = 0; i < 299990; ++i)
     {
       u64 x = ((u64)(rand()%32) << 32) | ((u64)(rand()%256) << 44) | ((rand()%2999999999) + 999999999);
       t.insert(x, (void*)x);

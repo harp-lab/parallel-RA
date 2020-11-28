@@ -10,7 +10,9 @@
 
 #include "ds.h"
 #include "compat.h"
-#include "shmap/shmap.h"
+//#include "shmap/shmap.h"
+#include "shmap/shmap_goog.h"
+
 
 #define DEBUG_OUTPUT 1
 

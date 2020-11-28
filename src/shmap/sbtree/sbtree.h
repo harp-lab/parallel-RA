@@ -12,7 +12,7 @@
 //#include "../../parallel_RA_inc.h" //for u16, etc
 #include "../../compat.h" //for u16, etc
 
-#define DEFAULT_BT_WIDTH 256
+#define DEFAULT_BT_WIDTH 32
 
 template<class K, class V, u16 W>
 union sbtree_ptr;

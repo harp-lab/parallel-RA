@@ -12,6 +12,7 @@ bool google_relation::insert_tuple_from_array(u64* t, int arity)
 {
     bool counter = false;
     google_relation *node = this;
+
     for (int i = 0; i < arity; i++)
     {
         if (!node->next[t[i]])
@@ -21,8 +22,10 @@ bool google_relation::insert_tuple_from_array(u64* t, int arity)
         }
         node = node->next[t[i]];
     }
+
     if (counter == true)
         node->is_end = true;
+
     return counter;
 }
 
@@ -36,7 +39,8 @@ void google_relation::remove_tuple()
         nxt_trie->remove_tuple();
         delete nxt_trie;
     }
-    node->next = {};
+    node->next.clear();
+    //node->next = {};
 }
 
 

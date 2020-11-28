@@ -10,9 +10,13 @@
 
 bool shmap_relation::insert_tuple_from_array(u64* t, int arity)
 {
+    //for (int i=0; i < arity; i++)
+    //    std::cout << t[i] << "\t";
+    //std::cout << "\n";
+
     bool counter = false;
     shmap_relation *node = this;
-    for (int i = 0; i < arity; i++)
+    for (int i = 0; i < arity-1; i++)
     {
         if (node->next.find(t[i]) == NULL)
         {
@@ -21,8 +25,14 @@ bool shmap_relation::insert_tuple_from_array(u64* t, int arity)
         }
         node = *((node->next).find(t[i]));
     }
-    if (counter == true)
-        node->is_end = true;
+
+    if (node->next.find(t[arity-1]) == NULL)
+    {
+        //std::cout << "Inserting null " << t[arity-1] << std::endl;
+        node->next.insert(t[arity-1], NULL);
+        counter = true;
+    }
+
     return counter;
 }
 
@@ -31,12 +41,20 @@ bool shmap_relation::insert_tuple_from_array(u64* t, int arity)
 void shmap_relation::remove_tuple()
 {
     shmap_relation *node = this;
-    for (auto nxt = node->next.begin(); nxt; nxt.next()){
-        shmap_relation *nxt_trie = nxt.val();
-        nxt_trie->remove_tuple();
-        delete nxt_trie;
-    }
-    node->next.clear();
+    //if (node != NULL)
+    //{
+        for (auto nxt = node->next.begin(); nxt; nxt.next())
+        {
+            //std::cout << "Delete value " << nxt.key() << std::endl;
+            shmap_relation *nxt_trie = nxt.val();
+            if (nxt_trie != NULL)
+            {
+            nxt_trie->remove_tuple();
+            delete nxt_trie;
+            }
+        }
+        node->next.clear();
+    //}
 }
 
 
@@ -74,12 +92,13 @@ void shmap_relation::as_vector_buffer_recursive(vector_buffer* vb, std::vector<u
 
 void shmap_relation::as_vector_buffer_recursive_helper(shmap_relation*& cur_trie, std::vector<u64> cur_path, vector_buffer*& result_vector)
 {
-    if(cur_trie->is_end)
+    if ( cur_path.size() != 0 && cur_trie == NULL)
     {
         u64 path[cur_path.size()];
         for (u32 i = 0; i < cur_path.size(); i++)
             path[i] = cur_path[i];
         result_vector->vector_buffer_append((const unsigned char*)path, sizeof(u64)*cur_path.size());
+        return;
     }
 
     for (auto nxt = cur_trie->next.begin(); nxt; nxt.next())
@@ -110,7 +129,7 @@ void shmap_relation::as_all_to_allv_acopy_buffer(all_to_allv_buffer& buffer, std
 
 void shmap_relation::as_all_to_allv_acopy_buffer_helper(shmap_relation*& cur_trie, std::vector<u64> cur_path, all_to_allv_buffer& buffer, int ra_id, u32 buckets, u32* output_sub_bucket_count, u32** output_sub_bucket_rank, std::vector<int> reorder_map, u32 arity, u32 join_column_count, int head_rel_hash_col_count, bool canonical)
 {
-    if(cur_trie->is_end)
+    if ( cur_path.size() != 0 && cur_trie == NULL)
     {
         u64 reordered_cur_path[buffer.width[ra_id]];
         for (int j =0; j < buffer.width[ra_id]; j++)
@@ -128,6 +147,7 @@ void shmap_relation::as_all_to_allv_acopy_buffer_helper(shmap_relation*& cur_tri
         buffer.local_compute_output_size[ra_id][index] = buffer.local_compute_output_size[ra_id][index] + buffer.width[ra_id];
         buffer.cumulative_tuple_process_map[index] = buffer.cumulative_tuple_process_map[index] + buffer.width[ra_id];
         buffer.local_compute_output[ra_id][index].vector_buffer_append((const unsigned char*)reordered_cur_path, sizeof(u64)*buffer.width[ra_id]);
+        return;
     }
 
     for (auto nxt = cur_trie->next.begin(); nxt; nxt.next())
@@ -158,7 +178,7 @@ void shmap_relation::as_all_to_allv_copy_buffer(all_to_allv_buffer& buffer, std:
 
 void shmap_relation::as_all_to_allv_copy_buffer_helper(shmap_relation*& cur_trie, std::vector<u64> cur_path, all_to_allv_buffer& buffer, int ra_id, u32 buckets, u32* output_sub_bucket_count, u32** output_sub_bucket_rank, std::vector<int> reorder_map, u32 arity, u32 join_column_count, int head_rel_hash_col_count, bool canonical)
 {
-    if(cur_trie->is_end)
+    if ( cur_path.size() != 0 && cur_trie == NULL)
     {
         u64 reordered_cur_path[buffer.width[ra_id]];
         for (u32 j =0; j < reorder_map.size(); j++)
@@ -176,6 +196,7 @@ void shmap_relation::as_all_to_allv_copy_buffer_helper(shmap_relation*& cur_trie
         buffer.local_compute_output_size[ra_id][index] = buffer.local_compute_output_size[ra_id][index] + buffer.width[ra_id];
         buffer.cumulative_tuple_process_map[index] = buffer.cumulative_tuple_process_map[index] + buffer.width[ra_id];
         buffer.local_compute_output[ra_id][index].vector_buffer_append((const unsigned char*)reordered_cur_path, sizeof(u64)*buffer.width[ra_id]);
+        return;
     }
 
     for (auto nxt = cur_trie->next.begin(); nxt; nxt.next())
@@ -205,7 +226,8 @@ void shmap_relation::as_all_to_allv_copy_filter_buffer(all_to_allv_buffer& buffe
 
 void shmap_relation::as_all_to_allv_copy_filter_buffer_helper(shmap_relation*& cur_trie, std::vector<u64> cur_path, all_to_allv_buffer& buffer, int ra_id, u32 buckets, u32* output_sub_bucket_count, u32** output_sub_bucket_rank, std::vector<int> reorder_map, u32 arity, u32 join_column_count, bool(*lambda)(const u64* const), int head_rel_hash_col_count, bool canonical)
 {
-    if(cur_trie->is_end)
+
+    if ( cur_path.size() != 0 && cur_trie == NULL)
     {
         u64 reordered_cur_path[buffer.width[ra_id]];
         u64 cur_path_array[cur_path.size()];
@@ -229,6 +251,7 @@ void shmap_relation::as_all_to_allv_copy_filter_buffer_helper(shmap_relation*& c
             buffer.cumulative_tuple_process_map[index] = buffer.cumulative_tuple_process_map[index] + buffer.width[ra_id];
             buffer.local_compute_output[ra_id][index].vector_buffer_append((const unsigned char*)reordered_cur_path, sizeof(u64)*buffer.width[ra_id]);
         }
+        return;
     }
 
     for (auto nxt = cur_trie->next.begin(); nxt; nxt.next())
@@ -259,7 +282,8 @@ void shmap_relation::as_all_to_allv_right_join_buffer(std::vector<u64> prefix, a
 
 void shmap_relation::as_all_to_allv_right_join_buffer_helper(shmap_relation*& cur_trie, std::vector<u64> cur_path, all_to_allv_buffer& join_buffer, u64 *input0_buffer, int input0_buffer_width, int input1_buffer_width, int ra_id, u32 buckets, u32* output_sub_bucket_count, u32** output_sub_bucket_rank, std::vector<int> reorder_map, int join_column_count, shmap_relation& deduplicate, int *local_join_count, u32* local_join_duplicates, u32* local_join_inserts, std::string name, int head_rel_hash_col_count, bool canonical)
 {
-    if(cur_trie->is_end)
+
+    if ( cur_path.size() != 0 && cur_trie == NULL)
     {
         u64 projected_path[join_buffer.width[ra_id]];
         u64 reordered_cur_path[input0_buffer_width + input1_buffer_width - join_column_count];
@@ -291,6 +315,7 @@ void shmap_relation::as_all_to_allv_right_join_buffer_helper(shmap_relation*& cu
         }
         else
             (*local_join_duplicates)++;
+        return;
     }
 
     for (auto nxt = cur_trie->next.begin(); nxt; nxt.next())
@@ -323,7 +348,8 @@ void shmap_relation::as_all_to_allv_left_join_buffer(std::vector<u64> prefix, al
 
 void shmap_relation::as_all_to_allv_left_join_buffer_helper(shmap_relation*& cur_trie, std::vector<u64> cur_path, all_to_allv_buffer& join_buffer, u64 *input0_buffer, int input0_buffer_width, int input1_buffer_width, int ra_id, u32 buckets, u32* output_sub_bucket_count, u32** output_sub_bucket_rank, std::vector<int> reorder_map, int join_column_count, shmap_relation& deduplicate, int* local_join_count, u32* local_join_duplicates, u32* local_join_inserts, int head_rel_hash_col_count, bool canonical)
 {
-    if(cur_trie->is_end)
+
+    if ( cur_path.size() != 0 && cur_trie == NULL)
     {
         u64 projected_path[join_buffer.width[ra_id]];
         u64 reordered_cur_path[input0_buffer_width + input1_buffer_width - join_column_count];
@@ -355,6 +381,7 @@ void shmap_relation::as_all_to_allv_left_join_buffer_helper(shmap_relation*& cur
         }
         else
             (*local_join_duplicates)++;
+        return;
     }
 
     for (auto nxt = cur_trie->next.begin(); nxt; nxt.next())
@@ -385,7 +412,8 @@ void shmap_relation::as_all_to_all_copy_buffer(int threshold, int RA_count, all_
 
 void shmap_relation::as_all_to_all_copy_buffer_helper(int threshold, int RA_count, shmap_relation*& cur_trie, std::vector<u64> cur_path, all_to_all_buffer& buffer, int ra_id, u32 buckets, u32* output_sub_bucket_count, u32** output_sub_bucket_rank, std::vector<int> reorder_map, u32 arity, u32 join_column_count, int head_rel_hash_col_count, bool canonical)
 {
-    if(cur_trie->is_end)
+
+    if ( cur_path.size() != 0 && cur_trie == NULL)
     {
         u64 reordered_cur_path[buffer.width[ra_id]];
         for (u32 j =0; j < reorder_map.size(); j++)
@@ -400,6 +428,8 @@ void shmap_relation::as_all_to_all_copy_buffer_helper(int threshold, int RA_coun
         memcpy (buffer.local_compute_output + (index * (RA_count * threshold + RA_count)) + (RA_count + threshold * ra_id) + buffer.local_compute_output_size[ra_id][index], (const unsigned char*)reordered_cur_path, sizeof(u64)*buffer.width[ra_id]);
         buffer.local_compute_output_size[ra_id][index] = buffer.local_compute_output_size[ra_id][index] + buffer.width[ra_id];
         buffer.local_compute_output[(index * (RA_count * threshold + RA_count)) + ra_id] = buffer.local_compute_output[(index * (RA_count * threshold + RA_count)) + ra_id] + buffer.width[ra_id];
+
+        return;
     }
 
     // for (auto nxt = cur_trie->next.begin(); nxt; nxt.next())
@@ -441,7 +471,8 @@ void shmap_relation::as_all_to_all_copy_buffer_with_starting_index(int threshold
 
 void shmap_relation::as_all_to_all_copy_buffer_helper_with_starting_index(int threshold, int RA_count, shmap_relation*& cur_trie, std::vector<u64> cur_path, all_to_all_buffer& buffer, int ra_id, u32 buckets, u32* output_sub_bucket_count, u32** output_sub_bucket_rank, std::vector<int> reorder_map, u32 arity, u32 join_column_count, int head_rel_hash_col_count, bool canonical)
 {
-    if(cur_trie->is_end)
+
+    if ( cur_path.size() != 0 && cur_trie == NULL)
     {
         u64 reordered_cur_path[buffer.width[ra_id]];
         for (u32 j =0; j < reorder_map.size(); j++)
@@ -456,6 +487,8 @@ void shmap_relation::as_all_to_all_copy_buffer_helper_with_starting_index(int th
         memcpy (buffer.local_compute_output + (index * (RA_count * threshold + RA_count)) + (RA_count + threshold * ra_id) + buffer.local_compute_output_size[ra_id][index], (const unsigned char*)reordered_cur_path, sizeof(u64)*buffer.width[ra_id]);
         buffer.local_compute_output_size[ra_id][index] = buffer.local_compute_output_size[ra_id][index] + buffer.width[ra_id];
         buffer.local_compute_output[(index * (RA_count * threshold + RA_count)) + ra_id] = buffer.local_compute_output[(index * (RA_count * threshold + RA_count)) + ra_id] + buffer.width[ra_id];
+
+        return;
     }
 
     // for (auto nxt = cur_trie->next.begin(); nxt; nxt.next())
@@ -487,7 +520,8 @@ void shmap_relation::as_all_to_all_copy_filter_buffer(int threshold, int RA_coun
 
 void shmap_relation::as_all_to_all_copy_filter_buffer_helper(int threshold, int RA_count, shmap_relation*& cur_trie, std::vector<u64> cur_path, all_to_all_buffer& buffer, int ra_id, u32 buckets, u32* output_sub_bucket_count, u32** output_sub_bucket_rank, std::vector<int> reorder_map, u32 arity, u32 join_column_count, bool(*lambda)(const u64* const), int head_rel_hash_col_count, bool canonical)
 {
-    if(cur_trie->is_end)
+
+    if ( cur_path.size() != 0 && cur_trie == NULL)
     {
         u64 reordered_cur_path[buffer.width[ra_id]];
         u64 cur_path_array[cur_path.size()];
@@ -508,6 +542,8 @@ void shmap_relation::as_all_to_all_copy_filter_buffer_helper(int threshold, int 
             buffer.local_compute_output_size[ra_id][index] = buffer.local_compute_output_size[ra_id][index] + buffer.width[ra_id];
             buffer.local_compute_output[(index * (RA_count * threshold + RA_count)) + ra_id] = buffer.local_compute_output[(index * (RA_count * threshold + RA_count)) + ra_id] + buffer.width[ra_id];
         }
+
+        return;
     }
 
     for (auto nxt = cur_trie->next.begin(); nxt; nxt.next())
@@ -535,7 +571,8 @@ void shmap_relation::as_all_to_all_acopy_buffer(int threshold, int RA_count, all
 
 void shmap_relation::as_all_to_all_acopy_buffer_helper(int threshold, int RA_count, shmap_relation*& cur_trie, std::vector<u64> cur_path, all_to_all_buffer& buffer, int ra_id, u32 buckets, u32* output_sub_bucket_count, u32** output_sub_bucket_rank, std::vector<int> reorder_map, u32 arity, u32 join_column_count, int head_rel_hash_col_count, bool canonical)
 {
-    if(cur_trie->is_end)
+
+    if ( cur_path.size() != 0 && cur_trie == NULL)
     {
         u64 reordered_cur_path[buffer.width[ra_id]];
         for (int j =0; j < buffer.width[ra_id]; j++)
@@ -553,8 +590,9 @@ void shmap_relation::as_all_to_all_acopy_buffer_helper(int threshold, int RA_cou
         memcpy (buffer.local_compute_output + (index * (RA_count * threshold + RA_count)) + (RA_count + threshold * ra_id) + buffer.local_compute_output_size[ra_id][index], (const unsigned char*)reordered_cur_path, sizeof(u64)*buffer.width[ra_id]);
 
         buffer.local_compute_output_size[ra_id][index] = buffer.local_compute_output_size[ra_id][index] + buffer.width[ra_id];
-
         buffer.local_compute_output[(index * (RA_count * threshold + RA_count)) + ra_id] = buffer.local_compute_output[(index * (RA_count * threshold + RA_count)) + ra_id] + buffer.width[ra_id];
+
+        return;
 
     }
 
@@ -586,7 +624,8 @@ void shmap_relation::as_all_to_all_right_join_buffer(int threshold, int RA_count
 
 void shmap_relation::as_all_to_all_right_join_buffer_helper(int threshold, int RA_count, shmap_relation*& cur_trie, std::vector<u64> cur_path, all_to_all_buffer& join_buffer, u64 *input0_buffer, int input0_buffer_width, int input1_buffer_width, int ra_id, u32 buckets, u32* output_sub_bucket_count, u32** output_sub_bucket_rank, std::vector<int> reorder_map, int join_column_count, shmap_relation& deduplicate, int *local_join_count, u32* local_join_duplicates, u32* local_join_inserts, std::string name, int head_rel_hash_col_count, bool canonical, u32* tracker)
 {
-    if(cur_trie->is_end)
+
+    if ( cur_path.size() != 0 && cur_trie == NULL)
     {
         u64 projected_path[join_buffer.width[ra_id]];
         u64 reordered_cur_path[input0_buffer_width + input1_buffer_width - join_column_count];
@@ -628,6 +667,8 @@ void shmap_relation::as_all_to_all_right_join_buffer_helper(int threshold, int R
         }
         else
             (*local_join_duplicates)++;
+
+        return;
     }
 
     for (auto nxt = cur_trie->next.begin(); nxt; nxt.next())
@@ -658,7 +699,8 @@ void shmap_relation::as_all_to_all_left_join_buffer(int threshold, int RA_count,
 
 void shmap_relation::as_all_to_all_left_join_buffer_helper(int threshold, int RA_count, shmap_relation*& cur_trie, std::vector<u64> cur_path, all_to_all_buffer& join_buffer, u64 *input0_buffer, int input0_buffer_width, int input1_buffer_width, int ra_id, u32 buckets, u32* output_sub_bucket_count, u32** output_sub_bucket_rank, std::vector<int> reorder_map, int join_column_count, shmap_relation& deduplicate, int* local_join_count, u32* local_join_duplicates, u32* local_join_inserts, int head_rel_hash_col_count, bool canonical, u32* tracker)
 {
-    if(cur_trie->is_end)
+
+    if ( cur_path.size() != 0 && cur_trie == NULL)
     {
         u64 projected_path[join_buffer.width[ra_id]];
         u64 reordered_cur_path[input0_buffer_width + input1_buffer_width - join_column_count];
@@ -699,6 +741,8 @@ void shmap_relation::as_all_to_all_left_join_buffer_helper(int threshold, int RA
         }
         else
             (*local_join_duplicates)++;
+
+        return;
     }
 
     for (auto nxt = cur_trie->next.begin(); nxt; nxt.next())

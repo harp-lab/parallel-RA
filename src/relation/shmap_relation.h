@@ -10,7 +10,7 @@
 struct shmap_relation {
 
     shmap<shmap_relation*> next = {};
-    bool is_end = false;
+
 
     bool insert_tuple_from_array(u64* t, int arity);
     void remove_tuple();
