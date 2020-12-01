@@ -14,6 +14,7 @@ struct shmap_relation {
 
     bool insert_tuple_from_array(u64* t, int arity);
     void remove_tuple();
+    void remove_tuple_helper(shmap<void*> map);
     bool find_tuple_from_array(u64* t, int arity);
 
     void as_vector_buffer_recursive(vector_buffer* vb, std::vector<u64> prefix);

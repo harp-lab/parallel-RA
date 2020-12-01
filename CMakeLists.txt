@@ -18,11 +18,16 @@ set (tests_dir "${PROJECT_SOURCE_DIR}/tests")
 set (utility_dir "${PROJECT_SOURCE_DIR}/utility")
 
 file (GLOB source_files_parallel_RA "${source_dir}/parallel_RA_inc.h" "${source_dir}/log/logger.cpp" "${source_dir}/hash/hash.h" "${source_dir}/buffer/vector_buffer.cpp" "${source_dir}/comm/comm.cpp" "${source_dir}/relation/google_btree_relation.cpp" "${source_dir}/relation/shmap_relation_exp.cpp" "${source_dir}/comm/all_to_all_comm.cpp" "${source_dir}/comm/all_to_allv_comm.cpp" "${source_dir}/IO/parallel_io.cpp" "${source_dir}/RA/parallel_join.cpp" "${source_dir}/comm/intra_bucket_comm.cpp" "${source_dir}/RA/parallel_copy.cpp" "${source_dir}/RA/parallel_copy_filter.cpp" "${source_dir}/RA/parallel_RA.h" "${source_dir}/RA/parallel_acopy.cpp" "${source_dir}/relation/balanced_hash_relation.cpp" "${source_dir}/relation/relation_load_balancer.cpp" "${source_dir}/RAM/RA_tasks.cpp" "${source_dir}/lie/lie.cpp")
+file (GLOB source_files_ata "${tests_dir}/all_to_all_benchmark.cpp")
 file (GLOB source_files_tc "${tests_dir}/transitive_closure.cpp")
 file (GLOB source_files_fv "${tests_dir}/freevars.cpp")
 file (GLOB source_files_kcfa "${tests_dir}/kcfa-tiny.cpp")
 
 ADD_LIBRARY(parallel_RA "${source_files_parallel_RA}")
+
+add_executable(ata ${source_files_ata})
+INCLUDE_DIRECTORIES(${MPI_INCLUDE_PATH})
+TARGET_LINK_LIBRARIES(ata ${MPI_LIBRARIES} parallel_RA)
 
 add_executable(TC ${source_files_tc})
 INCLUDE_DIRECTORIES(${MPI_INCLUDE_PATH})
