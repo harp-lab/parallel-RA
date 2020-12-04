@@ -14,9 +14,9 @@ int main(int argc, char **argv)
     srand (time(NULL));
 
 
-    for (u32 j=4096; j <= 262144; j=j*2)
+    for (u32 j=4096; j <= 16384; j=j*2)
     {
-        for (u32 i= 1; i <= 64; i=i*2)
+        for (u32 i= 1; i <= 32; i=i*2)
         {
             if (mcomm.get_rank() == 0)
             {
