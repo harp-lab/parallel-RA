@@ -51,24 +51,25 @@ static void uniform_benchmark(int ra_count, int nprocs, int epoch_count, int ent
     uniform_buffer.ra_count = ra_count;//atoi(argv[1]);
 
     //std::cout << "BSIZE " <<  (uniform_buffer.ra_count * uniform_buffer.nprocs * (int)ceil(entry_count))/epoch_count << std::endl;
-    uniform_buffer.local_compute_output = new u64[(uniform_buffer.ra_count * uniform_buffer.nprocs * (int)ceil(entry_count))/epoch_count];
+    uniform_buffer.local_compute_output = new u64[(uniform_buffer.ra_count * uniform_buffer.nprocs * entry_count)/epoch_count];
 
 
-    u64 *cumulative_all_to_allv_buffer = new u64[(uniform_buffer.ra_count * uniform_buffer.nprocs * (int)ceil(entry_count))/epoch_count];
+    u64 *cumulative_all_to_allv_buffer = new u64[(uniform_buffer.ra_count * uniform_buffer.nprocs * entry_count)/epoch_count];
 
     for (int it=0; it < iteration_count; it++)
     {
         double u_iter_total=0;
         double u_iter_time[epoch_count];
         double u_start = MPI_Wtime();
-        for (int i=0; i<epoch_count; i++)
+        for (int e=0; e<epoch_count; e++)
         {
             double t1 = MPI_Wtime();
-            for (int i=0; i < (uniform_buffer.ra_count * uniform_buffer.nprocs * (int)ceil(entry_count)); i=i+epoch_count)
-                uniform_buffer.local_compute_output[i/epoch_count] = i / (uniform_buffer.ra_count * (int)ceil(entry_count));
-            MPI_Alltoall(uniform_buffer.local_compute_output, (uniform_buffer.ra_count * (int)ceil(entry_count))/epoch_count, MPI_UNSIGNED_LONG_LONG, cumulative_all_to_allv_buffer, (uniform_buffer.ra_count * (int)ceil(entry_count))/epoch_count, MPI_UNSIGNED_LONG_LONG, MPI_COMM_WORLD);
+            for (int i=0; i < (uniform_buffer.ra_count * uniform_buffer.nprocs * entry_count); i=i+epoch_count)
+                uniform_buffer.local_compute_output[i/epoch_count] = i / (uniform_buffer.ra_count * entry_count);
+            MPI_Alltoall(uniform_buffer.local_compute_output, (uniform_buffer.ra_count * entry_count)/epoch_count, MPI_UNSIGNED_LONG_LONG, cumulative_all_to_allv_buffer, (uniform_buffer.ra_count * entry_count)/epoch_count, MPI_UNSIGNED_LONG_LONG, MPI_COMM_WORLD);
             double t2 = MPI_Wtime();
-            u_iter_time[i] = t2-t1;
+
+            u_iter_time[e] = t2-t1;
             u_iter_total = u_iter_total + (t2-t1);
         }
         double u_end = MPI_Wtime();
