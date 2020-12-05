@@ -21,19 +21,26 @@ int main(int argc, char **argv)
             if (mcomm.get_rank() == 0)
             {
                 std::cout << std::endl;
-                std::cout << "[NU] nprocs " << mcomm.get_nprocs() << " ra count " << i << " Entry count " << j <<std::endl;
+                std::cout << "---- [NU] nprocs " << mcomm.get_nprocs() << " ra count " << i << " Entry count " << j << " ----" << std::endl;
             }
+            non_uniform_benchmark(i, mcomm.get_nprocs(), j, 4);
+        }
+    }
 
-            non_uniform_benchmark(i, mcomm.get_nprocs(), j, 8);
+    MPI_Barrier(MPI_COMM_WORLD);
 
+    for (u32 j=4096; j <= 16384; j=j*2)
+    {
+        for (u32 i= 1; i <= 32; i=i*2)
+        {
             for (u32 k= 1; k <= 8; k=k*2)
             {
                 if (mcomm.get_rank() == 0)
                 {
                     std::cout << std::endl;
-                    std::cout << "[U] nprocs " << mcomm.get_nprocs() << " ra count " << i << " Entry count " << j << " Epoch counts " << k << std::endl;
+                    std::cout << "[U] nprocs " << mcomm.get_nprocs() << " ra count " << i << " Entry count " << j << " Epoch counts " << k << " ----" << std::endl;
                 }
-                uniform_benchmark(i, mcomm.get_nprocs(), k, j, 8);
+                uniform_benchmark(i, mcomm.get_nprocs(), k, j, 4);
             }
         }
     }
