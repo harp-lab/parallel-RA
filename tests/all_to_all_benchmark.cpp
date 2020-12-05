@@ -16,7 +16,7 @@ int main(int argc, char **argv)
 
     for (u32 j=4096; j <= 16384; j=j*2)
     {
-        for (u32 i= 1; i <= 32; i=i*2)
+        for (u32 i= 1; i <= 32; i=i*4)
         {
             if (mcomm.get_rank() == 0)
             {
@@ -31,9 +31,9 @@ int main(int argc, char **argv)
 
     for (u32 j=4096; j <= 16384; j=j*2)
     {
-        for (u32 i= 1; i <= 32; i=i*2)
+        for (u32 i= 1; i <= 32; i=i*4)
         {
-            for (u32 k= 1; k <= 8; k=k*2)
+            for (u32 k= 1; k < 8; k=k*2)
             {
                 if (mcomm.get_rank() == 0)
                 {
