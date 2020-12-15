@@ -2,8 +2,8 @@
 #include <time.h>
 #define ITERATION_COUNT 10
 
-static void uniform_benchmark(int ra_count, int nprocs, int epoch_count, int entry_count);
-static void non_uniform_benchmark(int ra_count, int nprocs, int entry_count);
+static void uniform_benchmark(int ra_count, int nprocs, int epoch_count, u64 entry_count);
+static void non_uniform_benchmark(int ra_count, int nprocs, u64 entry_count);
 static void all_to_allv_test(all_to_allv_buffer non_uniform_buffer, MPI_Comm comm, double* at, double* bt, double *avt, int it);
 
 int main(int argc, char **argv)
@@ -13,7 +13,7 @@ int main(int argc, char **argv)
     srand (time(NULL));
 
 
-    for (u32 entry_count=4096; entry_count <= 16384; entry_count=entry_count*2)
+    for (u64 entry_count=4096; entry_count <= 16384; entry_count=entry_count*2)
     {
         for (u32 ra_count= 1; ra_count <= 8; ra_count=ra_count*2)
         {
@@ -28,7 +28,7 @@ int main(int argc, char **argv)
 
     MPI_Barrier(MPI_COMM_WORLD);
 
-    for (u32 entry_count=4096; entry_count <= 16384; entry_count=entry_count*2)
+    for (u64 entry_count=4096; entry_count <= 16384; entry_count=entry_count*2)
     {
         for (u32 rel_count=1; rel_count<=8; rel_count=rel_count*2)
         {
@@ -49,7 +49,7 @@ int main(int argc, char **argv)
 }
 
 #if 1
-static void uniform_benchmark(int ra_count, int nprocs, int epoch_count, int entry_count)
+static void uniform_benchmark(int ra_count, int nprocs, int epoch_count, u64 entry_count)
 {
     int rank;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -70,19 +70,19 @@ static void uniform_benchmark(int ra_count, int nprocs, int epoch_count, int ent
         double u_iter_time[epoch_count];
         double u_start = MPI_Wtime();
 
-        int global_cumulativ_send_count = 0;
+        u64 global_cumulativ_send_count = 0;
         for (int e=0; e<epoch_count; e++)
         {
             double t1 = MPI_Wtime();
-            for (int i=0; i < (uniform_buffer.ra_count * uniform_buffer.nprocs * entry_count); i=i+epoch_count)
+            for (u64 i=0; i < (uniform_buffer.ra_count * uniform_buffer.nprocs * entry_count); i=i+epoch_count)
                 uniform_buffer.local_compute_output[i/epoch_count] = i / (uniform_buffer.ra_count * entry_count);
             MPI_Alltoall(uniform_buffer.local_compute_output, (uniform_buffer.ra_count * entry_count)/epoch_count, MPI_UNSIGNED_LONG_LONG, cumulative_all_to_allv_buffer, (uniform_buffer.ra_count * entry_count)/epoch_count, MPI_UNSIGNED_LONG_LONG, MPI_COMM_WORLD);
 
             if (it == 0 || it == ITERATION_COUNT - 1)
             {
-                int global_send_count = 0;
-                int send_count = ((uniform_buffer.ra_count * entry_count)/epoch_count) * nprocs;
-                MPI_Allreduce(&send_count, &global_send_count, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+                u64 global_send_count = 0;
+                u64 send_count = ((uniform_buffer.ra_count * entry_count)/epoch_count) * nprocs;
+                MPI_Allreduce(&send_count, &global_send_count, 1, MPI_UNSIGNED_LONG_LONG, MPI_SUM, MPI_COMM_WORLD);
                 global_cumulativ_send_count = global_cumulativ_send_count + global_send_count;
 
                 if (e == epoch_count - 1)
@@ -119,7 +119,7 @@ static void uniform_benchmark(int ra_count, int nprocs, int epoch_count, int ent
 #endif
 
 
-static void non_uniform_benchmark(int ra_count, int nprocs, int entry_count)
+static void non_uniform_benchmark(int ra_count, int nprocs, u64 entry_count)
 {
     int rank;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -267,17 +267,17 @@ static void all_to_allv_test(all_to_allv_buffer non_uniform_buffer, MPI_Comm com
     MPI_Comm_rank(comm, &rank);
     if (it == 0 || it == ITERATION_COUNT-1)
     {
-        int total_send_count=0;
-        int total_recv_count=0;
-        int global_total_send_count=0;
-        int global_total_recv_count=0;
+        u64 total_send_count=0;
+        u64 total_recv_count=0;
+        u64 global_total_send_count=0;
+        u64 global_total_recv_count=0;
         for (int i=0; i < nprocs; i++)
         {
             total_send_count = total_send_count + non_uniform_buffer.cumulative_tuple_process_map[i];
             total_recv_count = total_recv_count + recv_counts[i];
         }
-        MPI_Allreduce(&total_send_count, &global_total_send_count, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
-        MPI_Allreduce(&total_recv_count, &global_total_recv_count, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+        MPI_Allreduce(&total_send_count, &global_total_send_count, 1, MPI_UNSIGNED_LONG_LONG, MPI_SUM, MPI_COMM_WORLD);
+        MPI_Allreduce(&total_recv_count, &global_total_recv_count, 1, MPI_UNSIGNED_LONG_LONG, MPI_SUM, MPI_COMM_WORLD);
 
 
         if (rank == 0)
