@@ -12,8 +12,46 @@ int main(int argc, char **argv)
     mcomm.create(argc, argv);
     srand (time(NULL));
 
+    for (u64 entry_count=4096; entry_count <= 131072; entry_count=entry_count*2)
+    {
+        u32 ra_count = 1;
+        if (mcomm.get_rank() == 0)
+        {
+            std::cout << std::endl;
+            std::cout << "---- [NU] nprocs [80 20] " << mcomm.get_nprocs() << " ra count " << ra_count << " Entry count " << entry_count << " ----" << std::endl;
+        }
+        non_uniform_benchmark(ra_count, mcomm.get_nprocs(), entry_count, 90, 10);
+    }
 
-    for (u64 entry_count=4096; entry_count <= 16384; entry_count=entry_count*2)
+    MPI_Barrier(MPI_COMM_WORLD);
+
+    for (u64 entry_count=4096; entry_count <= 131072; entry_count=entry_count*2)
+    {
+        u32 ra_count = 1;
+        if (mcomm.get_rank() == 0)
+        {
+            std::cout << std::endl;
+            std::cout << "---- [NU] nprocs [80 20] " << mcomm.get_nprocs() << " ra count " << ra_count << " Entry count " << entry_count << " ----" << std::endl;
+        }
+        non_uniform_benchmark(ra_count, mcomm.get_nprocs(), entry_count, 80, 20);
+    }
+
+    MPI_Barrier(MPI_COMM_WORLD);
+
+    for (u64 entry_count=4096; entry_count <= 131072; entry_count=entry_count*2)
+    {
+        u32 ra_count = 1;
+        if (mcomm.get_rank() == 0)
+        {
+            std::cout << std::endl;
+            std::cout << "---- [NU] nprocs [50 50] " << mcomm.get_nprocs() << " ra count " << ra_count << " Entry count " << entry_count << " ----" << std::endl;
+        }
+        non_uniform_benchmark(ra_count, mcomm.get_nprocs(), entry_count, 50, 50);
+    }
+
+    MPI_Barrier(MPI_COMM_WORLD);
+
+    for (u64 entry_count=4096; entry_count <= 131072; entry_count=entry_count*2)
     {
         u32 ra_count = 1;
         if (mcomm.get_rank() == 0)
@@ -41,64 +79,6 @@ int main(int argc, char **argv)
     }
 
 
-    MPI_Barrier(MPI_COMM_WORLD);
-
-
-    for (u64 entry_count=4096; entry_count <= 16384; entry_count=entry_count*2)
-    {
-        u32 ra_count = 1;
-        if (mcomm.get_rank() == 0)
-        {
-            std::cout << std::endl;
-            std::cout << "---- [NU] nprocs [50 50] " << mcomm.get_nprocs() << " ra count " << ra_count << " Entry count " << entry_count << " ----" << std::endl;
-        }
-        non_uniform_benchmark(ra_count, mcomm.get_nprocs(), entry_count, 50, 50);
-    }
-
-    MPI_Barrier(MPI_COMM_WORLD);
-
-    for (u64 entry_count=4096; entry_count <= 16384; entry_count=entry_count*2)
-    {
-        u32 rel_count = 1;
-        for (u32 epoch_count=1; epoch_count<=8; epoch_count=epoch_count*2)
-        {
-            if (mcomm.get_rank() == 0)
-            {
-                std::cout << std::endl;
-                std::cout << "[U] nprocs " << mcomm.get_nprocs() << " ra count " << rel_count << " Entry count " << entry_count << " Epoch counts " << epoch_count << " ----" << std::endl;
-            }
-            uniform_benchmark(rel_count, mcomm.get_nprocs(), epoch_count, entry_count);
-        }
-    }
-
-    MPI_Barrier(MPI_COMM_WORLD);
-
-    for (u64 entry_count=4096; entry_count <= 16384; entry_count=entry_count*2)
-    {
-        u32 ra_count = 1;
-        if (mcomm.get_rank() == 0)
-        {
-            std::cout << std::endl;
-            std::cout << "---- [NU] nprocs [80 20] " << mcomm.get_nprocs() << " ra count " << ra_count << " Entry count " << entry_count << " ----" << std::endl;
-        }
-        non_uniform_benchmark(ra_count, mcomm.get_nprocs(), entry_count, 80, 20);
-    }
-
-    MPI_Barrier(MPI_COMM_WORLD);
-
-    for (u64 entry_count=4096; entry_count <= 16384; entry_count=entry_count*2)
-    {
-        u32 rel_count = 1;
-        for (u32 epoch_count=1; epoch_count<=8; epoch_count=epoch_count*2)
-        {
-            if (mcomm.get_rank() == 0)
-            {
-                std::cout << std::endl;
-                std::cout << "[U] nprocs " << mcomm.get_nprocs() << " ra count " << rel_count << " Entry count " << entry_count << " Epoch counts " << epoch_count << " ----" << std::endl;
-            }
-            uniform_benchmark(rel_count, mcomm.get_nprocs(), epoch_count, entry_count);
-        }
-    }
 
 
 #if 0
@@ -247,9 +227,6 @@ static void non_uniform_benchmark(int ra_count, int nprocs, u64 entry_count, int
                 int random = random_offset + rand() % range;
                 non_uniform_buffer.local_compute_output_size_flat[i * non_uniform_buffer.ra_count + r] = (entry_count * random) / 100;
 
-                //if (rank == 1)
-                //    std::cout << rank << " XXXXX non_uniform_buffer.cumulative_tuple_process_map[i] " << non_uniform_buffer.cumulative_tuple_process_map[i] << std::endl;
-
                 non_uniform_buffer.cumulative_tuple_process_map[i] = non_uniform_buffer.cumulative_tuple_process_map[i] + non_uniform_buffer.local_compute_output_size_flat[i * non_uniform_buffer.ra_count + r];
                 u64 val = i;
                 for (int t=0; t < non_uniform_buffer.local_compute_output_size_flat[i * non_uniform_buffer.ra_count + r]; t++)
@@ -259,12 +236,6 @@ static void non_uniform_benchmark(int ra_count, int nprocs, u64 entry_count, int
                 }
             }
         }
-
-        //for (int i=0; i < nprocs; i++)
-        //{
-        //if (rank == 1)
-        //    std::cout << " XXXXX non_uniform_buffer.cumulative_tuple_process_map[i] " << non_uniform_buffer.cumulative_tuple_process_map[i] << std::endl;
-        //}
 
         double t2=MPI_Wtime();
         ct = t2-t1;
@@ -354,10 +325,11 @@ static void all_to_allv_test(all_to_allv_buffer non_uniform_buffer, MPI_Comm com
     double atv_start = MPI_Wtime();
     MPI_Alltoallv(send_buffer, non_uniform_buffer.cumulative_tuple_process_map, send_disp, MPI_UNSIGNED_LONG_LONG, recv_buffer, recv_counts, recv_displacements, MPI_UNSIGNED_LONG_LONG, comm);
 
-    int rank;
-    MPI_Comm_rank(comm, &rank);
+
     if (it == 0 || it == ITERATION_COUNT-1)
     {
+        int rank;
+        MPI_Comm_rank(comm, &rank);
         u64 total_send_count=0;
         u64 total_recv_count=0;
         u64 global_total_send_count=0;
