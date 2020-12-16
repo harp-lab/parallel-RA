@@ -1,6 +1,6 @@
 ﻿#include "../src/parallel_RA_inc.h"
 #include <time.h>
-#define ITERATION_COUNT 10
+#define ITERATION_COUNT 6
 
 static void uniform_benchmark(int ra_count, int nprocs, int epoch_count, u64 entry_count);
 static void non_uniform_benchmark(int ra_count, int nprocs, u64 entry_count, int random_offset, int range);
@@ -12,20 +12,20 @@ int main(int argc, char **argv)
     mcomm.create(argc, argv);
     srand (time(NULL));
 
-    for (u64 entry_count=4096; entry_count <= 131072; entry_count=entry_count*2)
+    for (u64 entry_count=4096; entry_count <= 16384; entry_count=entry_count*2)
     {
         u32 ra_count = 1;
         if (mcomm.get_rank() == 0)
         {
             std::cout << std::endl;
-            std::cout << "---- [NU] nprocs [80 20] " << mcomm.get_nprocs() << " ra count " << ra_count << " Entry count " << entry_count << " ----" << std::endl;
+            std::cout << "---- [NU] nprocs [90 10] " << mcomm.get_nprocs() << " ra count " << ra_count << " Entry count " << entry_count << " ----" << std::endl;
         }
         non_uniform_benchmark(ra_count, mcomm.get_nprocs(), entry_count, 90, 10);
     }
 
     MPI_Barrier(MPI_COMM_WORLD);
 
-    for (u64 entry_count=4096; entry_count <= 131072; entry_count=entry_count*2)
+    for (u64 entry_count=4096; entry_count <= 16384; entry_count=entry_count*2)
     {
         u32 ra_count = 1;
         if (mcomm.get_rank() == 0)
@@ -38,7 +38,7 @@ int main(int argc, char **argv)
 
     MPI_Barrier(MPI_COMM_WORLD);
 
-    for (u64 entry_count=4096; entry_count <= 131072; entry_count=entry_count*2)
+    for (u64 entry_count=4096; entry_count <= 16384; entry_count=entry_count*2)
     {
         u32 ra_count = 1;
         if (mcomm.get_rank() == 0)
@@ -51,7 +51,7 @@ int main(int argc, char **argv)
 
     MPI_Barrier(MPI_COMM_WORLD);
 
-    for (u64 entry_count=4096; entry_count <= 131072; entry_count=entry_count*2)
+    for (u64 entry_count=4096; entry_count <= 16384; entry_count=entry_count*2)
     {
         u32 ra_count = 1;
         if (mcomm.get_rank() == 0)
