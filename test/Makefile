@@ -18,4 +18,5 @@ object:	../src/buffer/*.cpp ../src/comm/*.cpp ../src/IO/*.cpp ../src/lie/*.cpp .
 	mpic++ -std=c++11 -O3 ../src/relation/relation_load_balancer.cpp -c
 	mpic++ -std=c++11 -O3 -o TC ../tests/transitive_closure.cpp *.o
 	mpic++ -std=c++11 -O3 -o kcfa ../tests/worstcase-110-terms-4-m.cpp *.o
+	mpic++ -std=c++11 -O3 -o test ../tests/test.cpp *.o
 	rm *.o

@@ -54,6 +54,13 @@ public:
     virtual void get_copy_filter_rename_index(int** projection_reorder_index_array, int* projection_reorder_index_array_length) {return;}
 
 
+    /// copy generate functions
+    virtual relation* get_copy_generate_input(){return NULL;}
+    virtual int get_copy_generate_input0_graph_type(){return 0;}
+    virtual relation* get_copy_generate_output(){return NULL;}
+    virtual void get_copy_generate_rename_index(int** projection_reorder_index_array, int* projection_reorder_index_array_length) {return;}
+
+
 
     /// MPI comm
     void set_comm(mpi_comm& mcomm)  {this->mcomm = mcomm;}
