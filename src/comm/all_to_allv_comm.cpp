@@ -61,7 +61,7 @@ void all_to_all_comm(vector_buffer* vectorized_send_buffer, int vectorized_send_
 
 
 
-void comm_compaction_all_to_all(all_to_allv_buffer compute_buffer, int **recv_buffer_offset_size, u64 **recv_buffer, MPI_Comm comm)
+void comm_compaction_all_to_all(all_to_allv_buffer compute_buffer, int **recv_buffer_offset_size, u64 **recv_buffer, MPI_Comm comm, int loop_counter, int task_id, std::string output_dir, bool record, double* negative_time)
 {
     u32 RA_count = compute_buffer.ra_count;
     int nprocs = compute_buffer.nprocs;
@@ -111,6 +111,29 @@ void comm_compaction_all_to_all(all_to_allv_buffer compute_buffer, int **recv_bu
 
 
     MPI_Alltoallv(send_buffer, compute_buffer.cumulative_tuple_process_map, send_disp, MPI_UNSIGNED_LONG_LONG, *recv_buffer, recv_counts, recv_displacements, MPI_UNSIGNED_LONG_LONG, comm);
+
+
+    if (record == true)
+    {
+        double start = MPI_Wtime();
+        std::string dir_name;
+        dir_name = output_dir + "/checkpoint-" + std::to_string(task_id) + "-" + std::to_string(loop_counter);
+        //dir_name = output_dir + "/checkpoint-" + std::to_string(loop_counter);
+        std::string scc_metadata;
+        scc_metadata = dir_name + "/a2a_" + std::to_string(rank);
+
+        FILE *fp;
+        fp = fopen(scc_metadata.c_str(), "w");
+        for (int i=0; i< compute_buffer.nprocs; i++)
+            fprintf (fp, "%d\n", compute_buffer.cumulative_tuple_process_map[i]);
+        fclose(fp);
+
+        double end = MPI_Wtime();
+        *negative_time = end - start;
+    }
+    else
+        *negative_time = 0;
+
 
     delete[] send_buffer;
     delete[] send_disp;

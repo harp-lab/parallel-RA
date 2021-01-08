@@ -151,28 +151,47 @@ void LIE::print_all_relation_size()
 
 
 
-void LIE::write_checkpoint_dump(int loop_counter, std::vector<int> executed_scc_id)
+void LIE::write_checkpoint_dump(int loop_counter, std::vector<int> executed_scc_id, int scc_id)
 {
     std::string dir_name;
-    dir_name = output_dir + "/checkpoint-" + std::to_string(loop_counter);
+    dir_name = output_dir + "/checkpoint-" + std::to_string(scc_id) + "-" + std::to_string(loop_counter);
 
     std::string scc_metadata;
     scc_metadata = dir_name + "/scc_metadata";
-    std::cout << "scc_metadata " << scc_metadata << std::endl;
 	if (mcomm.get_local_rank() == 0)
 	{
-        mkdir(dir_name.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-		FILE *fp;
+        //mkdir(dir_name.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+        FILE *fp;
         fp = fopen(scc_metadata.c_str(), "w");
         for (int i = 0; i < (int)executed_scc_id.size(); i++)
-			fprintf (fp, "%d\n", executed_scc_id[i]);
-		fclose(fp);
+            fprintf (fp, "%d\n", executed_scc_id[i]);
+        fclose(fp);
 	}
 	MPI_Barrier(mcomm.get_local_comm());
 
 	for (u32 i = 0 ; i < lie_relation_count; i++)
-		lie_relations[i]->parallel_IO(dir_name);
+    {
+        //std::cout << "Name " << lie_relations[i]->get_filename() << std::endl;
+        if(lie_relations[i]->get_debug_id() == "rel_path_2_1_2")
+            lie_relations[i]->parallel_IO(dir_name);
+    }
 }
+
+
+
+void LIE::create_checkpoint_dump(int loop_counter, int scc_id)
+{
+    std::string dir_name;
+    dir_name = output_dir + "/checkpoint-" + std::to_string(scc_id) + "-" + std::to_string(loop_counter);
+
+    std::string scc_metadata;
+    scc_metadata = dir_name + "/scc_metadata";
+    if (mcomm.get_local_rank() == 0)
+        mkdir(dir_name.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+
+    MPI_Barrier(mcomm.get_local_comm());
+}
+
 
 
 bool LIE::execute ()
@@ -234,7 +253,7 @@ bool LIE::execute ()
     /// Executable task
     RAM* executable_task = one_runnable_tasks();
 
-    int loop_counter = 0;
+
 
     std::vector<int> executed_scc_id;  /* the sccs that have been executed */
     /* Read scc metadate if it restarts from checkpoint */
@@ -255,6 +274,7 @@ bool LIE::execute ()
     /// Running one task at a time
     while (executable_task != NULL)
     {
+        int loop_counter = 0;
     	/* Skip the scc if it has been executed before */
     	int scc_id = executable_task->get_id();
     	std::vector<int>::iterator it;
@@ -334,14 +354,17 @@ bool LIE::execute ()
         /// For SCCs that runs for only one iteration
         if (executable_task->get_iteration_count() == 1)
         {
+            if (enable_io == true && loop_counter % cp_iteration == 0)
+                create_checkpoint_dump(loop_counter, executable_task->get_id());
+
             //executable_task->execute_in_batches_with_all_to_all_threshold(batch_size, history, intern_map, &running_time, &running_intra_bucket_comm, &running_buffer_allocate, &running_local_compute, &running_all_to_all, &running_buffer_free, &running_insert_newt, &running_insert_in_full);
-            executable_task->execute_in_batches(app_name, batch_size, history, intern_map, &running_time, &running_intra_bucket_comm, &running_buffer_allocate, &running_local_compute, &running_all_to_all, &running_buffer_free, &running_insert_newt, &running_insert_in_full, &running_fp);
-            loop_counter++;
+            executable_task->execute_in_batches(app_name, batch_size, history, intern_map, &running_time, &running_intra_bucket_comm, &running_buffer_allocate, &running_local_compute, &running_all_to_all, &running_buffer_free, &running_insert_newt, &running_insert_in_full, &running_fp, loop_counter, executable_task->get_id(), output_dir, all_to_all_meta_data_dump);
+
             executed_scc_id.push_back(executable_task->get_id());
             if (enable_io == true && loop_counter % cp_iteration == 0)
             {
             	double write_cp_start = MPI_Wtime();
-                write_checkpoint_dump(loop_counter, executed_scc_id);
+                write_checkpoint_dump(loop_counter, executed_scc_id, executable_task->get_id());
                 double write_cp_end = MPI_Wtime();
                 writing_checkpoint_dump_time = (write_cp_end - write_cp_start);
                 double max_write_cp_time = 0;
@@ -350,6 +373,7 @@ bool LIE::execute ()
                 	std::cout << "Writing checkpoint dump " << checkpoint_dumps_num << " takes " << max_write_cp_time << "(s)" << std::endl;
                 checkpoint_dumps_num++;
             }
+            loop_counter++;
 
 #if DEBUG_OUTPUT
             //for (u32 i = 0 ; i < scc_relation_count; i++)
@@ -363,16 +387,19 @@ bool LIE::execute ()
             u64 delta_in_scc = 0;
             do
             {
+                if (enable_io == true && loop_counter % cp_iteration == 0)
+                    create_checkpoint_dump(loop_counter, executable_task->get_id());
+
                 //executable_task->execute_in_batches_with_all_to_all_threshold(batch_size, history, intern_map, &running_time, &running_intra_bucket_comm, &running_buffer_allocate, &running_local_compute, &running_all_to_all, &running_buffer_free, &running_insert_newt, &running_insert_in_full);
-                executable_task->execute_in_batches(app_name, batch_size, history, intern_map, &running_time, &running_intra_bucket_comm, &running_buffer_allocate, &running_local_compute, &running_all_to_all, &running_buffer_free, &running_insert_newt, &running_insert_in_full, &running_fp);
-                loop_counter++;
+                executable_task->execute_in_batches(app_name, batch_size, history, intern_map, &running_time, &running_intra_bucket_comm, &running_buffer_allocate, &running_local_compute, &running_all_to_all, &running_buffer_free, &running_insert_newt, &running_insert_in_full, &running_fp, loop_counter, executable_task->get_id(), output_dir, all_to_all_meta_data_dump);
+
                 delta_in_scc = history[history.size()-2];
                 if (delta_in_scc == 0)
                 	executed_scc_id.push_back(executable_task->get_id());
                 if (enable_io == true && loop_counter % cp_iteration == 0)
                 {
                 	double write_cp_start = MPI_Wtime();
-                    write_checkpoint_dump(loop_counter, executed_scc_id);
+                    write_checkpoint_dump(loop_counter, executed_scc_id, executable_task->get_id());
                     double write_cp_end = MPI_Wtime();
                     writing_checkpoint_dump_time = (write_cp_end - write_cp_start);
                     double max_write_cp_time = 0;
@@ -381,6 +408,7 @@ bool LIE::execute ()
                         std::cout << "Writing checkpoint dump " << checkpoint_dumps_num << " takes " << max_write_cp_time << "(s)" << std::endl;
                     checkpoint_dumps_num++;
                 }
+                loop_counter++;
 
 
 #if DEBUG_OUTPUT

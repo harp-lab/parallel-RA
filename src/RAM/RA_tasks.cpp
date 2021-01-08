@@ -742,10 +742,10 @@ u32 RAM::local_compute_with_all_to_all_threshold(int* offset)
 
 
 
-void RAM::all_to_all()
-{
-    comm_compaction_all_to_all(compute_buffer, &cumulative_all_to_allv_recv_process_size_array, &cumulative_all_to_allv_buffer, mcomm.get_local_comm());
-}
+//void RAM::all_to_all(int loop_counter, std::string output_dir)
+//{
+
+//}
 
 
 void RAM::all_to_all_with_threshold()
@@ -1082,7 +1082,7 @@ void RAM::io_all_relation(int status)
 }
 
 
-void RAM::execute_in_batches(std::string name, int batch_size, std::vector<u32>& history, std::map<u64, u64>& intern_map, double *running_time, double *running_intra_bucket_comm, double *running_buffer_allocate, double *running_local_compute, double *running_all_to_all, double *running_buffer_free, double *running_insert_newt, double *running_insert_in_full, double *running_fp)
+void RAM::execute_in_batches(std::string name, int batch_size, std::vector<u32>& history, std::map<u64, u64>& intern_map, double *running_time, double *running_intra_bucket_comm, double *running_buffer_allocate, double *running_local_compute, double *running_all_to_all, double *running_buffer_free, double *running_insert_newt, double *running_insert_in_full, double *running_fp, int loop_counter, int task_id, std::string output_dir, bool all_to_all_record)
 {
     int inner_loop = 0;
     u32 RA_count = RA_list.size();
@@ -1119,10 +1119,12 @@ void RAM::execute_in_batches(std::string name, int batch_size, std::vector<u32>&
             *running_local_compute = *running_local_compute + (compute_end - compute_start);
 
 
+            double negative_time = 0;
             double all_to_all_start = MPI_Wtime();
-            all_to_all();
+            comm_compaction_all_to_all(compute_buffer, &cumulative_all_to_allv_recv_process_size_array, &cumulative_all_to_allv_buffer, mcomm.get_local_comm(), loop_counter, task_id, output_dir, all_to_all_record, &negative_time);
+            //all_to_all(loop_counter, output_dir);
             double all_to_all_end = MPI_Wtime();
-            *running_all_to_all = *running_all_to_all + (all_to_all_end - all_to_all_start);
+            *running_all_to_all = *running_all_to_all + (all_to_all_end - all_to_all_start) - (negative_time);
 
 
             double free_buffers_start = MPI_Wtime();
@@ -1143,7 +1145,7 @@ void RAM::execute_in_batches(std::string name, int batch_size, std::vector<u32>&
                 std::cout << name << " " << mcomm.get_local_nprocs() << " Current time INNER LOOP [" << loop_count_tracker << " " << inner_loop << "] "
                           << " Buf cre " << (allocate_buffers_end - allocate_buffers_start)
                           << " comp " << (compute_end - compute_start)
-                          << " A2A " << (all_to_all_end - all_to_all_start)
+                          << " A2A " << (all_to_all_end - all_to_all_start - negative_time)
                           << " Buf free " << (free_buffers_end - free_buffers_start)
                           << " newt " << (insert_in_newt_end - insert_in_newt_start)
                           << std::endl;

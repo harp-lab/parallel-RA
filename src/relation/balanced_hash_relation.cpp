@@ -131,6 +131,7 @@ void relation::parallel_IO(std::string  filename_template)
     full_file_offset = full_rel_name + ".offset";
     delta_file_offset= delta_rel_name + ".offset";
 
+
 	/// timing
 	double populate_metadata_time_full = 0;
 	double write_metadata_time_full = 0;
@@ -263,6 +264,12 @@ void relation::parallel_IO(std::string  filename_template)
 			}
 			close(fp);
 		}
+        FILE *fp1;
+        fp1 = fopen(meta_data_full_filename.c_str(), "w");
+        fprintf (fp1, "%d\n3", full_size/24);
+        fclose(fp1);
+
+
 		double write_full_data_end = MPI_Wtime();
 		write_full_data_time = (write_full_data_end - write_full_data_start);
 	}
@@ -385,6 +392,10 @@ void relation::parallel_IO(std::string  filename_template)
 			}
 			close(fp);
 		}
+        FILE *fp1;
+        fp1 = fopen(meta_data_delta_filename.c_str(), "w");
+        fprintf (fp1, "%d\n3", delta_size/(24));
+        fclose(fp1);
 		double write_delta_data_end = MPI_Wtime();
 		write_delta_data_time = (write_delta_data_end - write_delta_data_start);
 	}
@@ -396,6 +407,7 @@ void relation::parallel_IO(std::string  filename_template)
 	double max_total_time = 0;
 	MPI_Allreduce(&total_time, &max_total_time, 1, MPI_DOUBLE, MPI_MAX, mcomm.get_local_comm());
 
+#if 0
 	std::string write_io = (share_io == true)? "MPI IO": "POSIX IO";
 
 	if (separate_io == true)
@@ -409,11 +421,12 @@ void relation::parallel_IO(std::string  filename_template)
 	}
 	else
 	{
-		if (mcomm.get_rank() == 0)
-			std::cout << "Write " << get_debug_id() << " (" << write_io << ") " << total_time << ", " << total_time << " :\n  FULL [S] [PB] [PM] [WM] [WD], " << full_size << ", " << polulate_buffer_full_time<< ", " << populate_metadata_time_full << ", " <<
-			write_metadata_time_full << ", " << write_full_data_time << "\n  DELTA [S] [PB] [PM] [WM] [WD], " <<  delta_size << ", " << polulate_buffer_delta_time << ", " << populate_metadata_time_delta
-			<< ", " <<  write_metadata_time_delta << ", " << write_delta_data_time << std::endl;
+        if (mcomm.get_rank() == 0)
+            std::cout << "Write " << get_debug_id() << " (" << write_io << ") " << total_time << ", " << total_time << " :\n  FULL [S] [PB] [PM] [WM] [WD], " << full_size << ", " << polulate_buffer_full_time<< ", " << populate_metadata_time_full << ", " <<
+            write_metadata_time_full << ", " << write_full_data_time << "\n  DELTA [S] [PB] [PM] [WM] [WD], " <<  delta_size << ", " << polulate_buffer_delta_time << ", " << populate_metadata_time_delta
+            << ", " <<  write_metadata_time_delta << ", " << write_delta_data_time << std::endl;
 	}
+#endif
 }
 
 

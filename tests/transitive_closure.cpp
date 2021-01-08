@@ -105,9 +105,10 @@ int main(int argc, char **argv)
 
     if (argc != 2)
     {
+        lie->enable_all_to_all_dump();
         //lie->enable_offset_io();
-        //lie->enable_separate_io();
-        lie->enable_share_io();
+        lie->enable_separate_io();
+        //lie->enable_share_io();
 
         lie->set_cp_iteration(cp_iteration);
         lie->set_output_dir(output_dir);
@@ -117,11 +118,11 @@ int main(int argc, char **argv)
 
     lie->set_name(argv[0]);
     lie->set_comm(mcomm);
-    //lie->set_batch_size(1);
+    lie->set_batch_size(1);
     lie->execute();
     lie->print_all_relation_size();
 
-
+#if 0
     if (argc != 2)
     {
         double write_cp_start = MPI_Wtime();
@@ -135,6 +136,7 @@ int main(int argc, char **argv)
         if (mcomm.get_rank() == 0)
             std::cout << "Writing last checkpoint dump takes " << max_write_cp_time << "(s)" << std::endl;
     }
+#endif
 
     delete lie;
 

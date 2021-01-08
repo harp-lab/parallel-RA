@@ -125,7 +125,7 @@ public:
 
 
     //// Comm compaction
-    void all_to_all();
+    //void all_to_all(int loop_counter, std::string output_dir);
     void all_to_all_with_threshold();
 
 
@@ -153,7 +153,7 @@ public:
 
 
     /// Start running this SCC (task) for "batck_size" iterations
-    void execute_in_batches(std::string name, int batch_size, std::vector<u32>& history, std::map<u64, u64>& intern_map, double *running_time, double *running_intra_bucket_comm, double *running_buffer_allocate, double *running_local_compute, double *running_all_to_all, double *running_buffer_free, double *running_insert_newt, double *running_insert_in_full, double *running_fp);
+    void execute_in_batches(std::string name, int batch_size, std::vector<u32>& history, std::map<u64, u64>& intern_map, double *running_time, double *running_intra_bucket_comm, double *running_buffer_allocate, double *running_local_compute, double *running_all_to_all, double *running_buffer_free, double *running_insert_newt, double *running_insert_in_full, double *running_fp, int loop_counter,int task_id, std::string output_dir, bool all_to_all_record);
 
 
 

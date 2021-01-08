@@ -47,6 +47,8 @@ private:
 
     bool separate_io;                                    /// whether write checkpoint dump separately for each process
 
+    bool all_to_all_meta_data_dump;
+
     int loop_counter;
 
     std::vector<int> executed_scc_id;
@@ -69,6 +71,7 @@ public:
     	share_io = false;
     	restart_flag = false;
         enable_io = false;
+        all_to_all_meta_data_dump = false;
         lie_relation_count = 0;
         lie_sccs_count = 0;
         taskgraph = {{},{}};
@@ -88,6 +91,8 @@ public:
     int get_loop_counter()         {return loop_counter;}
 
     void enable_separate_io()      {separate_io = true;}
+
+    void enable_all_to_all_dump()    {all_to_all_meta_data_dump = true;}
 
     void enable_offset_io()    {offset_io = true;}
 
@@ -142,7 +147,9 @@ public:
     /// Runs all tasks within the LIE, following the dependence as set by taskgraph
     bool execute();
 
-    void write_checkpoint_dump(int loop_counter, std::vector<int> executed_scc_id);
+    void write_checkpoint_dump(int loop_counter, std::vector<int> executed_scc_id, int scc_id);
+
+    void create_checkpoint_dump(int loop_counter, int scc_id);
 };
 
 #endif
