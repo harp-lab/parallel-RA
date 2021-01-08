@@ -17,4 +17,6 @@ object:	../src/buffer/*.cpp ../src/comm/*.cpp ../src/IO/*.cpp ../src/lie/*.cpp .
 	mpic++ -std=c++11 -O3 ../src/relation/shmap_relation_exp.cpp -c
 	mpic++ -std=c++11 -O3 ../src/relation/relation_load_balancer.cpp -c
 	mpic++ -std=c++11 -O3 -o TC ../tests/transitive_closure.cpp *.o
+	c++ -std=c++11 -O3 -o bin_parser ../utility/binary_parser.cpp 
+	c++ -std=c++11 -O3 -o tsv_to_bin ../utility/tsv_to_bin.cpp 
 	rm *.o
