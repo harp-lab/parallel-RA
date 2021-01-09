@@ -266,7 +266,7 @@ void relation::parallel_IO(std::string  filename_template)
 		}
         FILE *fp1;
         fp1 = fopen(meta_data_full_filename.c_str(), "w");
-        fprintf (fp1, "%d\n3", full_size/24);
+        fprintf (fp1, "%d\n3", (int)full_size/24);
         fclose(fp1);
 
 
@@ -394,7 +394,7 @@ void relation::parallel_IO(std::string  filename_template)
 		}
         FILE *fp1;
         fp1 = fopen(meta_data_delta_filename.c_str(), "w");
-        fprintf (fp1, "%d\n3", delta_size/(24));
+        fprintf (fp1, "%d\n3", (int)delta_size/(24));
         fclose(fp1);
 		double write_delta_data_end = MPI_Wtime();
 		write_delta_data_time = (write_delta_data_end - write_delta_data_start);
@@ -407,7 +407,7 @@ void relation::parallel_IO(std::string  filename_template)
 	double max_total_time = 0;
 	MPI_Allreduce(&total_time, &max_total_time, 1, MPI_DOUBLE, MPI_MAX, mcomm.get_local_comm());
 
-#if 0
+#if 1
 	std::string write_io = (share_io == true)? "MPI IO": "POSIX IO";
 
 	if (separate_io == true)

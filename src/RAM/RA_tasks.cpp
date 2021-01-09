@@ -148,6 +148,13 @@ u64 RAM::intra_bucket_comm_execute()
             continue;
         }
 
+        /// No intra-bucket comm required for copy
+        if ((*it)->get_RA_type() == COPY_GENERATE)
+        {
+            counter++;
+            continue;
+        }
+
         /// No intra-bucket comm required for acopy
         else if ((*it)->get_RA_type() == ACOPY)
         {
@@ -362,6 +369,35 @@ u32 RAM::local_compute(int* offset)
                                               input_relation->get_full(), input_relation->get_bucket_map(),
                                               output_relation,
                                               reorder_map_array,
+                                              input_relation->get_arity(),
+                                              input_relation->get_join_column_count(),
+                                              compute_buffer, counter);
+            }
+        }
+
+        else if ((*it)->get_RA_type() == COPY_GENERATE)
+        {
+            parallel_copy_generate* current_ra = (parallel_copy_generate*) *it;
+
+            //std::vector<int> reorder_map_array;
+            //current_ra->get_copy_filter_rename_index(&reorder_map_array);
+            relation* output_relation = current_ra->get_copy_generate_output();
+            relation* input_relation = current_ra->get_copy_generate_input();
+
+            if (current_ra->get_copy_filter_input0_graph_type() == DELTA)
+            {
+                current_ra->local_copy_generate(get_bucket_count(),
+                                              input_relation->get_delta(), input_relation->get_bucket_map(),
+                                              output_relation,
+                                              input_relation->get_arity(),
+                                              input_relation->get_join_column_count(),
+                                              compute_buffer, counter);
+            }
+            if (current_ra->get_copy_filter_input0_graph_type() == FULL)
+            {
+                current_ra->local_copy_generate(get_bucket_count(),
+                                              input_relation->get_full(), input_relation->get_bucket_map(),
+                                              output_relation,
                                               input_relation->get_arity(),
                                               input_relation->get_join_column_count(),
                                               compute_buffer, counter);

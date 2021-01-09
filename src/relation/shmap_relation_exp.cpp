@@ -265,7 +265,7 @@ void shmap_relation::as_all_to_allv_copy_filter_buffer_helper(shmap_relation*& c
 }
 
 
-void shmap_relation::as_all_to_allv_copy_generate_buffer(all_to_allv_buffer& buffer, std::vector<u64> prefix, std::vector<int> reorder_map, int ra_id, u32 buckets, u32* output_sub_bucket_count, u32** output_sub_bucket_rank, u32 arity, u32 join_column_count, int(*lambda)(const u64* const, u64* const), int head_rel_hash_col_count, bool canonical)
+void shmap_relation::as_all_to_allv_copy_generate_buffer(all_to_allv_buffer& buffer, std::vector<u64> prefix, int ra_id, u32 buckets, u32* output_sub_bucket_count, u32** output_sub_bucket_rank, u32 arity, u32 join_column_count, int(*lambda)(const u64* const, u64* const), int head_rel_hash_col_count, bool canonical)
 {
     shmap_relation *m_trie = this;
     for (u64 n : prefix)
@@ -274,12 +274,12 @@ void shmap_relation::as_all_to_allv_copy_generate_buffer(all_to_allv_buffer& buf
             return;
         m_trie = *(m_trie->next.find(n));
     }
-    as_all_to_allv_copy_generate_buffer_helper(m_trie, prefix, buffer, ra_id, buckets, output_sub_bucket_count, output_sub_bucket_rank, reorder_map, arity, join_column_count, lambda, head_rel_hash_col_count, canonical);
+    as_all_to_allv_copy_generate_buffer_helper(m_trie, prefix, buffer, ra_id, buckets, output_sub_bucket_count, output_sub_bucket_rank, arity, join_column_count, lambda, head_rel_hash_col_count, canonical);
 }
 
 
 
-void shmap_relation::as_all_to_allv_copy_generate_buffer_helper(shmap_relation*& cur_trie, std::vector<u64> cur_path, all_to_allv_buffer& buffer, int ra_id, u32 buckets, u32* output_sub_bucket_count, u32** output_sub_bucket_rank, std::vector<int> reorder_map, u32 arity, u32 join_column_count, int(*lambda)(const u64* const, u64* const), int head_rel_hash_col_count, bool canonical)
+void shmap_relation::as_all_to_allv_copy_generate_buffer_helper(shmap_relation*& cur_trie, std::vector<u64> cur_path, all_to_allv_buffer& buffer, int ra_id, u32 buckets, u32* output_sub_bucket_count, u32** output_sub_bucket_rank, u32 arity, u32 join_column_count, int(*lambda)(const u64* const, u64* const), int head_rel_hash_col_count, bool canonical)
 {
 
     if ( cur_path.size() != 0 && cur_trie == NULL)
@@ -292,8 +292,8 @@ void shmap_relation::as_all_to_allv_copy_generate_buffer_helper(shmap_relation*&
         //if (lambda(cur_path_array, reordered_cur_path) == true)
         lambda(cur_path_array, reordered_cur_path);
         {
-            for (u32 j =0; j < reorder_map.size(); j++)
-                reordered_cur_path[j] = cur_path[reorder_map[j]];
+            //for (u32 j =0; j < buffer.width[ra_id]; j++)
+            //    reordered_cur_path[j] = cur_path[reorder_map[j]];
 
             uint64_t bucket_id = tuple_hash(reordered_cur_path, head_rel_hash_col_count) % buckets;
             uint64_t sub_bucket_id=0;
@@ -316,7 +316,7 @@ void shmap_relation::as_all_to_allv_copy_generate_buffer_helper(shmap_relation*&
         u64 nxt_node = nxt.key();
         shmap_relation *nxt_trie = nxt.val();
         cur_path.push_back(nxt_node);
-        as_all_to_allv_copy_generate_buffer_helper(nxt_trie, cur_path, buffer, ra_id, buckets, output_sub_bucket_count, output_sub_bucket_rank, reorder_map, arity, join_column_count, lambda, head_rel_hash_col_count, canonical);
+        as_all_to_allv_copy_generate_buffer_helper(nxt_trie, cur_path, buffer, ra_id, buckets, output_sub_bucket_count, output_sub_bucket_rank, arity, join_column_count, lambda, head_rel_hash_col_count, canonical);
         cur_path.pop_back();
     }
 }
