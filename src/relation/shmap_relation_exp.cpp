@@ -325,6 +325,7 @@ void shmap_relation::as_all_to_allv_copy_generate_buffer_helper(shmap_relation*&
 
 void shmap_relation::as_all_to_allv_right_join_buffer(std::vector<u64> prefix, all_to_allv_buffer& join_buffer, u64 *input0_buffer, int input0_buffer_width, int input1_buffer_width, int ra_id, u32 buckets, u32* output_sub_bucket_count, u32** output_sub_bucket_rank, std::vector<int> reorder_map, int join_column_count, shmap_relation& deduplicate, int *local_join_count, u32* local_join_duplicates, u32* local_join_inserts, std::string name, int head_rel_hash_col_count, bool canonical)
 {
+    //std::cout << "RIGHT" << std::endl;
     shmap_relation *m_trie = this;
     for (u64 n : prefix)  {
         if (m_trie->next.find(n)==NULL)
@@ -391,6 +392,7 @@ void shmap_relation::as_all_to_allv_right_join_buffer_helper(shmap_relation*& cu
 
 void shmap_relation::as_all_to_allv_left_join_buffer(std::vector<u64> prefix, all_to_allv_buffer& join_buffer, u64 *input0_buffer, int input0_buffer_width, int input1_buffer_width, int ra_id, u32 buckets, u32* output_sub_bucket_count, u32** output_sub_bucket_rank, std::vector<int> reorder_map, int join_column_count, shmap_relation& deduplicate, int* local_join_count, u32* local_join_duplicates, u32* local_join_inserts, int head_rel_hash_col_count, bool canonical)
 {
+    //std::cout << "LEFT" << std::endl;
     shmap_relation *m_trie = this;
     for (u64 n : prefix)  {
         if (m_trie->next.find(n)==NULL)
@@ -419,6 +421,7 @@ void shmap_relation::as_all_to_allv_left_join_buffer_helper(shmap_relation*& cur
         for (int i =0; i < join_buffer.width[ra_id]; i++)
             projected_path[i] = reordered_cur_path[reorder_map[i]];
 
+        //std::cout << "NT " << projected_path[0] << " " << projected_path[1] << std::endl;
         if (deduplicate.insert_tuple_from_array(projected_path, join_buffer.width[ra_id]) == true)
         {
             uint64_t bucket_id = tuple_hash(projected_path, head_rel_hash_col_count) % buckets;

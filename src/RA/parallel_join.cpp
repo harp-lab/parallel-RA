@@ -183,7 +183,10 @@ bool parallel_join::local_join(int threshold, int* offset,
         {
             std::vector<u64> prefix;
             for (int jc=0; jc < join_column_count; jc++)
+            {
                 prefix.push_back(input0_buffer[k1 + jc]);
+                //std::cout << "PREFIX " << input0_buffer[k1 + jc] << std::endl;
+            }
 
             u64 bucket_id = tuple_hash(input0_buffer + k1, join_column_count) % buckets;
 

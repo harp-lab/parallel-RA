@@ -11,6 +11,7 @@ object:	../src/buffer/*.cpp ../src/comm/*.cpp ../src/IO/*.cpp ../src/lie/*.cpp .
 	mpic++ -std=c++11 -O3 ../src/RA/parallel_copy.cpp -c
 	mpic++ -std=c++11 -O3 ../src/RA/parallel_join.cpp -c
 	mpic++ -std=c++11 -O3 ../src/RA/parallel_copy_filter.cpp -c
+	mpic++ -std=c++11 -O3 ../src/RA/parallel_copy_generate.cpp -c
 	mpic++ -std=c++11 -O3 ../src/RAM/RA_tasks.cpp -c
 	mpic++ -std=c++11 -O3 ../src/relation/balanced_hash_relation.cpp -c
 	mpic++ -std=c++11 -O3 ../src/relation/google_btree_relation.cpp -c

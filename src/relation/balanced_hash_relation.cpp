@@ -407,7 +407,7 @@ void relation::parallel_IO(std::string  filename_template)
 	double max_total_time = 0;
 	MPI_Allreduce(&total_time, &max_total_time, 1, MPI_DOUBLE, MPI_MAX, mcomm.get_local_comm());
 
-#if 1
+#if 0
 	std::string write_io = (share_io == true)? "MPI IO": "POSIX IO";
 
 	if (separate_io == true)

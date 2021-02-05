@@ -172,7 +172,7 @@ void LIE::write_checkpoint_dump(int loop_counter, std::vector<int> executed_scc_
 	for (u32 i = 0 ; i < lie_relation_count; i++)
     {
         //std::cout << "Name " << lie_relations[i]->get_filename() << std::endl;
-        if(lie_relations[i]->get_debug_id() == "rel_path_2_1_2")
+        //if(lie_relations[i]->get_debug_id() == "rel_path_2_1_2")
             lie_relations[i]->parallel_IO(dir_name);
     }
 }
@@ -369,8 +369,8 @@ bool LIE::execute ()
                 writing_checkpoint_dump_time = (write_cp_end - write_cp_start);
                 double max_write_cp_time = 0;
                 MPI_Reduce(&writing_checkpoint_dump_time, &max_write_cp_time, 1, MPI_DOUBLE, MPI_MAX, 0, mcomm.get_comm());
-                if (mcomm.get_local_rank() == 0)
-                	std::cout << "Writing checkpoint dump " << checkpoint_dumps_num << " takes " << max_write_cp_time << "(s)" << std::endl;
+                //if (mcomm.get_local_rank() == 0)
+                //	std::cout << "Writing checkpoint dump " << checkpoint_dumps_num << " takes " << max_write_cp_time << "(s)" << std::endl;
                 checkpoint_dumps_num++;
             }
             loop_counter++;
@@ -384,6 +384,8 @@ bool LIE::execute ()
         /// For SCCs that runs till fixed point is reached
         else
         {
+            if (mcomm.get_rank() == 0)
+                std::cout << "Iteration#\tBuffer_creation_time\tComputation_time\tAll_to_all_time\tBuffer_free_time\tInsert_in_newt_time\tIntra_comm_time\tInsert_in_full_time\tTotal_time" << std::endl;
             u64 delta_in_scc = 0;
             do
             {
@@ -392,6 +394,7 @@ bool LIE::execute ()
 
                 //executable_task->execute_in_batches_with_all_to_all_threshold(batch_size, history, intern_map, &running_time, &running_intra_bucket_comm, &running_buffer_allocate, &running_local_compute, &running_all_to_all, &running_buffer_free, &running_insert_newt, &running_insert_in_full);
                 executable_task->execute_in_batches(app_name, batch_size, history, intern_map, &running_time, &running_intra_bucket_comm, &running_buffer_allocate, &running_local_compute, &running_all_to_all, &running_buffer_free, &running_insert_newt, &running_insert_in_full, &running_fp, loop_counter, executable_task->get_id(), output_dir, all_to_all_meta_data_dump);
+                //executable_task->print_all_relation();
 
                 delta_in_scc = history[history.size()-2];
                 if (delta_in_scc == 0)
@@ -404,8 +407,8 @@ bool LIE::execute ()
                     writing_checkpoint_dump_time = (write_cp_end - write_cp_start);
                     double max_write_cp_time = 0;
                     MPI_Reduce(&writing_checkpoint_dump_time, &max_write_cp_time, 1, MPI_DOUBLE, MPI_MAX, 0, mcomm.get_comm());
-                    if (mcomm.get_local_rank() == 0)
-                        std::cout << "Writing checkpoint dump " << checkpoint_dumps_num << " takes " << max_write_cp_time << "(s)" << std::endl;
+                    //if (mcomm.get_local_rank() == 0)
+                    //    std::cout << "Writing checkpoint dump " << checkpoint_dumps_num << " takes " << max_write_cp_time << "(s)" << std::endl;
                     checkpoint_dumps_num++;
                 }
                 loop_counter++;
@@ -414,7 +417,7 @@ bool LIE::execute ()
 #if DEBUG_OUTPUT
                 //for (u32 i = 0 ; i < scc_relation_count; i++)
                 //    scc_relation[i]->print();
-                print_all_relation_size();
+                //print_all_relation_size();
 #endif
             }
             while (delta_in_scc != 0);
@@ -431,9 +434,13 @@ bool LIE::execute ()
         /// marks executable_task as finished
         update_task_graph(executable_task);
 
+
+
         /// loads new runnable task
         executable_task = one_runnable_tasks();
     }
+
+
 
 
 

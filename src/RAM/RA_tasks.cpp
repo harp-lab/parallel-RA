@@ -1130,8 +1130,8 @@ void RAM::execute_in_batches(std::string name, int batch_size, std::vector<u32>&
     while (batch_size != 0)
     {
 #if DEBUG_OUTPUT
-        if (mcomm.get_rank() == 0)
-            std::cout << "--------------FIXED POINT ITERATION " << loop_count_tracker << "--------------" << std::endl;
+        //if (mcomm.get_rank() == 0)
+        //    std::cout << "--------------FIXED POINT ITERATION " << loop_count_tracker << "--------------" << std::endl;
 #endif
 
 
@@ -1178,6 +1178,7 @@ void RAM::execute_in_batches(std::string name, int batch_size, std::vector<u32>&
 #if DEBUG_OUTPUT
             if (mcomm.get_rank() == 0)
             {
+#if 0
                 std::cout << name << " " << mcomm.get_local_nprocs() << " Current time INNER LOOP [" << loop_count_tracker << " " << inner_loop << "] "
                           << " Buf cre " << (allocate_buffers_end - allocate_buffers_start)
                           << " comp " << (compute_end - compute_start)
@@ -1193,6 +1194,13 @@ void RAM::execute_in_batches(std::string name, int batch_size, std::vector<u32>&
                           << " Buf free " << *running_buffer_free
                           << " newt " << *running_insert_newt
                           << std::endl;
+#endif
+                std::cout << loop_count_tracker << "\t"
+                          << (allocate_buffers_end - allocate_buffers_start) << "\t"
+                          << (compute_end - compute_start) << "\t"
+                          << (all_to_all_end - all_to_all_start - negative_time) << "\t"
+                          << (free_buffers_end - free_buffers_start) << "\t"
+                          << (insert_in_newt_end - insert_in_newt_start) << "\t";
             }
 #endif
             inner_loop++;
@@ -1208,6 +1216,7 @@ void RAM::execute_in_batches(std::string name, int batch_size, std::vector<u32>&
 #if DEBUG_OUTPUT
         if (mcomm.get_rank() == 0)
         {
+#if 0
             std::cout  << name << " " << mcomm.get_local_nprocs()<< " Current time OUTER LOOP [" << loop_count_tracker << " ] "
                       << " Intra " << (intra_end - intra_start)
                       << " full " << (insert_in_full_end - insert_in_full_start)
@@ -1220,6 +1229,11 @@ void RAM::execute_in_batches(std::string name, int batch_size, std::vector<u32>&
                       << " Intra " << *running_intra_bucket_comm
                       << " full " << *running_insert_in_full
                       << " Total " << *running_intra_bucket_comm + *running_buffer_allocate + *running_local_compute + *running_all_to_all + *running_buffer_free + *running_insert_newt + *running_insert_in_full << std::endl;
+#endif
+            std::cout << (intra_end - intra_start) << "\t"
+                      << (insert_in_full_end - insert_in_full_start)  << "\t"
+                      << (insert_in_full_end - intra_start) << std::endl;
+
         }
 #endif
 
@@ -1240,11 +1254,13 @@ void RAM::execute_in_batches(std::string name, int batch_size, std::vector<u32>&
 
     if (mcomm.get_rank() == 0)
     {
+#if 0
         std::cout << name << " " << mcomm.get_local_nprocs() << " Fixed Point [" << loop_count_tracker << "] "
                   << (fp_end - fp_start)
                   << " "
                   << *running_fp
                   << std::endl;
+#endif
     }
 
 

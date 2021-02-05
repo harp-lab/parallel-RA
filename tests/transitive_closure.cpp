@@ -30,8 +30,8 @@ int main(int argc, char **argv)
         output_dir = argv[3];
         cp_iteration = atoi(argv[4]);
         if ( dir_name[strlen(dir_name) - 1] == '/' ) dir_name[strlen(dir_name) - 1] = '\0';
-        sprintf(rel_path_212, "%s/%s_full", dir_name, "rel_path_2_1_2");
-        sprintf(rel_edge_212, "%s/%s_full", dir_name, "rel_edge_2_1_2");
+        sprintf(rel_path_212, "%s/%s_full", dir_name, "T");
+        sprintf(rel_edge_212, "%s/%s_full", dir_name, "G");
         sprintf(rel_path_21, "%s/%s_full", dir_name, "rel_path_2_1");
         sprintf(rel_edge_22, "%s/%s_full", dir_name, "rel_edge_2_2");
     }
@@ -41,15 +41,11 @@ int main(int argc, char **argv)
         cp_iteration = atoi(argv[3]);
         sprintf(rel_path_212, "%s", "../data/g5955/path_2_1_2");
         sprintf(rel_edge_212, "%s", argv[1]);
-        sprintf(rel_path_21, "%s", "../data/g5955/path_2_1");
-        sprintf(rel_edge_22, "%s", "../data/g5955/edge_2_2");
     }
     else if (argc == 2)
     {
         sprintf(rel_path_212, "%s", "../data/g5955/path_2_1_2");
         sprintf(rel_edge_212, "%s", argv[1]);
-        sprintf(rel_path_21, "%s", "../data/g5955/path_2_1");
-        sprintf(rel_edge_22, "%s", "../data/g5955/edge_2_2");
     }
     else
     {
@@ -57,46 +53,27 @@ int main(int argc, char **argv)
                      "2. Restart: mpirun -n <process cout> ./TC --restart <checkpoint dump directory>" << std::endl;
     }
 
-    relation* rel_path_2_1_2 = new relation(2, true, 2, 257, "rel_path_2_1_2", rel_path_212, FULL);
-    relation* rel_edge_2_1_2 = new relation(2, true, 2, 256, "rel_edge_2_1_2", rel_edge_212, FULL);
-    relation* rel_path_2_1 = new relation(1, false, 2, 257, "rel_path_2_1", rel_path_21, FULL);
-    relation* rel_edge_2_2 = new relation(1, false, 2, 256, "rel_edge_2_2", rel_edge_22, FULL);
-
+    relation* T = new relation(1, true, 2, 257, "T", rel_path_212, FULL);
+    relation* G = new relation(1, true, 2, 256, "G", rel_edge_212, FULL);
 
 
 
     RAM* scc13237 = new RAM(true, 1);
-    scc13237->add_relation(rel_edge_2_2, false);
-    scc13237->add_relation(rel_path_2_1, true);
-    scc13237->add_relation(rel_path_2_1_2, true);
-    scc13237->add_rule(new parallel_acopy(rel_path_2_1, rel_path_2_1_2, DELTA, {0, 2, 1}));
-    scc13237->add_rule(new parallel_join(rel_path_2_1_2, rel_path_2_1, DELTA, rel_edge_2_2, FULL, {4, 2}));
-
-
-
-
-    RAM* scc13238 = new RAM(false, 3);
-    scc13238->add_relation(rel_edge_2_2, true);
-    scc13238->add_relation(rel_edge_2_1_2, true);
-    scc13238->add_rule(new parallel_acopy(rel_edge_2_2, rel_edge_2_1_2, DELTA, {1, 2, 0}));
-
+    scc13237->add_relation(G, false);
+    scc13237->add_relation(T, true);
+    scc13237->add_rule(new parallel_join(T, T, DELTA, G, FULL, {3, 1}));
 
 
     RAM* scc13239 = new RAM(false, 2);
-    scc13239->add_relation(rel_edge_2_1_2, false);
-    scc13239->add_relation(rel_path_2_1_2, true);
-    scc13239->add_rule(new parallel_copy(rel_path_2_1_2, rel_edge_2_1_2, FULL, {0, 1}));
-
+    scc13239->add_relation(G, false);
+    scc13239->add_relation(T, true);
+    scc13239->add_rule(new parallel_copy(T, G, FULL, {1, 0}));
 
     LIE* lie = new LIE();
-    lie->add_relation(rel_path_2_1_2);
-    lie->add_relation(rel_edge_2_1_2);
-    lie->add_relation(rel_path_2_1);
-    lie->add_relation(rel_edge_2_2);
+    lie->add_relation(T);
+    lie->add_relation(G);
     lie->add_scc(scc13237);
-    lie->add_scc(scc13238);
     lie->add_scc(scc13239);
-    lie->add_scc_dependance(scc13238, scc13237);
     lie->add_scc_dependance(scc13239, scc13237);
 
     if (restart_flag == true)
@@ -106,9 +83,7 @@ int main(int argc, char **argv)
     if (argc != 2)
     {
         lie->enable_all_to_all_dump();
-        //lie->enable_offset_io();
         lie->enable_separate_io();
-        //lie->enable_share_io();
 
         lie->set_cp_iteration(cp_iteration);
         lie->set_output_dir(output_dir);
