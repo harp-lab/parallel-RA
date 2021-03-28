@@ -550,26 +550,19 @@ bool LIE::execute ()
                 fp1 = fopen(scc_metadata_a2a.c_str(), "w");
                 for (int i=0; i< mcomm.get_local_nprocs(); i++)
                     fprintf (fp1, "%d\n", all_to_all_buffer_size[l][il][i]);
+
+                fprintf (fp1, "%d\n", compute_size1[l][il]);
+                fprintf (fp1, "%d\n", compute_size2[l][il]);
+                fprintf (fp1, "%f\n", running_buffer_allocate[l][il]);
+                fprintf (fp1, "%f\n", running_local_compute[l][il]);
+                fprintf (fp1, "%f\n", running_all_to_all[l][il]);
+                fprintf (fp1, "%f\n", running_buffer_free[l][il]);
+                fprintf (fp1, "%f\n", running_insert_newt[l][il]);
+                fprintf (fp1, "%f\n", running_intra_bucket_comm[l][il]);
+                fprintf (fp1, "%f\n", running_insert_in_full[l][il]);
+                fprintf (fp1, "%f\n", running_fp[l][il]);
+                fprintf (fp1, "%f\n", running_time[l][il]);
                 fclose(fp1);
-
-
-                std::string scc_metadata_lc;
-                scc_metadata_lc = dir_name + "/lc";
-
-                FILE *fp2;
-                fp2 = fopen(scc_metadata_lc.c_str(), "w");
-                fprintf (fp2, "%d\n", compute_size1[l][il]);
-                fprintf (fp2, "%d\n", compute_size2[l][il]);
-                fprintf (fp2, "%f\n", running_buffer_allocate[l][il]);
-                fprintf (fp2, "%f\n", running_local_compute[l][il]);
-                fprintf (fp2, "%f\n", running_all_to_all[l][il]);
-                fprintf (fp2, "%f\n", running_buffer_free[l][il]);
-                fprintf (fp2, "%f\n", running_insert_newt[l][il]);
-                fprintf (fp2, "%f\n", running_intra_bucket_comm[l][il]);
-                fprintf (fp2, "%f\n", running_insert_in_full[l][il]);
-                fprintf (fp2, "%f\n", running_fp[l][il]);
-                fprintf (fp2, "%f\n", running_time[l][il]);
-                fclose(fp2);
             }
         }
     }
