@@ -27,19 +27,19 @@ ADD_LIBRARY(parallel_RA "${source_files_parallel_RA}")
 
 add_executable(ata ${source_files_ata})
 INCLUDE_DIRECTORIES(${MPI_INCLUDE_PATH})
-TARGET_LINK_LIBRARIES(ata ${MPI_LIBRARIES} parallel_RA)
+TARGET_LINK_LIBRARIES(ata parallel_RA ${MPI_LIBRARIES})
 
 add_executable(TC ${source_files_tc})
 INCLUDE_DIRECTORIES(${MPI_INCLUDE_PATH})
-TARGET_LINK_LIBRARIES(TC ${MPI_LIBRARIES} parallel_RA)
+TARGET_LINK_LIBRARIES(TC parallel_RA ${MPI_LIBRARIES})
 
 add_executable(freevars ${source_files_fv})
 INCLUDE_DIRECTORIES(${MPI_INCLUDE_PATH})
-TARGET_LINK_LIBRARIES(freevars ${MPI_LIBRARIES} parallel_RA)
+TARGET_LINK_LIBRARIES(freevars parallel_RA ${MPI_LIBRARIES})
 
 add_executable(kcfa ${source_files_kcfa})
 INCLUDE_DIRECTORIES(${MPI_INCLUDE_PATH})
-TARGET_LINK_LIBRARIES(kcfa ${MPI_LIBRARIES} parallel_RA)
+TARGET_LINK_LIBRARIES(kcfa parallel_RA ${MPI_LIBRARIES})
 
 add_executable(bin_parser "${utility_dir}/binary_parser.cpp")
 add_executable(tsv_to_bin "${utility_dir}/tsv_to_bin.cpp")

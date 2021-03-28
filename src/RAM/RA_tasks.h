@@ -114,6 +114,7 @@ public:
     /// Buffer to hold new tuples
     u32 allocate_compute_buffers();
 
+    u32 get_loop_count_tracker()    {return loop_count_tracker;}
 
     void allocate_all_to_all_compute_buffers();
 
@@ -121,7 +122,7 @@ public:
     u32 local_compute_with_all_to_all_threshold(int* offset);
 
     /// Join/compy/acopy
-    u32 local_compute(int* offset);
+    u32 local_compute(int* offset, int loop_counter, int task_id, int** compute_size1, int** compute_size2);
 
 
     //// Comm compaction
@@ -153,11 +154,11 @@ public:
 
 
     /// Start running this SCC (task) for "batck_size" iterations
-    void execute_in_batches(std::string name, int batch_size, std::vector<u32>& history, std::map<u64, u64>& intern_map, double *running_time, double *running_intra_bucket_comm, double *running_buffer_allocate, double *running_local_compute, double *running_all_to_all, double *running_buffer_free, double *running_insert_newt, double *running_insert_in_full, double *running_fp, int loop_counter,int task_id, std::string output_dir, bool all_to_all_record);
+    void execute_in_batches(std::string name, int batch_size, std::vector<u32>& history, std::map<u64, u64>& intern_map, double **running_time, double **running_intra_bucket_comm, double **running_buffer_allocate, double **running_local_compute, double **running_all_to_all, double **running_buffer_free, double **running_insert_newt, double **running_insert_in_full, double **running_fp, int loop_counter,int task_id, std::string output_dir, bool all_to_all_record, int*** all_to_all_buffer_size, int** compute_size1, int** compute_size2);
 
 
 
-    void execute_in_batches_with_all_to_all_threshold(int batch_size, std::vector<u32>& history, std::map<u64, u64>& intern_map, double *running_time, double *running_intra_bucket_comm, double *running_buffer_allocate, double *running_local_compute, double *running_all_to_all, double *running_buffer_free, double *running_insert_newt, double *running_insert_in_full);
+    //void execute_in_batches_with_all_to_all_threshold(int batch_size, std::vector<u32>& history, std::map<u64, u64>& intern_map, double *running_time, double *running_intra_bucket_comm, double *running_buffer_allocate, double *running_local_compute, double *running_all_to_all, double *running_buffer_free, double *running_insert_newt, double *running_insert_in_full);
 
 
     /// Start running this SCC (task) for "batck_time" seconds

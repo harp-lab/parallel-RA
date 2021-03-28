@@ -61,7 +61,7 @@ void all_to_all_comm(vector_buffer* vectorized_send_buffer, int vectorized_send_
 
 
 
-void comm_compaction_all_to_all(all_to_allv_buffer compute_buffer, int **recv_buffer_offset_size, u64 **recv_buffer, MPI_Comm comm, int loop_counter, int task_id, std::string output_dir, bool record, double* negative_time)
+void comm_compaction_all_to_all(all_to_allv_buffer compute_buffer, int **recv_buffer_offset_size, u64 **recv_buffer, MPI_Comm comm, int loop_counter, int task_id, std::string output_dir, bool record, int*** all_to_all_time)
 {
     u32 RA_count = compute_buffer.ra_count;
     int nprocs = compute_buffer.nprocs;
@@ -115,7 +115,7 @@ void comm_compaction_all_to_all(all_to_allv_buffer compute_buffer, int **recv_bu
 
     if (record == true)
     {
-        double start = MPI_Wtime();
+#if 0
         std::string dir_name;
         dir_name = output_dir + "/checkpoint-" + std::to_string(task_id) + "-" + std::to_string(loop_counter);
         //dir_name = output_dir + "/checkpoint-" + std::to_string(loop_counter);
@@ -127,12 +127,9 @@ void comm_compaction_all_to_all(all_to_allv_buffer compute_buffer, int **recv_bu
         for (int i=0; i< compute_buffer.nprocs; i++)
             fprintf (fp, "%d\n", compute_buffer.cumulative_tuple_process_map[i]);
         fclose(fp);
-
-        double end = MPI_Wtime();
-        *negative_time = end - start;
+#endif
+        memcpy(all_to_all_time[task_id][loop_counter], compute_buffer.cumulative_tuple_process_map, compute_buffer.nprocs * sizeof(int));
     }
-    else
-        *negative_time = 0;
 
 
     delete[] send_buffer;

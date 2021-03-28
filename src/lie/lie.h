@@ -27,6 +27,7 @@ private:
 
     u32 lie_sccs_count;
     RAM *lie_sccs[64];
+    int iteration_count[64];
 
     //u32 lie_sccs_key;
     //std::map<u32, RAM*> lie_sccs;                                 /// List of all tasks
@@ -34,6 +35,8 @@ private:
     std::map<RAM*, std::set<RAM*>> taskgraph;  /// List of all edges in a task (this is an adjacency list)
 
     std::map<u64, u64> intern_map;                        /// Intern table
+
+    bool enable_data_io;
 
     bool enable_io;
 
@@ -48,6 +51,11 @@ private:
     bool separate_io;                                    /// whether write checkpoint dump separately for each process
 
     bool all_to_all_meta_data_dump;
+
+    int ***all_to_all_buffer_size;
+
+    int **compute_size1;
+    int **compute_size2;
 
     int loop_counter;
 
@@ -70,6 +78,7 @@ public:
     	offset_io = false;
     	share_io = false;
     	restart_flag = false;
+        enable_data_io = false;
         enable_io = false;
         all_to_all_meta_data_dump = false;
         lie_relation_count = 0;
@@ -103,6 +112,9 @@ public:
     void set_restart_flag(bool flag)   {restart_flag = flag;}
 
     void enable_IO()    {enable_io = true;}
+
+
+    void enable_data_IO()    {enable_data_io = true;}
 
 
     void print_all_relation_size();

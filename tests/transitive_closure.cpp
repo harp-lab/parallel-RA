@@ -64,7 +64,7 @@ int main(int argc, char **argv)
     scc13237->add_rule(new parallel_join(T, T, DELTA, G, FULL, {3, 1}));
 
 
-    RAM* scc13239 = new RAM(false, 2);
+    RAM* scc13239 = new RAM(false, 0);
     scc13239->add_relation(G, false);
     scc13239->add_relation(T, true);
     scc13239->add_rule(new parallel_copy(T, G, FULL, {1, 0}));
@@ -83,11 +83,11 @@ int main(int argc, char **argv)
     if (argc != 2)
     {
         lie->enable_all_to_all_dump();
-        lie->enable_separate_io();
+        //lie->enable_separate_io();
 
         lie->set_cp_iteration(cp_iteration);
         lie->set_output_dir(output_dir);
-        lie->set_restart_flag(restart_flag); // set restart flag
+        //lie->set_restart_flag(restart_flag); // set restart flag
         lie->enable_IO();
     }
 

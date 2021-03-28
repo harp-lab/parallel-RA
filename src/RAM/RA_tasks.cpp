@@ -302,7 +302,7 @@ u32 RAM::allocate_compute_buffers()
 
 
 
-u32 RAM::local_compute(int* offset)
+u32 RAM::local_compute(int* offset, int loop_counter, int task_id, int** compute_size1, int** compute_size2)
 {
     bool join_completed = true;
     u32 join_tuples = 0;
@@ -514,6 +514,9 @@ u32 RAM::local_compute(int* offset)
                                                                          &join_tuples);
                 total_join_tuples = total_join_tuples + join_tuples;
             }
+
+            compute_size1[task_id][loop_counter] = join_tuples_duplicates;
+            compute_size2[task_id][loop_counter] = join_tuples;
         }
         counter++;
     }
@@ -1118,7 +1121,7 @@ void RAM::io_all_relation(int status)
 }
 
 
-void RAM::execute_in_batches(std::string name, int batch_size, std::vector<u32>& history, std::map<u64, u64>& intern_map, double *running_time, double *running_intra_bucket_comm, double *running_buffer_allocate, double *running_local_compute, double *running_all_to_all, double *running_buffer_free, double *running_insert_newt, double *running_insert_in_full, double *running_fp, int loop_counter, int task_id, std::string output_dir, bool all_to_all_record)
+void RAM::execute_in_batches(std::string name, int batch_size, std::vector<u32>& history, std::map<u64, u64>& intern_map, double **running_time, double **running_intra_bucket_comm, double **running_buffer_allocate, double **running_local_compute, double **running_all_to_all, double **running_buffer_free, double **running_insert_newt, double **running_insert_in_full, double **running_fp, int loop_counter, int task_id, std::string output_dir, bool all_to_all_record, int*** all_to_all_buffer_size, int** compute_size1, int** compute_size2)
 {
     int inner_loop = 0;
     u32 RA_count = RA_list.size();
@@ -1138,7 +1141,7 @@ void RAM::execute_in_batches(std::string name, int batch_size, std::vector<u32>&
         double intra_start = MPI_Wtime();
         intra_bucket_comm_execute();
         double intra_end = MPI_Wtime();
-        *running_intra_bucket_comm = *running_intra_bucket_comm + (intra_end - intra_start);
+        running_intra_bucket_comm[task_id][loop_counter] = (intra_end - intra_start);
 
         bool local_join_status = false;
         while (local_join_status == false)
@@ -1146,33 +1149,32 @@ void RAM::execute_in_batches(std::string name, int batch_size, std::vector<u32>&
             double allocate_buffers_start = MPI_Wtime();
             allocate_compute_buffers();
             double allocate_buffers_end = MPI_Wtime();
-            *running_buffer_allocate = *running_buffer_allocate + (allocate_buffers_end - allocate_buffers_start);
+            running_buffer_allocate[task_id][loop_counter] = (allocate_buffers_end - allocate_buffers_start);
 
 
             double compute_start = MPI_Wtime();
-            local_join_status = local_compute(offset);
+            local_join_status = local_compute(offset, loop_counter, task_id, compute_size1, compute_size2);
             double compute_end = MPI_Wtime();
-            *running_local_compute = *running_local_compute + (compute_end - compute_start);
+            running_local_compute[task_id][loop_counter] = (compute_end - compute_start);
 
 
-            double negative_time = 0;
             double all_to_all_start = MPI_Wtime();
-            comm_compaction_all_to_all(compute_buffer, &cumulative_all_to_allv_recv_process_size_array, &cumulative_all_to_allv_buffer, mcomm.get_local_comm(), loop_counter, task_id, output_dir, all_to_all_record, &negative_time);
+            comm_compaction_all_to_all(compute_buffer, &cumulative_all_to_allv_recv_process_size_array, &cumulative_all_to_allv_buffer, mcomm.get_local_comm(), loop_counter, task_id, output_dir, all_to_all_record, all_to_all_buffer_size);
             //all_to_all(loop_counter, output_dir);
             double all_to_all_end = MPI_Wtime();
-            *running_all_to_all = *running_all_to_all + (all_to_all_end - all_to_all_start) - (negative_time);
+            running_all_to_all[task_id][loop_counter] = (all_to_all_end - all_to_all_start);
 
 
             double free_buffers_start = MPI_Wtime();
             free_compute_buffers();
             double free_buffers_end = MPI_Wtime();
-            *running_buffer_free = *running_buffer_free + (free_buffers_end - free_buffers_start);
+            running_buffer_free[task_id][loop_counter] = (free_buffers_end - free_buffers_start);
 
 
             double insert_in_newt_start = MPI_Wtime();
             local_insert_in_newt(intern_map);
             double insert_in_newt_end = MPI_Wtime();
-            *running_insert_newt = *running_insert_newt + (insert_in_newt_end - insert_in_newt_start);
+            running_insert_newt[task_id][loop_counter] = (insert_in_newt_end - insert_in_newt_start);
 
 
 #if DEBUG_OUTPUT
@@ -1198,7 +1200,7 @@ void RAM::execute_in_batches(std::string name, int batch_size, std::vector<u32>&
                 std::cout << loop_count_tracker << "\t"
                           << (allocate_buffers_end - allocate_buffers_start) << "\t"
                           << (compute_end - compute_start) << "\t"
-                          << (all_to_all_end - all_to_all_start - negative_time) << "\t"
+                          << (all_to_all_end - all_to_all_start) << "\t"
                           << (free_buffers_end - free_buffers_start) << "\t"
                           << (insert_in_newt_end - insert_in_newt_start) << "\t";
             }
@@ -1210,8 +1212,8 @@ void RAM::execute_in_batches(std::string name, int batch_size, std::vector<u32>&
         local_insert_in_full();
         double insert_in_full_end = MPI_Wtime();
 
-        *running_insert_in_full = *running_insert_in_full + (insert_in_full_end - insert_in_full_start);
-        *running_time = *running_time + (insert_in_full_end - intra_start);
+        running_insert_in_full[task_id][loop_counter] = (insert_in_full_end - insert_in_full_start);
+        running_time[task_id][loop_counter] = (insert_in_full_end - intra_start);
 
 #if DEBUG_OUTPUT
         if (mcomm.get_rank() == 0)
@@ -1249,8 +1251,8 @@ void RAM::execute_in_batches(std::string name, int batch_size, std::vector<u32>&
     double fp_start = MPI_Wtime();
     check_for_fixed_point(history);
     double fp_end = MPI_Wtime();
-    *running_time = *running_time + (fp_end - fp_start);
-    *running_fp = *running_fp + (fp_end - fp_start);
+    running_time[task_id][loop_counter] = running_time[task_id][loop_counter] + (fp_end - fp_start);
+    running_fp[task_id][loop_counter] = (fp_end - fp_start);
 
     if (mcomm.get_rank() == 0)
     {
@@ -1269,7 +1271,7 @@ void RAM::execute_in_batches(std::string name, int batch_size, std::vector<u32>&
 }
 
 
-
+#if 0
 void RAM::execute_in_batches_with_all_to_all_threshold(int batch_size, std::vector<u32>& history, std::map<u64, u64>& intern_map, double *running_time, double *running_intra_bucket_comm, double *running_buffer_allocate, double *running_local_compute, double *running_all_to_all, double *running_buffer_free, double *running_insert_newt, double *running_insert_in_full)
 {
     u32 RA_count = RA_list.size();
@@ -1385,7 +1387,7 @@ void RAM::execute_in_batches_with_all_to_all_threshold(int batch_size, std::vect
     if (logging == true)
         print_all_relation();
 }
-
+#endif
 
 #if 0
 void RAM::execute_by_wall_clock(double batch_time, std::vector<u32>& history, std::map<u64, u64>& intern_map)
