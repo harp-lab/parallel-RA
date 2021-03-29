@@ -35,7 +35,7 @@ int main(int argc, char **argv)
         sprintf(rel_path_21, "%s/%s_full", dir_name, "rel_path_2_1");
         sprintf(rel_edge_22, "%s/%s_full", dir_name, "rel_edge_2_2");
     }
-    else if (argc == 4)
+    else if (argc == 5)
     {
         output_dir = argv[2];
         cp_iteration = atoi(argv[3]);
@@ -80,8 +80,10 @@ int main(int argc, char **argv)
         lie->set_restart_dir_name(dir_name);
 
 
-    if (argc != 2)
+    if (argc == 5)
     {
+        if (atoi(argv[4]) == 1)
+            lie->enable_sloav_mode();
         lie->enable_all_to_all_dump();
         //lie->enable_separate_io();
 

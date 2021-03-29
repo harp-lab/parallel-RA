@@ -50,6 +50,8 @@ private:
 
     bool separate_io;                                    /// whether write checkpoint dump separately for each process
 
+    bool sloav_mode;
+
     bool all_to_all_meta_data_dump;
 
     int ***all_to_all_buffer_size;
@@ -63,6 +65,8 @@ private:
 
     std::string output_dir;
 
+
+
     int cp_iteration;
 
 public:
@@ -75,6 +79,7 @@ public:
     	executed_scc_id = {};
     	loop_counter = 0;
     	separate_io = false;
+        sloav_mode = false;
     	offset_io = false;
     	share_io = false;
     	restart_flag = false;
@@ -113,6 +118,7 @@ public:
 
     void enable_IO()    {enable_io = true;}
 
+    void enable_sloav_mode()    {sloav_mode = true;}
 
     void enable_data_IO()    {enable_data_io = true;}
 
