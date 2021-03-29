@@ -629,6 +629,16 @@ bool LIE::execute ()
         delete[] running_insert_newt[i];
         delete[] running_insert_in_full[i];
         delete[] running_fp[i];
+
+        delete[] running_a2a_find_count_time[i];
+        delete[] running_a2a_create_rindex_time[i];
+        delete[] running_a2a_total_find_blocks_time[i];
+        delete[] running_a2a_total_pre_time[i];
+        delete[] running_a2a_total_send_meda_time[i];
+        delete[] running_a2a_total_comm_time[i];
+        delete[] running_a2a_total_replace_time[i];
+        delete[] running_a2a_exchange_time[i];
+        delete[] running_a2a_filter_time[i];
     }
 
     delete[] running_time;
@@ -640,6 +650,18 @@ bool LIE::execute ()
     delete[] running_insert_newt;
     delete[] running_insert_in_full;
     delete[] running_fp;
+
+    delete[] running_a2a_find_count_time;
+    delete[] running_a2a_create_rindex_time;
+    delete[] running_a2a_total_find_blocks_time;
+    delete[] running_a2a_total_pre_time;
+    delete[] running_a2a_total_send_meda_time;
+    delete[] running_a2a_total_comm_time;
+    delete[] running_a2a_total_replace_time;
+    delete[] running_a2a_exchange_time;
+    delete[] running_a2a_filter_time;
+
+
 #endif
 
 
