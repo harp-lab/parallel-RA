@@ -94,7 +94,7 @@ int main(int argc, char **argv)
 
     lie->set_name(argv[0]);
     lie->set_comm(mcomm);
-    lie->set_batch_size(1);
+    lie->set_batch_size(10);
     lie->execute();
     lie->print_all_relation_size();
 
