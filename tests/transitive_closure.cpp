@@ -82,8 +82,7 @@ int main(int argc, char **argv)
 
     if (argc == 5)
     {
-        if (atoi(argv[4]) == 1)
-            lie->enable_sloav_mode();
+        lie->set_sloav_mode(atoi(argv[4]));
         lie->enable_all_to_all_dump();
         //lie->enable_separate_io();
 

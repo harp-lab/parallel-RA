@@ -356,6 +356,35 @@ bool LIE::execute ()
         memset(running_a2a_filter_time[i], 0, MAX_LOOP_COUNT * sizeof(double));
     }
 
+    int rank = mcomm.get_local_rank();
+    int nprocs = mcomm.get_local_nprocs();
+    int* rotate_index_array = new int[nprocs];
+    memset(rotate_index_array, 0, nprocs * sizeof(int));
+
+    for (int i = 0; i < nprocs; i++)
+        rotate_index_array[i] = (2*rank - i + nprocs) % nprocs;
+
+    int** send_indexes = new int*[nprocs];
+    for (int i=0; i < nprocs; i++)
+    {
+        send_indexes[i] = new int[(nprocs + 1)/2];
+        memset(send_indexes[i], 0, ((nprocs + 1)/2) * sizeof(int));
+    }
+
+    int* sendb_num  = new int[nprocs];
+    memset(sendb_num, 0, nprocs * sizeof(int));
+
+    for (int k = 1; k < nprocs; k <<= 1)
+    {
+        for (int i = 1; i < nprocs; i++)
+        {
+            if (i & k)
+            {
+                send_indexes[k][sendb_num[k]] = (rank+i)%nprocs;
+                sendb_num[k] = sendb_num[k]+1;
+            }
+        }
+    }
 
 
     /// Running one task at a time
@@ -437,7 +466,7 @@ bool LIE::execute ()
                 create_checkpoint_dump(loop_counter, executable_task->get_id());
 
             //executable_task->execute_in_batches_with_all_to_all_threshold(batch_size, history, intern_map, &running_time, &running_intra_bucket_comm, &running_buffer_allocate, &running_local_compute, &running_all_to_all, &running_buffer_free, &running_insert_newt, &running_insert_in_full);
-            executable_task->execute_in_batches(app_name, batch_size, history, intern_map, running_time, running_intra_bucket_comm, running_buffer_allocate, running_local_compute, running_all_to_all, running_buffer_free, running_insert_newt, running_insert_in_full, running_fp, running_a2a_find_count_time, running_a2a_create_rindex_time, running_a2a_total_find_blocks_time, running_a2a_total_pre_time, running_a2a_total_send_meda_time, running_a2a_total_comm_time, running_a2a_total_replace_time, running_a2a_exchange_time, running_a2a_filter_time, loop_counter, executable_task->get_id(), output_dir, all_to_all_meta_data_dump, all_to_all_buffer_size, compute_size1, compute_size2, sloav_mode);
+            executable_task->execute_in_batches(app_name, batch_size, history, intern_map, running_time, running_intra_bucket_comm, running_buffer_allocate, running_local_compute, running_all_to_all, running_buffer_free, running_insert_newt, running_insert_in_full, running_fp, running_a2a_find_count_time, running_a2a_create_rindex_time, running_a2a_total_find_blocks_time, running_a2a_total_pre_time, running_a2a_total_send_meda_time, running_a2a_total_comm_time, running_a2a_total_replace_time, running_a2a_exchange_time, running_a2a_filter_time, loop_counter, executable_task->get_id(), output_dir, all_to_all_meta_data_dump, all_to_all_buffer_size, compute_size1, compute_size2, sloav_mode, rotate_index_array, send_indexes, sendb_num);
 
             executed_scc_id.push_back(executable_task->get_id());
             if (enable_data_io == true && loop_counter % cp_iteration == 0)
@@ -474,7 +503,7 @@ bool LIE::execute ()
                     create_checkpoint_dump(loop_counter, executable_task->get_id());
 
                 //executable_task->execute_in_batches_with_all_to_all_threshold(batch_size, history, intern_map, &running_time, &running_intra_bucket_comm, &running_buffer_allocate, &running_local_compute, &running_all_to_all, &running_buffer_free, &running_insert_newt, &running_insert_in_full);
-                executable_task->execute_in_batches(app_name, batch_size, history, intern_map, running_time, running_intra_bucket_comm, running_buffer_allocate, running_local_compute, running_all_to_all, running_buffer_free, running_insert_newt, running_insert_in_full, running_fp, running_a2a_find_count_time, running_a2a_create_rindex_time, running_a2a_total_find_blocks_time, running_a2a_total_pre_time, running_a2a_total_send_meda_time, running_a2a_total_comm_time, running_a2a_total_replace_time, running_a2a_exchange_time, running_a2a_filter_time, loop_counter, executable_task->get_id(), output_dir, all_to_all_meta_data_dump, all_to_all_buffer_size, compute_size1, compute_size2, sloav_mode);
+                executable_task->execute_in_batches(app_name, batch_size, history, intern_map, running_time, running_intra_bucket_comm, running_buffer_allocate, running_local_compute, running_all_to_all, running_buffer_free, running_insert_newt, running_insert_in_full, running_fp, running_a2a_find_count_time, running_a2a_create_rindex_time, running_a2a_total_find_blocks_time, running_a2a_total_pre_time, running_a2a_total_send_meda_time, running_a2a_total_comm_time, running_a2a_total_replace_time, running_a2a_exchange_time, running_a2a_filter_time, loop_counter, executable_task->get_id(), output_dir, all_to_all_meta_data_dump, all_to_all_buffer_size, compute_size1, compute_size2, sloav_mode, rotate_index_array, send_indexes, sendb_num);
                 //executable_task->print_all_relation();
 
                 delta_in_scc = history[history.size()-2];
@@ -525,21 +554,21 @@ bool LIE::execute ()
 #if 1
     if (all_to_all_meta_data_dump == true)
     {
-        double total_time = 0;
+        double local_total_time = 0;
         double max_total_time = 0;
         for (u32 l=0; l < lie_sccs_count; l++)
             for (u32 il=0; il < iteration_count[l]; il++)
-                total_time = total_time + running_time[l][il];
+                local_total_time = local_total_time + running_time[l][il];
 
-        MPI_Allreduce(&total_time, &max_total_time, 1, MPI_DOUBLE, MPI_MAX, mcomm.get_local_comm());
-        if (total_time == max_total_time)
+        MPI_Allreduce(&local_total_time, &max_total_time, 1, MPI_DOUBLE, MPI_MAX, mcomm.get_local_comm());
+        if (local_total_time == max_total_time)
         {
             std::string time_file;
             time_file = output_dir + "/MAX_TIME_" + std::to_string(mcomm.get_rank());
             FILE *fpm;
             fpm = fopen(time_file.c_str(), "w");
 
-            fprintf(fpm, "TaskID\tIteration#\tBuffer_creation_time\tComputation_time\tAll_to_all_time\tBuffer_free_time\tInsert_in_newt_time\tIntra_comm_time\tInsert_in_full_time\tFixed_point_check\tTotal_time\n");
+            fprintf(fpm, "rank\tTaskID\tIteration#\tBuffer_creation_time\tComputation_time\tAll_to_all_time\tBuffer_free_time\tInsert_in_newt_time\tIntra_comm_time\tInsert_in_full_time\tFixed_point_check\tTotal_time\n");
 
             for (u32 l=0; l < lie_sccs_count; l++)
             {
@@ -560,45 +589,113 @@ bool LIE::execute ()
             fprintf(fpn, "(nprocs)\n%d\n", mcomm.get_local_nprocs());
             fprintf(fpn, "(task count)\n%d\n", lie_sccs_count);
             for (u32 l=0; l < lie_sccs_count; l++)
-               fprintf(fpn, "(task %d)\n%d\n", l, iteration_count[l]);
+                fprintf(fpn, "(task %d)\n%d\n", l, iteration_count[l]);
             fclose(fpn);
         }
 
+
+        int total_iteration_count = 0;
+        for (u32 l=0; l < lie_sccs_count; l++)
+            for (u32 il=0; il < iteration_count[l]; il++)
+                total_iteration_count++;
+
+        int *all_to_all_global_buffer_all_iteration_size = new int[mcomm.get_local_nprocs() * mcomm.get_local_nprocs() * total_iteration_count];
+        memset(all_to_all_global_buffer_all_iteration_size, 0, sizeof(int)*mcomm.get_local_nprocs()*mcomm.get_local_nprocs()*total_iteration_count);
+
+
+        int counter = 0;
         for (u32 l=0; l < lie_sccs_count; l++)
         {
             for (u32 il=0; il < iteration_count[l]; il++)
             {
-                if (enable_io == true)
-                    create_checkpoint_dump(il, l);
-
-                std::string dir_name;
-                dir_name = output_dir + "/checkpoint-" + std::to_string(l) + "-" + std::to_string(il);
-                std::string scc_metadata_a2a;
-                scc_metadata_a2a = dir_name + "/a2a_" + std::to_string(mcomm.get_local_rank());
-
-                FILE *fp1;
-                fp1 = fopen(scc_metadata_a2a.c_str(), "w");
-                for (int i=0; i< mcomm.get_local_nprocs(); i++)
-                    fprintf (fp1, "%d\n", all_to_all_buffer_size[l][il][i]);
-
-                fprintf (fp1, "%d\n", compute_size1[l][il]);
-                fprintf (fp1, "%d\n", compute_size2[l][il]);
-                fprintf (fp1, "%f\n", running_buffer_allocate[l][il]);
-                fprintf (fp1, "%f\n", running_local_compute[l][il]);
-                fprintf (fp1, "%f\n", running_all_to_all[l][il]);
-                fprintf (fp1, "%f\n", running_buffer_free[l][il]);
-                fprintf (fp1, "%f\n", running_insert_newt[l][il]);
-                fprintf (fp1, "%f\n", running_intra_bucket_comm[l][il]);
-                fprintf (fp1, "%f\n", running_insert_in_full[l][il]);
-                fprintf (fp1, "%f\n", running_fp[l][il]);
-                fprintf (fp1, "%f\n", running_time[l][il]);
-
-                if (sloav_mode == true)
-                    fprintf (fp1, "%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\n", running_a2a_find_count_time[l][il], running_a2a_create_rindex_time[l][il], running_a2a_total_find_blocks_time[l][il], running_a2a_total_pre_time[l][il], running_a2a_total_send_meda_time[l][il], running_a2a_total_comm_time[l][il], running_a2a_total_replace_time[l][il], running_a2a_exchange_time[l][il], running_a2a_filter_time[l][il]);
-
-                fclose(fp1);
+                MPI_Gather(all_to_all_buffer_size[l][il], mcomm.get_local_nprocs(), MPI_INT, all_to_all_global_buffer_all_iteration_size + (mcomm.get_local_nprocs() * mcomm.get_local_nprocs() * counter), mcomm.get_local_nprocs(), MPI_INT, 0, mcomm.get_local_comm());
+                counter++;
             }
         }
+
+
+        double *total_time = new double[23 * total_iteration_count];
+        double *total_time_global = new double[23 * total_iteration_count * mcomm.get_local_nprocs()];
+        counter = 0;
+        for (u32 l=0; l < lie_sccs_count; l++)
+        {
+            for (u32 il=0; il < iteration_count[l]; il++)
+            {
+                total_time[23 * counter + 0] = mcomm.get_local_rank();
+                total_time[23 * counter + 1] = l;
+                total_time[23 * counter + 2] = il;
+                total_time[23 * counter + 3] = running_buffer_allocate[l][il];
+                total_time[23 * counter + 4] = running_local_compute[l][il];
+                total_time[23 * counter + 5] = running_all_to_all[l][il];
+                total_time[23 * counter + 6] = running_buffer_free[l][il];
+                total_time[23 * counter + 7] = running_insert_newt[l][il];
+                total_time[23 * counter + 8] = running_intra_bucket_comm[l][il];
+                total_time[23 * counter + 9] = running_insert_in_full[l][il];
+                total_time[23 * counter + 10] = running_fp[l][il];
+                total_time[23 * counter + 11] = running_time[l][il];
+
+                total_time[23 * counter + 12] = sloav_mode;
+                total_time[23 * counter + 13] = running_a2a_find_count_time[l][il];
+                total_time[23 * counter + 14] = running_a2a_create_rindex_time[l][il];
+                total_time[23 * counter + 15] = running_a2a_total_find_blocks_time[l][il];
+                total_time[23 * counter + 16] = running_a2a_total_pre_time[l][il];
+                total_time[23 * counter + 17] = running_a2a_total_send_meda_time[l][il];
+                total_time[23 * counter + 18] = running_a2a_total_replace_time[l][il];
+                total_time[23 * counter + 19] = running_a2a_exchange_time[l][il];
+                total_time[23 * counter + 20] = running_a2a_filter_time[l][il];
+
+                total_time[23 * counter + 21] = compute_size1[l][il];
+                total_time[23 * counter + 22] = compute_size2[l][il];
+
+                counter++;
+            }
+        }
+        MPI_Gather(total_time, 23 * total_iteration_count, MPI_DOUBLE, total_time_global, 23 * total_iteration_count, MPI_DOUBLE, 0, mcomm.get_local_comm());
+
+
+        if (mcomm.get_rank() == 0)
+        {
+            FILE *fp1;
+            std::string all_time_file;
+            all_time_file = output_dir + "/ALL_TIME";
+            fp1 = fopen(all_time_file.c_str(), "w");
+            fprintf(fp1, "rank\tTaskID\tIteration#\tBuffer_creation_time\tComputation_time\tAll_to_all_time\tBuffer_free_time\tInsert_in_newt_time\tIntra_comm_time\tInsert_in_full_time\tFixed_point_check\tTotal_time\tSLOAV_mode\tA2a_find_count_time\tA2a_create_rindex_time\tA2a_total_find_blocks_time\tA2a_total_pre_time\tA2a_total_send_meta_time\tA2a_total_replace_time\tA2a_exchange_time\tA2a_filter_Time\tcomp1\tcomp2\n");
+            for (int j=0; j < 23 * total_iteration_count * mcomm.get_local_nprocs(); j++)
+            {
+                if (j % 23 == 0 && j != 0)
+                    fprintf (fp1, "\n");
+                fprintf (fp1, "%f\t", total_time_global[j]);
+
+            }
+            fclose(fp1);
+
+            std::string all_time;
+            all_time = output_dir + "/ALL_TIME.bin";
+            int fpb = open(all_time.c_str(), O_CREAT | O_WRONLY, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+            u32 write_size1 = write(fpb, all_to_all_global_buffer_all_iteration_size, 23 * total_iteration_count * mcomm.get_local_nprocs() * sizeof(int));
+            if (write_size1 != 23 * total_iteration_count * mcomm.get_local_nprocs() * sizeof(int))
+            {
+                std::cout << all_time <<  " Wrong IO: rank: " << " " << write_size1  << std::endl;
+                MPI_Abort(mcomm.get_local_comm(), -1);
+            }
+            close(fpb);
+
+            std::string all_to_all_time;
+            all_to_all_time = output_dir + "/all_to_all";
+            int fp = open(all_to_all_time.c_str(), O_CREAT | O_WRONLY, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+            u32 write_size = write(fp, all_to_all_global_buffer_all_iteration_size, mcomm.get_local_nprocs() * mcomm.get_local_nprocs() * sizeof(int));
+            if (write_size != mcomm.get_local_nprocs() * mcomm.get_local_nprocs() * sizeof(int))
+            {
+                std::cout << all_to_all_time <<  " Wrong IO: rank: " << " " << write_size  << std::endl;
+                MPI_Abort(mcomm.get_local_comm(), -1);
+            }
+            close(fp);
+        }
+
+        delete[] total_time_global;
+        delete[] total_time;
+
+        delete[] all_to_all_global_buffer_all_iteration_size;
     }
 
 
@@ -661,7 +758,11 @@ bool LIE::execute ()
     delete[] running_a2a_exchange_time;
     delete[] running_a2a_filter_time;
 
-
+    delete[] rotate_index_array;
+    for (int i=0; i < nprocs; i++)
+        delete[] send_indexes[i];
+    delete[] send_indexes;
+    delete[] sendb_num;
 #endif
 
 

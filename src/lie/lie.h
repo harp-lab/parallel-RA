@@ -50,7 +50,7 @@ private:
 
     bool separate_io;                                    /// whether write checkpoint dump separately for each process
 
-    bool sloav_mode;
+    int sloav_mode;
 
     bool all_to_all_meta_data_dump;
 
@@ -118,7 +118,7 @@ public:
 
     void enable_IO()    {enable_io = true;}
 
-    void enable_sloav_mode()    {sloav_mode = true;}
+    void set_sloav_mode(int mode)    {sloav_mode = mode;}
 
     void enable_data_IO()    {enable_data_io = true;}
 
