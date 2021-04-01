@@ -580,6 +580,26 @@ bool LIE::execute ()
             fclose(fpm);
         }
 
+
+        if (mcomm.get_local_rank() == 1)
+        {
+            std::string time_file;
+            time_file = output_dir + "/RANK_1_TIME_" + std::to_string(mcomm.get_rank());
+            FILE *fpm;
+            fpm = fopen(time_file.c_str(), "w");
+
+            fprintf(fpm, "TaskID\tIteration#\tBuffer_creation_time\tComputation_time\tAll_to_all_time\tBuffer_free_time\tInsert_in_newt_time\tIntra_comm_time\tInsert_in_full_time\tFixed_point_check\tTotal_time\n");
+
+            for (u32 l=0; l < lie_sccs_count; l++)
+            {
+                for (u32 il=0; il < iteration_count[l]; il++)
+                {
+                    fprintf(fpm, "%d\t%d\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%d\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\n", l, il, running_buffer_allocate[l][il], running_local_compute[l][il], running_all_to_all[l][il], running_buffer_free[l][il], running_insert_newt[l][il], running_intra_bucket_comm[l][il], running_insert_in_full[l][il], running_fp[l][il], running_time[l][il], sloav_mode, running_a2a_find_count_time[l][il], running_a2a_create_rindex_time[l][il], running_a2a_total_find_blocks_time[l][il], running_a2a_total_pre_time[l][il], running_a2a_total_send_meda_time[l][il], running_a2a_total_replace_time[l][il], running_a2a_exchange_time[l][il], running_a2a_filter_time[l][il]);
+                }
+            }
+            fclose(fpm);
+        }
+
         if (mcomm.get_local_rank() == 0)
         {
             std::string nprocs_file;
