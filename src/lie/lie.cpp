@@ -591,12 +591,10 @@ bool LIE::execute ()
             fprintf(fpm, "TaskID\tIteration#\tBuffer_creation_time\tComputation_time\tAll_to_all_time\tBuffer_free_time\tInsert_in_newt_time\tIntra_comm_time\tInsert_in_full_time\tFixed_point_check\tTotal_time\n");
 
             for (u32 l=0; l < lie_sccs_count; l++)
-            {
                 for (u32 il=0; il < iteration_count[l]; il++)
-                {
                     fprintf(fpm, "%d\t%d\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%d\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\n", l, il, running_buffer_allocate[l][il], running_local_compute[l][il], running_all_to_all[l][il], running_buffer_free[l][il], running_insert_newt[l][il], running_intra_bucket_comm[l][il], running_insert_in_full[l][il], running_fp[l][il], running_time[l][il], sloav_mode, running_a2a_find_count_time[l][il], running_a2a_create_rindex_time[l][il], running_a2a_total_find_blocks_time[l][il], running_a2a_total_pre_time[l][il], running_a2a_total_send_meda_time[l][il], running_a2a_total_replace_time[l][il], running_a2a_exchange_time[l][il], running_a2a_filter_time[l][il]);
-                }
-            }
+
+
             fclose(fpm);
         }
 
@@ -614,6 +612,7 @@ bool LIE::execute ()
         }
 
 
+#if 0
         int total_iteration_count = 0;
         for (u32 l=0; l < lie_sccs_count; l++)
             for (u32 il=0; il < iteration_count[l]; il++)
@@ -621,7 +620,6 @@ bool LIE::execute ()
 
         int *all_to_all_global_buffer_all_iteration_size = new int[mcomm.get_local_nprocs() * mcomm.get_local_nprocs() * total_iteration_count];
         memset(all_to_all_global_buffer_all_iteration_size, 0, sizeof(int)*mcomm.get_local_nprocs()*mcomm.get_local_nprocs()*total_iteration_count);
-
 
         int counter = 0;
         for (u32 l=0; l < lie_sccs_count; l++)
@@ -718,6 +716,7 @@ bool LIE::execute ()
         delete[] total_time;
 
         delete[] all_to_all_global_buffer_all_iteration_size;
+#endif
     }
 
 
@@ -728,6 +727,7 @@ bool LIE::execute ()
         delete[] all_to_all_buffer_size[i];
     }
     delete[] all_to_all_buffer_size;
+
 
     for (u32 i =0; i <lie_sccs_count; i++)
         delete[] compute_size1[i];
