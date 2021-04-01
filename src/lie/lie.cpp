@@ -568,13 +568,13 @@ bool LIE::execute ()
             FILE *fpm;
             fpm = fopen(time_file.c_str(), "w");
 
-            fprintf(fpm, "rank\tTaskID\tIteration#\tBuffer_creation_time\tComputation_time\tAll_to_all_time\tBuffer_free_time\tInsert_in_newt_time\tIntra_comm_time\tInsert_in_full_time\tFixed_point_check\tTotal_time\n");
+            fprintf(fpm, "TaskID\tIteration#\tBuffer_creation_time\tComputation_time\tAll_to_all_time\tBuffer_free_time\tInsert_in_newt_time\tIntra_comm_time\tInsert_in_full_time\tFixed_point_check\tTotal_time\n");
 
             for (u32 l=0; l < lie_sccs_count; l++)
             {
                 for (u32 il=0; il < iteration_count[l]; il++)
                 {
-                    fprintf(fpm, "%d\t%d\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\n", l, il, running_buffer_allocate[l][il], running_local_compute[l][il], running_all_to_all[l][il], running_buffer_free[l][il], running_insert_newt[l][il], running_intra_bucket_comm[l][il], running_insert_in_full[l][il], running_fp[l][il], running_time[l][il]);
+                    fprintf(fpm, "%d\t%d\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%d\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\n", l, il, running_buffer_allocate[l][il], running_local_compute[l][il], running_all_to_all[l][il], running_buffer_free[l][il], running_insert_newt[l][il], running_intra_bucket_comm[l][il], running_insert_in_full[l][il], running_fp[l][il], running_time[l][il], sloav_mode, running_a2a_find_count_time[l][il], running_a2a_create_rindex_time[l][il], running_a2a_total_find_blocks_time[l][il], running_a2a_total_pre_time[l][il], running_a2a_total_send_meda_time[l][il], running_a2a_total_replace_time[l][il], running_a2a_exchange_time[l][il], running_a2a_filter_time[l][il]);
                 }
             }
             fclose(fpm);
@@ -655,6 +655,7 @@ bool LIE::execute ()
 
         if (mcomm.get_rank() == 0)
         {
+#if 0
             FILE *fp1;
             std::string all_time_file;
             all_time_file = output_dir + "/ALL_TIME";
@@ -668,11 +669,12 @@ bool LIE::execute ()
 
             }
             fclose(fp1);
+#endif
 
             std::string all_time;
             all_time = output_dir + "/ALL_TIME.bin";
             int fpb = open(all_time.c_str(), O_CREAT | O_WRONLY, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
-            u32 write_size1 = write(fpb, all_to_all_global_buffer_all_iteration_size, 23 * total_iteration_count * mcomm.get_local_nprocs() * sizeof(int));
+            u32 write_size1 = write(fpb, total_time_global, 23 * total_iteration_count * mcomm.get_local_nprocs() * sizeof(int));
             if (write_size1 != 23 * total_iteration_count * mcomm.get_local_nprocs() * sizeof(int))
             {
                 std::cout << all_time <<  " Wrong IO: rank: " << " " << write_size1  << std::endl;
