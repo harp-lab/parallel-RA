@@ -4,6 +4,39 @@
  */
 
 
+
+///
+
+
+/*
+
+  Revisiting Bruck Algorithm for Non-uniform All-to-all Data Communincation
+  Abstract
+  Introduction
+
+  Related work --- Ke
+    SLOAV
+    Zero-copy and variants
+    Persistent communincation (what?) --- can it beused for a true non-uniform all_to_allv?
+  Technique
+    technique-1: padding
+    technique-2: extra meta-data comm phase + buffer allocation
+    Diagrams and algorithms
+  Microbenchmark evaluation
+    Degree on non-uniformity
+    Weak scaling
+    Strong scaling
+    Padding vs non-padding
+  Appplication
+    Graph mining
+    Program analysis
+    Evaluation
+  Conclusion
+
+*/
+
+
+
 #include "../parallel_RA_inc.h"
 static void sloav_non_uniform_benchmark(char *sendbuf, int *sendcounts, int *sdispls, MPI_Datatype sendtype, char *recvbuf, int *recvcounts, int *rdispls, MPI_Datatype recvtype, MPI_Comm comm, double **running_a2a_find_count_time, double **running_a2a_create_rindex_time, double **running_a2a_total_find_blocks_time, double **running_a2a_total_pre_time, double **running_a2a_total_send_meda_time, double **running_a2a_total_comm_time, double **running_a2a_total_replace_time, double **running_a2a_exchange_time, double **running_a2a_filter_time, int task_id, int loop_counter);
 
@@ -112,19 +145,9 @@ void comm_compaction_all_to_all(all_to_allv_buffer compute_buffer, int **recv_bu
         outer_hash_buffer_size = outer_hash_buffer_size + recv_counts[i];
     }
 
-    assert(compute_buffer.local_compute_output_size_total == send_disp[nprocs - 1] + compute_buffer.cumulative_tuple_process_map[nprocs - 1]);
+    //assert(compute_buffer.local_compute_output_size_total == send_disp[nprocs - 1] + compute_buffer.cumulative_tuple_process_map[nprocs - 1]);
 
     *recv_buffer = new u64[outer_hash_buffer_size];
-
-
-    if (sloav_mode == 1)
-        sloav_non_uniform_benchmark((char*)send_buffer, compute_buffer.cumulative_tuple_process_map, send_disp, MPI_UNSIGNED_LONG_LONG, (char*)*recv_buffer, recv_counts, recv_displacements, MPI_UNSIGNED_LONG_LONG, comm,
-                                running_a2a_find_count_time, running_a2a_create_rindex_time, running_a2a_total_find_blocks_time, running_a2a_total_pre_time, running_a2a_total_send_meda_time, running_a2a_total_comm_time, running_a2a_total_replace_time, running_a2a_exchange_time, running_a2a_filter_time, task_id, loop_counter);
-    else if (sloav_mode == 0)
-        MPI_Alltoallv(send_buffer, compute_buffer.cumulative_tuple_process_map, send_disp, MPI_UNSIGNED_LONG_LONG, *recv_buffer, recv_counts, recv_displacements, MPI_UNSIGNED_LONG_LONG, comm);
-    else
-        sloav_non_uniform_benchmark_with_caching((char*)send_buffer, compute_buffer.cumulative_tuple_process_map, send_disp, MPI_UNSIGNED_LONG_LONG, (char*)*recv_buffer, recv_counts, recv_displacements, MPI_UNSIGNED_LONG_LONG, comm,
-                                running_a2a_find_count_time, running_a2a_create_rindex_time, running_a2a_total_find_blocks_time, running_a2a_total_pre_time, running_a2a_total_send_meda_time, running_a2a_total_comm_time, running_a2a_total_replace_time, running_a2a_exchange_time, running_a2a_filter_time, task_id, loop_counter, rotate_index_array, send_indexes, local_max_count, sendb_num);
 
 
     if (record == true)
@@ -142,9 +165,20 @@ void comm_compaction_all_to_all(all_to_allv_buffer compute_buffer, int **recv_bu
             fprintf (fp, "%d\n", compute_buffer.cumulative_tuple_process_map[i]);
         fclose(fp);
 #endif
+
         memcpy(all_to_all_time[task_id][loop_counter], compute_buffer.cumulative_tuple_process_map, compute_buffer.nprocs * sizeof(int));
+        //std::cout << "TID " << task_id << " Loop counter " << loop_counter << " -> " << all_to_all_time[task_id][loop_counter][0] << " " << all_to_all_time[task_id][loop_counter][1] << std::endl;
     }
 
+
+    if (sloav_mode == 1)
+        sloav_non_uniform_benchmark((char*)send_buffer, compute_buffer.cumulative_tuple_process_map, send_disp, MPI_UNSIGNED_LONG_LONG, (char*)*recv_buffer, recv_counts, recv_displacements, MPI_UNSIGNED_LONG_LONG, comm,
+                                running_a2a_find_count_time, running_a2a_create_rindex_time, running_a2a_total_find_blocks_time, running_a2a_total_pre_time, running_a2a_total_send_meda_time, running_a2a_total_comm_time, running_a2a_total_replace_time, running_a2a_exchange_time, running_a2a_filter_time, task_id, loop_counter);
+    else if (sloav_mode == 0)
+        MPI_Alltoallv(send_buffer, compute_buffer.cumulative_tuple_process_map, send_disp, MPI_UNSIGNED_LONG_LONG, *recv_buffer, recv_counts, recv_displacements, MPI_UNSIGNED_LONG_LONG, comm);
+    else
+        sloav_non_uniform_benchmark_with_caching((char*)send_buffer, compute_buffer.cumulative_tuple_process_map, send_disp, MPI_UNSIGNED_LONG_LONG, (char*)*recv_buffer, recv_counts, recv_displacements, MPI_UNSIGNED_LONG_LONG, comm,
+                                running_a2a_find_count_time, running_a2a_create_rindex_time, running_a2a_total_find_blocks_time, running_a2a_total_pre_time, running_a2a_total_send_meda_time, running_a2a_total_comm_time, running_a2a_total_replace_time, running_a2a_exchange_time, running_a2a_filter_time, task_id, loop_counter, rotate_index_array, send_indexes, local_max_count, sendb_num);
 
     delete[] send_buffer;
     delete[] send_disp;

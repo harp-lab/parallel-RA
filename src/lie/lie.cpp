@@ -272,11 +272,17 @@ bool LIE::execute ()
     }
 
     all_to_all_buffer_size = new int**[lie_sccs_count];
+    memset(all_to_all_buffer_size, 0, sizeof(int**) * lie_sccs_count);
     for (u32 i =0; i <lie_sccs_count; i++)
     {
         all_to_all_buffer_size[i] = new int*[MAX_LOOP_COUNT];
+        memset(all_to_all_buffer_size[i], 0, sizeof(int*) * MAX_LOOP_COUNT);
         for (u32 j =0; j <MAX_LOOP_COUNT; j++)
+        {
             all_to_all_buffer_size[i][j] = new int[mcomm.get_local_nprocs()];
+            memset(all_to_all_buffer_size[i][j], 0, sizeof(int) * mcomm.get_local_nprocs());
+        }
+
     }
 
     compute_size1 = new int*[lie_sccs_count];
@@ -568,13 +574,16 @@ bool LIE::execute ()
             FILE *fpm;
             fpm = fopen(time_file.c_str(), "w");
 
-            fprintf(fpm, "TaskID\tIteration#\tBuffer_creation_time\tComputation_time\tAll_to_all_time\tBuffer_free_time\tInsert_in_newt_time\tIntra_comm_time\tInsert_in_full_time\tFixed_point_check\tTotal_time\n");
+            fprintf(fpm, "TaskID\tIteration#\tBuffer_creation_time\tComputation_time\tAll_to_all_time\tBuffer_free_time\tInsert_in_newt_time\tIntra_comm_time\tInsert_in_full_time\tFixed_point_check\tTotal_time\tmode\ta2a_find_count_time\tcreate_rindex_time\ttotal_find_blocks_time\ttotal_pre_time\ttotal_send_meda_time\ttotal_comm_time\ttotal_replace_time\texchange_time\tfilter_time\n");
 
             for (u32 l=0; l < lie_sccs_count; l++)
             {
                 for (u32 il=0; il < iteration_count[l]; il++)
                 {
-                    fprintf(fpm, "%d\t%d\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%d\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\n", l, il, running_buffer_allocate[l][il], running_local_compute[l][il], running_all_to_all[l][il], running_buffer_free[l][il], running_insert_newt[l][il], running_intra_bucket_comm[l][il], running_insert_in_full[l][il], running_fp[l][il], running_time[l][il], sloav_mode, running_a2a_find_count_time[l][il], running_a2a_create_rindex_time[l][il], running_a2a_total_find_blocks_time[l][il], running_a2a_total_pre_time[l][il], running_a2a_total_send_meda_time[l][il], running_a2a_total_replace_time[l][il], running_a2a_exchange_time[l][il], running_a2a_filter_time[l][il]);
+                    fprintf(fpm, "%d\t%d\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%d\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\n", l, il,
+                            running_buffer_allocate[l][il], running_local_compute[l][il], running_all_to_all[l][il], running_buffer_free[l][il], running_insert_newt[l][il], running_intra_bucket_comm[l][il], running_insert_in_full[l][il], running_fp[l][il], running_time[l][il],
+                            sloav_mode,
+                            running_a2a_find_count_time[l][il], running_a2a_create_rindex_time[l][il], running_a2a_total_find_blocks_time[l][il], running_a2a_total_pre_time[l][il], running_a2a_total_send_meda_time[l][il], running_a2a_total_comm_time[l][il], running_a2a_total_replace_time[l][il], running_a2a_exchange_time[l][il], running_a2a_filter_time[l][il]);
                 }
             }
             fclose(fpm);
@@ -588,11 +597,15 @@ bool LIE::execute ()
             FILE *fpm;
             fpm = fopen(time_file.c_str(), "w");
 
-            fprintf(fpm, "TaskID\tIteration#\tBuffer_creation_time\tComputation_time\tAll_to_all_time\tBuffer_free_time\tInsert_in_newt_time\tIntra_comm_time\tInsert_in_full_time\tFixed_point_check\tTotal_time\n");
+            fprintf(fpm, "TaskID\tIteration#\tBuffer_creation_time\tComputation_time\tAll_to_all_time\tBuffer_free_time\tInsert_in_newt_time\tIntra_comm_time\tInsert_in_full_time\tFixed_point_check\tTotal_time\tmode\ta2a_find_count_time\tcreate_rindex_time\ttotal_find_blocks_time\ttotal_pre_time\ttotal_send_meda_time\ttotal_comm_time\ttotal_replace_time\texchange_time\tfilter_time\n");
+
 
             for (u32 l=0; l < lie_sccs_count; l++)
                 for (u32 il=0; il < iteration_count[l]; il++)
-                    fprintf(fpm, "%d\t%d\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%d\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\n", l, il, running_buffer_allocate[l][il], running_local_compute[l][il], running_all_to_all[l][il], running_buffer_free[l][il], running_insert_newt[l][il], running_intra_bucket_comm[l][il], running_insert_in_full[l][il], running_fp[l][il], running_time[l][il], sloav_mode, running_a2a_find_count_time[l][il], running_a2a_create_rindex_time[l][il], running_a2a_total_find_blocks_time[l][il], running_a2a_total_pre_time[l][il], running_a2a_total_send_meda_time[l][il], running_a2a_total_replace_time[l][il], running_a2a_exchange_time[l][il], running_a2a_filter_time[l][il]);
+                    fprintf(fpm, "%d\t%d\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%d\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\n", l, il,
+                            running_buffer_allocate[l][il], running_local_compute[l][il], running_all_to_all[l][il], running_buffer_free[l][il], running_insert_newt[l][il], running_intra_bucket_comm[l][il], running_insert_in_full[l][il], running_fp[l][il], running_time[l][il],
+                            sloav_mode,
+                            running_a2a_find_count_time[l][il], running_a2a_create_rindex_time[l][il], running_a2a_total_find_blocks_time[l][il], running_a2a_total_pre_time[l][il], running_a2a_total_send_meda_time[l][il], running_a2a_total_comm_time[l][il], running_a2a_total_replace_time[l][il], running_a2a_exchange_time[l][il], running_a2a_filter_time[l][il]);
 
 
             fclose(fpm);
@@ -610,6 +623,64 @@ bool LIE::execute ()
                 fprintf(fpn, "(task %d)\n%d\n", l, iteration_count[l]);
             fclose(fpn);
         }
+
+        if (app_name == "./TC")
+        {
+            for (u32 m=0; m <= 2500; m=m+500)
+            //for (u32 m=0; m <= 40; m=m+5)
+            {
+                int *temp_buffer0 = new int[nprocs];
+                int min0 = 0, max0= 0, median0 = 0, mean0 = 0;
+                memcpy(temp_buffer0, all_to_all_buffer_size[1][m], nprocs * sizeof(int));
+                std::sort(temp_buffer0, temp_buffer0+nprocs);
+                min0 = temp_buffer0[0];
+                max0 = temp_buffer0[nprocs-1];
+                median0 = temp_buffer0[nprocs/2];
+                int sum0 = 0;
+                for (int i = 0; i <nprocs; i++)
+                    sum0 = sum0+temp_buffer0[i];
+                mean0 = sum0/nprocs;
+                float var0 = 0;
+                for( int n = 0; n < nprocs; n++ )
+                    var0 += (temp_buffer0[n] - mean0) * (temp_buffer0[n] - mean0);
+                var0 /= nprocs;
+                float sd0 = sqrt(var0);
+                delete[] temp_buffer0;
+
+                int *min_buf0 = new int[nprocs];
+                int *max_buf0 = new int[nprocs];
+                int *mean_buf0 = new int[nprocs];
+                int *median_buf0 = new int[nprocs];
+                float *sda0 = new float[nprocs];
+                memset(min_buf0, 0, nprocs * sizeof(int));
+                memset(max_buf0, 0, nprocs * sizeof(int));
+                memset(mean_buf0, 0, nprocs * sizeof(int));
+                memset(median_buf0, 0, nprocs * sizeof(int));
+                memset(sda0, 0, nprocs * sizeof(float));
+                MPI_Gather(&min0, 1, MPI_INT, min_buf0, 1,MPI_INT, 0, mcomm.get_local_comm());
+                MPI_Gather(&max0, 1, MPI_INT, max_buf0, 1,MPI_INT, 0, mcomm.get_local_comm());
+                MPI_Gather(&median0, 1, MPI_INT, median_buf0, 1,MPI_INT, 0, mcomm.get_local_comm());
+                MPI_Gather(&mean0, 1, MPI_INT, mean_buf0, 1,MPI_INT, 0, mcomm.get_local_comm());
+                MPI_Gather(&sd0, 1, MPI_FLOAT, sda0, 1,MPI_FLOAT, 0, mcomm.get_local_comm());
+                if (mcomm.get_local_rank() == 0)
+                {
+                    std::string a2a_0;
+                    a2a_0 = output_dir + "/a2a_"+ std::to_string(m);
+                    FILE *fpn0;
+                    fpn0 = fopen(a2a_0.c_str(), "w");
+                    fprintf (fpn0, "rank\tmin\tmax\tmedian\tmean\tstddev\n");
+                    for (int i=0; i < nprocs; i++)
+                        fprintf (fpn0, "%d\t%d\t%d\t%d\t%d\t%f\n",i, min_buf0[i], max_buf0[i], median_buf0[i], mean_buf0[i], sda0[i]);
+                    fclose(fpn0);
+                }
+                delete[] min_buf0;
+                delete[] max_buf0;
+                delete[] mean_buf0;
+                delete[] median_buf0;
+                delete[] sda0;
+            }
+        }
+
 
 
 #if 0
