@@ -1159,7 +1159,7 @@ void RAM::execute_in_batches(std::string name, int batch_size, std::vector<u32>&
 
 
             double all_to_all_start = MPI_Wtime();
-            comm_compaction_all_to_all(compute_buffer, &cumulative_all_to_allv_recv_process_size_array, &cumulative_all_to_allv_buffer, mcomm.get_local_comm(), *loop_counter, task_id, output_dir, all_to_all_record, all_to_all_buffer_size,
+            comm_compaction_all_to_all(compute_buffer, &cumulative_all_to_allv_recv_process_size_array, &cumulative_all_to_allv_buffer, mcomm.get_local_comm(), *loop_counter, task_id, output_dir, all_to_all_record, /*all_to_all_buffer_size*/NULL,
                                        running_a2a_find_count_time, running_a2a_create_rindex_time, running_a2a_total_find_blocks_time, running_a2a_total_pre_time, running_a2a_total_send_meda_time, running_a2a_total_comm_time, running_a2a_total_replace_time, running_a2a_exchange_time, running_a2a_filter_time, sloav_mode, rotate_index_array, send_indexes, sendb_num);
             //all_to_all(loop_counter, output_dir);
             double all_to_all_end = MPI_Wtime();

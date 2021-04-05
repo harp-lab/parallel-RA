@@ -54,7 +54,7 @@ private:
 
     bool all_to_all_meta_data_dump;
 
-    int ***all_to_all_buffer_size;
+    //int ***all_to_all_buffer_size;
 
     int **compute_size1;
     int **compute_size2;

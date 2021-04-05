@@ -121,9 +121,15 @@ void comm_compaction_all_to_all(all_to_allv_buffer compute_buffer, int **recv_bu
 
     u32 boffset = 0;
     int local_max_count = 0;
+    int sum0 = 0;
+    int local_min_count = compute_buffer.cumulative_tuple_process_map[0];
     for(int i = 0; i < nprocs; i++)
     {
+        sum0 = sum0+compute_buffer.cumulative_tuple_process_map[i];
         recv_counts[i] = 0;
+
+        if (compute_buffer.cumulative_tuple_process_map[i] < local_min_count)
+            local_min_count = compute_buffer.cumulative_tuple_process_map[i];
 
         if (compute_buffer.cumulative_tuple_process_map[i] > local_max_count)
             local_max_count = compute_buffer.cumulative_tuple_process_map[i];
@@ -145,14 +151,17 @@ void comm_compaction_all_to_all(all_to_allv_buffer compute_buffer, int **recv_bu
         outer_hash_buffer_size = outer_hash_buffer_size + recv_counts[i];
     }
 
+    if (rank == 0)
+        std::cout  <<local_min_count << "\t" << local_max_count << "\t" << sum0/nprocs << "\t";
+
     //assert(compute_buffer.local_compute_output_size_total == send_disp[nprocs - 1] + compute_buffer.cumulative_tuple_process_map[nprocs - 1]);
 
     *recv_buffer = new u64[outer_hash_buffer_size];
 
-
+#if 0
     if (record == true)
     {
-#if 0
+
         std::string dir_name;
         dir_name = output_dir + "/checkpoint-" + std::to_string(task_id) + "-" + std::to_string(loop_counter);
         //dir_name = output_dir + "/checkpoint-" + std::to_string(loop_counter);
@@ -164,11 +173,12 @@ void comm_compaction_all_to_all(all_to_allv_buffer compute_buffer, int **recv_bu
         for (int i=0; i< compute_buffer.nprocs; i++)
             fprintf (fp, "%d\n", compute_buffer.cumulative_tuple_process_map[i]);
         fclose(fp);
-#endif
+
 
         memcpy(all_to_all_time[task_id][loop_counter], compute_buffer.cumulative_tuple_process_map, compute_buffer.nprocs * sizeof(int));
         //std::cout << "TID " << task_id << " Loop counter " << loop_counter << " -> " << all_to_all_time[task_id][loop_counter][0] << " " << all_to_all_time[task_id][loop_counter][1] << std::endl;
     }
+#endif
 
 
     if (sloav_mode == 1)

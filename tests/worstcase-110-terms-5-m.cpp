@@ -66,47 +66,47 @@ relation* rel_let_3_0 = new relation(1, false, 3, 282, "rel_let_3_0", "../data/w
 relation* rel_inner_replacement54_13_6_5_4_3_2_1 = new relation(6, false, 13, 277, "rel_inner_replacement54_13_6_5_4_3_2_1", "../data/worstcase-110-terms-5-m//inner-replacement54_13_1.dat", FULL);
 relation* rel_seq_2_2 = new relation(1, false, 2, 257, "rel_seq_2_2", "../data/worstcase-110-terms-5-m//seq_2_0.dat", FULL);
 
-RAM* scc4991 = new RAM(false, 1);
+RAM* scc4991 = new RAM(false, 0);
 scc4991->add_relation(rel_ref_1_1, true);
 scc4991->add_relation(rel_ref_1_0, true);
 scc4991->add_rule(new parallel_acopy(rel_ref_1_0, rel_ref_1_1, DELTA, {1, 0}));
 
-RAM* scc4992 = new RAM(false, 5);
+RAM* scc4992 = new RAM(false, 4);
 scc4992->add_relation(rel_const_1_0, true);
 scc4992->add_relation(rel_const_1_1, true);
 scc4992->add_rule(new parallel_acopy(rel_const_1_0, rel_const_1_1, DELTA, {1, 0}));
 
-RAM* scc4993 = new RAM(false, 9);
+RAM* scc4993 = new RAM(false, 8);
 scc4993->add_relation(rel_let_3_1_2_3, true);
 scc4993->add_relation(rel_let_3_3, true);
 scc4993->add_rule(new parallel_acopy(rel_let_3_3, rel_let_3_1_2_3, DELTA, {2, 3, 0, 1}));
 
-RAM* scc4994 = new RAM(false, 13);
+RAM* scc4994 = new RAM(false, 12);
 scc4994->add_relation(rel_seq_2_2, true);
 scc4994->add_relation(rel_seq_2_1_2, true);
 scc4994->add_rule(new parallel_acopy(rel_seq_2_2, rel_seq_2_1_2, DELTA, {1, 2, 0}));
 
-RAM* scc4995 = new RAM(false, 18);
+RAM* scc4995 = new RAM(false, 17);
 scc4995->add_relation(rel_let_3_0, true);
 scc4995->add_relation(rel_let_3_1_2_3, true);
 scc4995->add_rule(new parallel_acopy(rel_let_3_0, rel_let_3_1_2_3, DELTA, {3, 0, 1, 2}));
 
-RAM* scc4996 = new RAM(false, 3);
+RAM* scc4996 = new RAM(false, 2);
 scc4996->add_relation(rel_lam_2_0, true);
 scc4996->add_relation(rel_lam_2_1_2, true);
 scc4996->add_rule(new parallel_acopy(rel_lam_2_0, rel_lam_2_1_2, DELTA, {2, 0, 1}));
 
-RAM* scc4997 = new RAM(false, 7);
+RAM* scc4997 = new RAM(false, 6);
 scc4997->add_relation(rel_app_2_0, true);
 scc4997->add_relation(rel_app_2_1_2, true);
 scc4997->add_rule(new parallel_acopy(rel_app_2_0, rel_app_2_1_2, DELTA, {2, 0, 1}));
 
-RAM* scc4998 = new RAM(false, 11);
+RAM* scc4998 = new RAM(false, 10);
 scc4998->add_relation(rel_let_3_1_2_3, true);
 scc4998->add_relation(rel_let_3_2, true);
 scc4998->add_rule(new parallel_acopy(rel_let_3_2, rel_let_3_1_2_3, DELTA, {1, 3, 0, 2}));
 
-RAM* scc4999 = new RAM(true, 15);
+RAM* scc4999 = new RAM(true, 14);
 scc4999->add_relation(rel_seq_2_2, false);
 scc4999->add_relation(rel_inter_body1423_3_1_2_3, true);
 scc4999->add_relation(rel_inter_body1416_3_1_2_3, true);
@@ -133,58 +133,58 @@ scc4999->add_rule(new parallel_copy_filter(rel_free_2_1_2, rel_inter_body1423_3_
 scc4999->add_rule(new parallel_join(rel_free_2_1_2, rel_free_2_2, DELTA, rel_let_3_2, FULL, {2, 3}));
 scc4999->add_rule(new parallel_join(rel_inter_body1416_3_1_2_3, rel_free_2_2, DELTA, rel_let_3_3, FULL, {3, 4, 2}));
 
-RAM* scc5000 = new RAM(false, 20);
+RAM* scc5000 = new RAM(false, 19);
 scc5000->add_relation(rel_ret_to_ret_9_1_2_3_4_5_6_7_8_9, true);
 scc5000->add_relation(rel_ret_to_ret_9_3_2_1, true);
 scc5000->add_rule(new parallel_acopy(rel_ret_to_ret_9_3_2_1, rel_ret_to_ret_9_1_2_3_4_5_6_7_8_9, DELTA, {2, 1, 0, 9, 3, 4, 5, 6, 7, 8}));
 
-RAM* scc5001 = new RAM(false, 17);
+RAM* scc5001 = new RAM(false, 16);
 scc5001->add_relation(rel_free_2_2, false);
 scc5001->add_relation(rel_lam_2_0, false);
 scc5001->add_relation(rel_inter_body1436_2_1_2, true);
 scc5001->add_rule(new parallel_join(rel_inter_body1436_2_1_2, rel_lam_2_0, FULL, rel_free_2_2, FULL, {0, 4}));
 
-RAM* scc5002 = new RAM(false, 21);
+RAM* scc5002 = new RAM(false, 20);
 scc5002->add_relation(rel_app_2_1, true);
 scc5002->add_relation(rel_app_2_1_2, true);
 scc5002->add_rule(new parallel_acopy(rel_app_2_1, rel_app_2_1_2, DELTA, {0, 2, 1}));
 
-RAM* scc5003 = new RAM(false, 2);
+RAM* scc5003 = new RAM(false, 1);
 scc5003->add_relation(rel_app_step_12_1_2_3_4_5_6_7_8_9_10_11_12, true);
 scc5003->add_relation(rel_inter_head1430_15_1_2_3_4_5_6_7_8_9_10_11_12_13_14_15, false);
 scc5003->add_rule(new parallel_copy(rel_app_step_12_1_2_3_4_5_6_7_8_9_10_11_12, rel_inter_head1430_15_1_2_3_4_5_6_7_8_9_10_11_12_13_14_15, FULL, {12, 13, 9, 2, 10, 11, 14, 12, 13, 9, 2, 10}));
 
-RAM* scc5004 = new RAM(false, 6);
+RAM* scc5004 = new RAM(false, 5);
 scc5004->add_relation(rel_app_2_2, true);
 scc5004->add_relation(rel_app_2_1_2, true);
 scc5004->add_rule(new parallel_acopy(rel_app_2_2, rel_app_2_1_2, DELTA, {1, 2, 0}));
 
-RAM* scc5005 = new RAM(false, 10);
+RAM* scc5005 = new RAM(false, 9);
 scc5005->add_relation(rel_seq_2_1_2, true);
 scc5005->add_relation(rel_seq_2_0, true);
 scc5005->add_rule(new parallel_acopy(rel_seq_2_0, rel_seq_2_1_2, DELTA, {2, 0, 1}));
 
-RAM* scc5006 = new RAM(false, 14);
+RAM* scc5006 = new RAM(false, 13);
 scc5006->add_relation(rel_lam_2_1_2, true);
 scc5006->add_relation(rel_lam_2_2, true);
 scc5006->add_rule(new parallel_acopy(rel_lam_2_2, rel_lam_2_1_2, DELTA, {1, 2, 0}));
 
-RAM* scc5007 = new RAM(false, 19);
+RAM* scc5007 = new RAM(false, 18);
 scc5007->add_relation(rel_inter_body1436_2_1_2, true);
 scc5007->add_relation(rel_inter_body1436_2_1, true);
 scc5007->add_rule(new parallel_acopy(rel_inter_body1436_2_1, rel_inter_body1436_2_1_2, DELTA, {0, 2, 1}));
 
-RAM* scc5008 = new RAM(false, 4);
+RAM* scc5008 = new RAM(false, 3);
 scc5008->add_relation(rel_reachable_6_1_2_3_4_5_6, true);
 scc5008->add_relation(rel_program_1_1, false);
 scc5008->add_rule(new parallel_copy(rel_reachable_6_1_2_3_4_5_6, rel_program_1_1, FULL, {0, 0, 0, 0, 0, 0}));
 
-RAM* scc5009 = new RAM(false, 8);
+RAM* scc5009 = new RAM(false, 7);
 scc5009->add_relation(rel_free_2_1_2, true);
 scc5009->add_relation(rel_ref_1_1, false);
 scc5009->add_rule(new parallel_copy(rel_free_2_1_2, rel_ref_1_1, FULL, {0, 1}));
 
-RAM* scc5010 = new RAM(true, 12);
+RAM* scc5010 = new RAM(true, 11);
 scc5010->add_relation(rel_inner_replacement54_13_6_5_4_3_2_1, true);
 scc5010->add_relation(rel_let_3_0, false);
 scc5010->add_relation(rel_inter_head1433_8_1_2_3_4_5_6_7_8, true);
@@ -277,7 +277,7 @@ scc5010->add_rule(new parallel_join(rel_inter_head1430_15_1_2_3_4_5_6_7_8_9_10_1
 scc5010->add_rule(new parallel_join(rel_t_ret_to_var_12_1_2_3_4_5_6_7_8_9_10_11_12, rel_t_ret_to_ret_12_12_11_10_9_8_7, DELTA, rel_ret_to_var_12_6_5_4_3_2_1, FULL, {7, 8, 9, 10, 11, 12, 14, 15, 16, 17, 18, 19}));
 scc5010->add_rule(new parallel_join(rel_t_ret_to_var_12_1_2_3_4_5_6_7_8_9_10_11_12, rel_t_ret_to_ret_12_12_11_10_9_8_7, DELTA, rel_ret_to_var_12_6_5_4_3_2_1, DELTA, {7, 8, 9, 10, 11, 12, 14, 15, 16, 17, 18, 19}));
 
-RAM* scc5011 = new RAM(false, 16);
+RAM* scc5011 = new RAM(false, 15);
 scc5011->add_relation(rel_seq_2_1_2, true);
 scc5011->add_relation(rel_seq_2_1, true);
 scc5011->add_rule(new parallel_acopy(rel_seq_2_1, rel_seq_2_1_2, DELTA, {0, 2, 1}));
@@ -387,29 +387,18 @@ lie->add_scc_dependance(scc5011, scc4999);
 
 
 
-  // Enable IO
- //lie->enable_share_io();
- //lie->set_output_dir(../data/worstcase-110-terms-5-m-output); // Write to this directory
- //lie->enable_share_io();
- lie->set_comm(mcomm);
- lie->set_batch_size(10);
- lie->execute();
- lie->print_all_relation_size(); // Continuously print relation sizes
 
- /*
- // Write to disc
- double write_cp_start = MPI_Wtime();
- int loop_count = lie->get_loop_counter();
- std::vector<int> executed_scc_id = lie->get_executed_scc_id();
- lie->write_checkpoint_dump(loop_count, executed_scc_id);
- double write_cp_end = MPI_Wtime();
- double writing_checkpoint_dump_time = (write_cp_end - write_cp_start);
- double max_write_cp_time = 0;
- MPI_Reduce(&writing_checkpoint_dump_time, &max_write_cp_time, 1, MPI_DOUBLE, MPI_MAX, 0, mcomm.get_comm());
- if (mcomm.get_rank() == 0)
-   std::cout << "Writing last checkpoint dump takes " << max_write_cp_time << "(s)" << std::endl;
-   */
- 
+lie->set_comm(mcomm);
+lie->set_batch_size(10);
+lie->set_sloav_mode(atoi(argv[2]));
+lie->enable_all_to_all_dump();
+lie->set_output_dir(argv[1]);
+lie->enable_IO();
+lie->set_name(argv[0]);
+lie->execute();
+lie->print_all_relation_size();
+
+
  delete lie;
  mcomm.destroy();
  return 0;
