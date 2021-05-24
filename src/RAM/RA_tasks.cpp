@@ -1157,6 +1157,11 @@ void RAM::execute_in_batches(std::string name, int batch_size, std::vector<u32>&
             double compute_end = MPI_Wtime();
             running_local_compute[task_id][*loop_counter] = (compute_end - compute_start);
 
+            if (mcomm.get_rank() == 0)
+            {
+                std::cout << output_dir << "\t"
+                          << mcomm.get_local_nprocs() << "\t";
+            }
 
             double all_to_all_start = MPI_Wtime();
             comm_compaction_all_to_all(compute_buffer, &cumulative_all_to_allv_recv_process_size_array, &cumulative_all_to_allv_buffer, mcomm.get_local_comm(), *loop_counter, task_id, output_dir, all_to_all_record, /*all_to_all_buffer_size*/NULL,
