@@ -34,6 +34,7 @@ int main(int argc, char **argv)
     FILE *fp_in;
     fp_in = fopen(argv[1], "r");
     unsigned long long val1, val2;
+    float tmp;
 
     do
     {
