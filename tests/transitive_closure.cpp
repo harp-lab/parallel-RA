@@ -23,7 +23,8 @@ int main(int argc, char **argv)
     lie1->add_scc(join1);
     lie1->add_scc(copy1);
     lie1->add_scc_dependance(copy1, join1);
-    lie1->set_sloav_mode(atoi(argv[3]));
+    //lie1->set_sloav_mode(atoi(argv[3]));
+    lie1->set_sloav_mode(0);
     lie1->enable_all_to_all_dump();
     lie1->set_output_dir(argv[2]);
     lie1->enable_IO();
@@ -51,9 +52,11 @@ int main(int argc, char **argv)
     lie2->add_scc(join2);
     lie2->add_scc(copy2);
     lie2->add_scc_dependance(copy2, join2);
-    lie2->set_sloav_mode(atoi(argv[5]));
+    //lie2->set_sloav_mode(atoi(argv[5]));
+    lie2->set_sloav_mode(1);
     lie2->enable_all_to_all_dump();
-    lie2->set_output_dir(argv[4]);
+    lie2->set_output_dir(argv[3]);
+    //lie2->set_output_dir(argv[4]);
     lie2->enable_IO();
     lie2->set_name(argv[0]);
     lie2->set_comm(mcomm);
@@ -62,7 +65,7 @@ int main(int argc, char **argv)
     lie2->print_all_relation_size();
     delete lie2;
 
-
+#if 0
     relation* T3 = new relation(1, true, 2, 257, "T", "../data/g5955/path_2_1_2", FULL);
     relation* G3 = new relation(1, true, 2, 256, "G", argv[1], FULL);
     RAM* join3 = new RAM(true, 1);
@@ -89,7 +92,7 @@ int main(int argc, char **argv)
     lie3->execute();
     lie3->print_all_relation_size();
     delete lie3;
-
+#endif
     mcomm.destroy();
     return 0;
 }
