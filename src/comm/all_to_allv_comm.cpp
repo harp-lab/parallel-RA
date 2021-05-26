@@ -182,13 +182,309 @@ void comm_compaction_all_to_all(all_to_allv_buffer compute_buffer, int **recv_bu
 
 
     if (sloav_mode == 1)
+    {
+        if (rank == 0)
+            std::cout << "M1 \t";
         sloav_non_uniform_benchmark((char*)send_buffer, compute_buffer.cumulative_tuple_process_map, send_disp, MPI_UNSIGNED_LONG_LONG, (char*)*recv_buffer, recv_counts, recv_displacements, MPI_UNSIGNED_LONG_LONG, comm,
                                 running_a2a_find_count_time, running_a2a_create_rindex_time, running_a2a_total_find_blocks_time, running_a2a_total_pre_time, running_a2a_total_send_meda_time, running_a2a_total_comm_time, running_a2a_total_replace_time, running_a2a_exchange_time, running_a2a_filter_time, task_id, loop_counter);
+    }
     else if (sloav_mode == 0)
+    {
+        if (rank == 0)
+            std::cout << "M0 \t";
         MPI_Alltoallv(send_buffer, compute_buffer.cumulative_tuple_process_map, send_disp, MPI_UNSIGNED_LONG_LONG, *recv_buffer, recv_counts, recv_displacements, MPI_UNSIGNED_LONG_LONG, comm);
-    else
+    }
+    else if (sloav_mode == 2)
         sloav_non_uniform_benchmark_with_caching((char*)send_buffer, compute_buffer.cumulative_tuple_process_map, send_disp, MPI_UNSIGNED_LONG_LONG, (char*)*recv_buffer, recv_counts, recv_displacements, MPI_UNSIGNED_LONG_LONG, comm,
                                 running_a2a_find_count_time, running_a2a_create_rindex_time, running_a2a_total_find_blocks_time, running_a2a_total_pre_time, running_a2a_total_send_meda_time, running_a2a_total_comm_time, running_a2a_total_replace_time, running_a2a_exchange_time, running_a2a_filter_time, task_id, loop_counter, rotate_index_array, send_indexes, local_max_count, sendb_num);
+    else if (sloav_mode == 3)   // Based on figure 7
+    {
+        int max_send_count = 0;
+        int nprocs;
+        MPI_Comm_size(comm, &nprocs);
+        MPI_Allreduce(&local_max_count, &max_send_count, 1, MPI_INT, MPI_MAX, comm);
+        if (nprocs == 128)
+        {
+            if (max_send_count * 64 * 7 < ) // add max_Send_count
+            {
+                if (rank == 0)
+                    std::cout << "M31 \t" << max_send_count << "\t";
+                sloav_non_uniform_benchmark((char*)send_buffer, compute_buffer.cumulative_tuple_process_map, send_disp, MPI_UNSIGNED_LONG_LONG, (char*)*recv_buffer, recv_counts, recv_displacements, MPI_UNSIGNED_LONG_LONG, comm,
+                                        running_a2a_find_count_time, running_a2a_create_rindex_time, running_a2a_total_find_blocks_time, running_a2a_total_pre_time, running_a2a_total_send_meda_time, running_a2a_total_comm_time, running_a2a_total_replace_time, running_a2a_exchange_time, running_a2a_filter_time, task_id, loop_counter);
+            }
+            else
+            {
+                if (rank == 0)
+                    std::cout << "M30 \t";
+                MPI_Alltoallv(send_buffer, compute_buffer.cumulative_tuple_process_map, send_disp, MPI_UNSIGNED_LONG_LONG, *recv_buffer, recv_counts, recv_displacements, MPI_UNSIGNED_LONG_LONG, comm);
+            }
+
+        }
+        else if (nprocs == 256)
+        {
+            if (max_send_count * 128 * 8 < )
+            {
+                if (rank == 0)
+                    std::cout << "M31 \t";
+                sloav_non_uniform_benchmark((char*)send_buffer, compute_buffer.cumulative_tuple_process_map, send_disp, MPI_UNSIGNED_LONG_LONG, (char*)*recv_buffer, recv_counts, recv_displacements, MPI_UNSIGNED_LONG_LONG, comm,
+                                        running_a2a_find_count_time, running_a2a_create_rindex_time, running_a2a_total_find_blocks_time, running_a2a_total_pre_time, running_a2a_total_send_meda_time, running_a2a_total_comm_time, running_a2a_total_replace_time, running_a2a_exchange_time, running_a2a_filter_time, task_id, loop_counter);
+            }
+            else
+            {
+                if (rank == 0)
+                    std::cout << "M30 \t";
+                MPI_Alltoallv(send_buffer, compute_buffer.cumulative_tuple_process_map, send_disp, MPI_UNSIGNED_LONG_LONG, *recv_buffer, recv_counts, recv_displacements, MPI_UNSIGNED_LONG_LONG, comm);
+            }
+
+        }
+        if (nprocs == 512)
+        {
+            if (max_send_count * 256 * 9 < )
+            {
+                if (rank == 0)
+                    std::cout << "M31 \t";
+                sloav_non_uniform_benchmark((char*)send_buffer, compute_buffer.cumulative_tuple_process_map, send_disp, MPI_UNSIGNED_LONG_LONG, (char*)*recv_buffer, recv_counts, recv_displacements, MPI_UNSIGNED_LONG_LONG, comm,
+                                        running_a2a_find_count_time, running_a2a_create_rindex_time, running_a2a_total_find_blocks_time, running_a2a_total_pre_time, running_a2a_total_send_meda_time, running_a2a_total_comm_time, running_a2a_total_replace_time, running_a2a_exchange_time, running_a2a_filter_time, task_id, loop_counter);
+            }
+            else
+            {
+                if (rank == 0)
+                    std::cout << "M30 \t";
+                MPI_Alltoallv(send_buffer, compute_buffer.cumulative_tuple_process_map, send_disp, MPI_UNSIGNED_LONG_LONG, *recv_buffer, recv_counts, recv_displacements, MPI_UNSIGNED_LONG_LONG, comm);
+            }
+
+        }
+        if (nprocs == 1024)
+        {
+            if (max_send_count * 512 * 10 < )
+            {
+                if (rank == 0)
+                    std::cout << "M31 \t";
+                sloav_non_uniform_benchmark((char*)send_buffer, compute_buffer.cumulative_tuple_process_map, send_disp, MPI_UNSIGNED_LONG_LONG, (char*)*recv_buffer, recv_counts, recv_displacements, MPI_UNSIGNED_LONG_LONG, comm,
+                                        running_a2a_find_count_time, running_a2a_create_rindex_time, running_a2a_total_find_blocks_time, running_a2a_total_pre_time, running_a2a_total_send_meda_time, running_a2a_total_comm_time, running_a2a_total_replace_time, running_a2a_exchange_time, running_a2a_filter_time, task_id, loop_counter);
+            }
+            else
+            {
+                if (rank == 0)
+                    std::cout << "M30 \t";
+                MPI_Alltoallv(send_buffer, compute_buffer.cumulative_tuple_process_map, send_disp, MPI_UNSIGNED_LONG_LONG, *recv_buffer, recv_counts, recv_displacements, MPI_UNSIGNED_LONG_LONG, comm);
+            }
+
+        }
+        if (nprocs == 2048)
+        {
+            if (max_send_count * 1024 * 11 < )
+            {
+                if (rank == 0)
+                    std::cout << "M31 \t";
+                sloav_non_uniform_benchmark((char*)send_buffer, compute_buffer.cumulative_tuple_process_map, send_disp, MPI_UNSIGNED_LONG_LONG, (char*)*recv_buffer, recv_counts, recv_displacements, MPI_UNSIGNED_LONG_LONG, comm,
+                                        running_a2a_find_count_time, running_a2a_create_rindex_time, running_a2a_total_find_blocks_time, running_a2a_total_pre_time, running_a2a_total_send_meda_time, running_a2a_total_comm_time, running_a2a_total_replace_time, running_a2a_exchange_time, running_a2a_filter_time, task_id, loop_counter);
+            }
+            else
+            {
+                if (rank == 0)
+                    std::cout << "M30 \t";
+                MPI_Alltoallv(send_buffer, compute_buffer.cumulative_tuple_process_map, send_disp, MPI_UNSIGNED_LONG_LONG, *recv_buffer, recv_counts, recv_displacements, MPI_UNSIGNED_LONG_LONG, comm);
+            }
+
+        }
+        if (nprocs == 4096)
+        {
+            if (max_send_count * 2048 * 12 < )
+            {
+                if (rank == 0)
+                    std::cout << "M31 \t";
+                sloav_non_uniform_benchmark((char*)send_buffer, compute_buffer.cumulative_tuple_process_map, send_disp, MPI_UNSIGNED_LONG_LONG, (char*)*recv_buffer, recv_counts, recv_displacements, MPI_UNSIGNED_LONG_LONG, comm,
+                                        running_a2a_find_count_time, running_a2a_create_rindex_time, running_a2a_total_find_blocks_time, running_a2a_total_pre_time, running_a2a_total_send_meda_time, running_a2a_total_comm_time, running_a2a_total_replace_time, running_a2a_exchange_time, running_a2a_filter_time, task_id, loop_counter);
+            }
+            else
+            {
+                if (rank == 0)
+                    std::cout << "M30 \t";
+                MPI_Alltoallv(send_buffer, compute_buffer.cumulative_tuple_process_map, send_disp, MPI_UNSIGNED_LONG_LONG, *recv_buffer, recv_counts, recv_displacements, MPI_UNSIGNED_LONG_LONG, comm);
+            }
+
+        }
+        if (nprocs == 8192)
+        {
+            if (max_send_count * 4096 * 13 < )
+            {
+                if (rank == 0)
+                    std::cout << "M31 \t";
+                sloav_non_uniform_benchmark((char*)send_buffer, compute_buffer.cumulative_tuple_process_map, send_disp, MPI_UNSIGNED_LONG_LONG, (char*)*recv_buffer, recv_counts, recv_displacements, MPI_UNSIGNED_LONG_LONG, comm,
+                                        running_a2a_find_count_time, running_a2a_create_rindex_time, running_a2a_total_find_blocks_time, running_a2a_total_pre_time, running_a2a_total_send_meda_time, running_a2a_total_comm_time, running_a2a_total_replace_time, running_a2a_exchange_time, running_a2a_filter_time, task_id, loop_counter);
+            }
+            else
+            {
+                if (rank == 0)
+                    std::cout << "M30 \t";
+                MPI_Alltoallv(send_buffer, compute_buffer.cumulative_tuple_process_map, send_disp, MPI_UNSIGNED_LONG_LONG, *recv_buffer, recv_counts, recv_displacements, MPI_UNSIGNED_LONG_LONG, comm);
+            }
+
+        }
+        if (nprocs == 16384)
+        {
+            if (max_send_count * 8192 * 14 < )
+            {
+                if (rank == 0)
+                    std::cout << "M31 \t";
+                sloav_non_uniform_benchmark((char*)send_buffer, compute_buffer.cumulative_tuple_process_map, send_disp, MPI_UNSIGNED_LONG_LONG, (char*)*recv_buffer, recv_counts, recv_displacements, MPI_UNSIGNED_LONG_LONG, comm,
+                                        running_a2a_find_count_time, running_a2a_create_rindex_time, running_a2a_total_find_blocks_time, running_a2a_total_pre_time, running_a2a_total_send_meda_time, running_a2a_total_comm_time, running_a2a_total_replace_time, running_a2a_exchange_time, running_a2a_filter_time, task_id, loop_counter);
+            }
+            else
+            {
+                if (rank == 0)
+                    std::cout << "M30 \t";
+                MPI_Alltoallv(send_buffer, compute_buffer.cumulative_tuple_process_map, send_disp, MPI_UNSIGNED_LONG_LONG, *recv_buffer, recv_counts, recv_displacements, MPI_UNSIGNED_LONG_LONG, comm);
+            }
+
+        }
+    }
+
+    else if (sloav_mode == 4) // Based on your new figure
+    {
+        int max_send_count = 0;
+        int nprocs;
+        MPI_Comm_size(comm, &nprocs);
+        MPI_Allreduce(&local_max_count, &max_send_count, 1, MPI_INT, MPI_MAX, comm);
+        if (nprocs == 128)
+        {
+            if (max_send_count  < )
+            {
+                if (rank == 0)
+                    std::cout << "M41 \t";
+                sloav_non_uniform_benchmark((char*)send_buffer, compute_buffer.cumulative_tuple_process_map, send_disp, MPI_UNSIGNED_LONG_LONG, (char*)*recv_buffer, recv_counts, recv_displacements, MPI_UNSIGNED_LONG_LONG, comm,
+                                        running_a2a_find_count_time, running_a2a_create_rindex_time, running_a2a_total_find_blocks_time, running_a2a_total_pre_time, running_a2a_total_send_meda_time, running_a2a_total_comm_time, running_a2a_total_replace_time, running_a2a_exchange_time, running_a2a_filter_time, task_id, loop_counter);
+            }
+            else
+            {
+                if (rank == 0)
+                    std::cout << "M30 \t";
+                MPI_Alltoallv(send_buffer, compute_buffer.cumulative_tuple_process_map, send_disp, MPI_UNSIGNED_LONG_LONG, *recv_buffer, recv_counts, recv_displacements, MPI_UNSIGNED_LONG_LONG, comm);
+            }
+
+        }
+        else if (nprocs == 256)
+        {
+            if (max_send_count < )
+            {
+                if (rank == 0)
+                    std::cout << "M41 \t";
+                sloav_non_uniform_benchmark((char*)send_buffer, compute_buffer.cumulative_tuple_process_map, send_disp, MPI_UNSIGNED_LONG_LONG, (char*)*recv_buffer, recv_counts, recv_displacements, MPI_UNSIGNED_LONG_LONG, comm,
+                                        running_a2a_find_count_time, running_a2a_create_rindex_time, running_a2a_total_find_blocks_time, running_a2a_total_pre_time, running_a2a_total_send_meda_time, running_a2a_total_comm_time, running_a2a_total_replace_time, running_a2a_exchange_time, running_a2a_filter_time, task_id, loop_counter);
+            }
+            else
+            {
+                if (rank == 0)
+                    std::cout << "M40 \t";
+                MPI_Alltoallv(send_buffer, compute_buffer.cumulative_tuple_process_map, send_disp, MPI_UNSIGNED_LONG_LONG, *recv_buffer, recv_counts, recv_displacements, MPI_UNSIGNED_LONG_LONG, comm);
+            }
+
+        }
+        if (nprocs == 512)
+        {
+            if (max_send_count < )
+            {
+                if (rank == 0)
+                    std::cout << "M41 \t";
+                sloav_non_uniform_benchmark((char*)send_buffer, compute_buffer.cumulative_tuple_process_map, send_disp, MPI_UNSIGNED_LONG_LONG, (char*)*recv_buffer, recv_counts, recv_displacements, MPI_UNSIGNED_LONG_LONG, comm,
+                                        running_a2a_find_count_time, running_a2a_create_rindex_time, running_a2a_total_find_blocks_time, running_a2a_total_pre_time, running_a2a_total_send_meda_time, running_a2a_total_comm_time, running_a2a_total_replace_time, running_a2a_exchange_time, running_a2a_filter_time, task_id, loop_counter);
+            }
+            else
+            {
+                if (rank == 0)
+                    std::cout << "M40 \t";
+                MPI_Alltoallv(send_buffer, compute_buffer.cumulative_tuple_process_map, send_disp, MPI_UNSIGNED_LONG_LONG, *recv_buffer, recv_counts, recv_displacements, MPI_UNSIGNED_LONG_LONG, comm);
+            }
+
+        }
+        if (nprocs == 1024)
+        {
+            if (max_send_count < )
+            {
+                if (rank == 0)
+                    std::cout << "M41 \t";
+                sloav_non_uniform_benchmark((char*)send_buffer, compute_buffer.cumulative_tuple_process_map, send_disp, MPI_UNSIGNED_LONG_LONG, (char*)*recv_buffer, recv_counts, recv_displacements, MPI_UNSIGNED_LONG_LONG, comm,
+                                        running_a2a_find_count_time, running_a2a_create_rindex_time, running_a2a_total_find_blocks_time, running_a2a_total_pre_time, running_a2a_total_send_meda_time, running_a2a_total_comm_time, running_a2a_total_replace_time, running_a2a_exchange_time, running_a2a_filter_time, task_id, loop_counter);
+            }
+            else
+            {
+                if (rank == 0)
+                    std::cout << "M40 \t";
+                MPI_Alltoallv(send_buffer, compute_buffer.cumulative_tuple_process_map, send_disp, MPI_UNSIGNED_LONG_LONG, *recv_buffer, recv_counts, recv_displacements, MPI_UNSIGNED_LONG_LONG, comm);
+            }
+
+        }
+        if (nprocs == 2048)
+        {
+            if (max_send_count < )
+            {
+                if (rank == 0)
+                    std::cout << "M41 \t";
+                sloav_non_uniform_benchmark((char*)send_buffer, compute_buffer.cumulative_tuple_process_map, send_disp, MPI_UNSIGNED_LONG_LONG, (char*)*recv_buffer, recv_counts, recv_displacements, MPI_UNSIGNED_LONG_LONG, comm,
+                                        running_a2a_find_count_time, running_a2a_create_rindex_time, running_a2a_total_find_blocks_time, running_a2a_total_pre_time, running_a2a_total_send_meda_time, running_a2a_total_comm_time, running_a2a_total_replace_time, running_a2a_exchange_time, running_a2a_filter_time, task_id, loop_counter);
+            }
+            else
+            {
+                if (rank == 0)
+                    std::cout << "M40 \t";
+                MPI_Alltoallv(send_buffer, compute_buffer.cumulative_tuple_process_map, send_disp, MPI_UNSIGNED_LONG_LONG, *recv_buffer, recv_counts, recv_displacements, MPI_UNSIGNED_LONG_LONG, comm);
+            }
+
+        }
+        if (nprocs == 4096)
+        {
+            if (max_send_count < )
+            {
+                if (rank == 0)
+                    std::cout << "M41 \t";
+                sloav_non_uniform_benchmark((char*)send_buffer, compute_buffer.cumulative_tuple_process_map, send_disp, MPI_UNSIGNED_LONG_LONG, (char*)*recv_buffer, recv_counts, recv_displacements, MPI_UNSIGNED_LONG_LONG, comm,
+                                        running_a2a_find_count_time, running_a2a_create_rindex_time, running_a2a_total_find_blocks_time, running_a2a_total_pre_time, running_a2a_total_send_meda_time, running_a2a_total_comm_time, running_a2a_total_replace_time, running_a2a_exchange_time, running_a2a_filter_time, task_id, loop_counter);
+            }
+            else
+            {
+                if (rank == 0)
+                    std::cout << "M40 \t";
+                MPI_Alltoallv(send_buffer, compute_buffer.cumulative_tuple_process_map, send_disp, MPI_UNSIGNED_LONG_LONG, *recv_buffer, recv_counts, recv_displacements, MPI_UNSIGNED_LONG_LONG, comm);
+            }
+
+        }
+        if (nprocs == 8192)
+        {
+            if (max_send_count < )
+            {
+                if (rank == 0)
+                    std::cout << "M41 \t";
+                sloav_non_uniform_benchmark((char*)send_buffer, compute_buffer.cumulative_tuple_process_map, send_disp, MPI_UNSIGNED_LONG_LONG, (char*)*recv_buffer, recv_counts, recv_displacements, MPI_UNSIGNED_LONG_LONG, comm,
+                                        running_a2a_find_count_time, running_a2a_create_rindex_time, running_a2a_total_find_blocks_time, running_a2a_total_pre_time, running_a2a_total_send_meda_time, running_a2a_total_comm_time, running_a2a_total_replace_time, running_a2a_exchange_time, running_a2a_filter_time, task_id, loop_counter);
+            }
+            else
+            {
+                if (rank == 0)
+                    std::cout << "M40 \t";
+                MPI_Alltoallv(send_buffer, compute_buffer.cumulative_tuple_process_map, send_disp, MPI_UNSIGNED_LONG_LONG, *recv_buffer, recv_counts, recv_displacements, MPI_UNSIGNED_LONG_LONG, comm);
+            }
+
+        }
+        if (nprocs == 16384)
+        {
+            if (max_send_count < )
+            {
+                if (rank == 0)
+                    std::cout << "M41 \t";
+                sloav_non_uniform_benchmark((char*)send_buffer, compute_buffer.cumulative_tuple_process_map, send_disp, MPI_UNSIGNED_LONG_LONG, (char*)*recv_buffer, recv_counts, recv_displacements, MPI_UNSIGNED_LONG_LONG, comm,
+                                        running_a2a_find_count_time, running_a2a_create_rindex_time, running_a2a_total_find_blocks_time, running_a2a_total_pre_time, running_a2a_total_send_meda_time, running_a2a_total_comm_time, running_a2a_total_replace_time, running_a2a_exchange_time, running_a2a_filter_time, task_id, loop_counter);
+            }
+            else
+            {
+                if (rank == 0)
+                    std::cout << "M40 \t";
+                MPI_Alltoallv(send_buffer, compute_buffer.cumulative_tuple_process_map, send_disp, MPI_UNSIGNED_LONG_LONG, *recv_buffer, recv_counts, recv_displacements, MPI_UNSIGNED_LONG_LONG, comm);
+            }
+
+        }
+    }
+
 
     delete[] send_buffer;
     delete[] send_disp;

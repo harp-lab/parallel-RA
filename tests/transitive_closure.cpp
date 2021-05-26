@@ -65,7 +65,7 @@ int main(int argc, char **argv)
     lie2->print_all_relation_size();
     delete lie2;
 
-#if 0
+
     relation* T3 = new relation(1, true, 2, 257, "T", "../data/g5955/path_2_1_2", FULL);
     relation* G3 = new relation(1, true, 2, 256, "G", argv[1], FULL);
     RAM* join3 = new RAM(true, 1);
@@ -82,9 +82,9 @@ int main(int argc, char **argv)
     lie3->add_scc(join3);
     lie3->add_scc(copy3);
     lie3->add_scc_dependance(copy3, join3);
-    lie3->set_sloav_mode(atoi(argv[7]));
+    lie3->set_sloav_mode(3);
     lie3->enable_all_to_all_dump();
-    lie3->set_output_dir(argv[6]);
+    lie3->set_output_dir(argv[4]);
     lie3->enable_IO();
     lie3->set_name(argv[0]);
     lie3->set_comm(mcomm);
@@ -92,7 +92,34 @@ int main(int argc, char **argv)
     lie3->execute();
     lie3->print_all_relation_size();
     delete lie3;
-#endif
+
+    relation* T4 = new relation(1, true, 2, 257, "T", "../data/g5955/path_2_1_2", FULL);
+    relation* G4 = new relation(1, true, 2, 256, "G", argv[1], FULL);
+    RAM* join4 = new RAM(true, 1);
+    join4->add_relation(G4, false);
+    join4->add_relation(T4, true);
+    join4->add_rule(new parallel_join(T4, T4, DELTA, G4, FULL, {3, 1}));
+    RAM* copy4 = new RAM(false, 0);
+    copy4->add_relation(G4, false);
+    copy4->add_relation(T4, true);
+    copy4->add_rule(new parallel_copy(T4, G4, FULL, {1, 0}));
+    LIE* lie4 = new LIE();
+    lie4->add_relation(T4);
+    lie4->add_relation(G4);
+    lie4->add_scc(join4);
+    lie4->add_scc(copy4);
+    lie4->add_scc_dependance(copy4, join4);
+    lie4->set_sloav_mode(4);
+    lie4->enable_all_to_all_dump();
+    lie4->set_output_dir(argv[5]);
+    lie4->enable_IO();
+    lie4->set_name(argv[0]);
+    lie4->set_comm(mcomm);
+    lie4->set_batch_size(10);
+    lie4->execute();
+    lie4->print_all_relation_size();
+    delete lie4;
+
     mcomm.destroy();
     return 0;
 }
