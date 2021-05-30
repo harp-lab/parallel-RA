@@ -180,18 +180,22 @@ void comm_compaction_all_to_all(all_to_allv_buffer compute_buffer, int **recv_bu
     }
 #endif
 
+    int max_send_count = 0;
+    int average_send_count = 0;
+    MPI_Allreduce(&local_max_count, &max_send_count, 1, MPI_INT, MPI_MAX, comm);
+    MPI_Allreduce(&local_max_count, &average_send_count, 1, MPI_INT, MPI_SUM, comm);
 
     if (sloav_mode == 1)
     {
         if (rank == 0)
-            std::cout << "M1 \t";
+            std::cout << "M1 \t" << max_send_count << "\t" << average_send_count/nprocs << "\t";
         sloav_non_uniform_benchmark((char*)send_buffer, compute_buffer.cumulative_tuple_process_map, send_disp, MPI_UNSIGNED_LONG_LONG, (char*)*recv_buffer, recv_counts, recv_displacements, MPI_UNSIGNED_LONG_LONG, comm,
                                 running_a2a_find_count_time, running_a2a_create_rindex_time, running_a2a_total_find_blocks_time, running_a2a_total_pre_time, running_a2a_total_send_meda_time, running_a2a_total_comm_time, running_a2a_total_replace_time, running_a2a_exchange_time, running_a2a_filter_time, task_id, loop_counter);
     }
     else if (sloav_mode == 0)
     {
         if (rank == 0)
-            std::cout << "M0 \t";
+            std::cout << "M0 \t" << max_send_count << "\t" << average_send_count/nprocs << "\t";
         MPI_Alltoallv(send_buffer, compute_buffer.cumulative_tuple_process_map, send_disp, MPI_UNSIGNED_LONG_LONG, *recv_buffer, recv_counts, recv_displacements, MPI_UNSIGNED_LONG_LONG, comm);
     }
     else if (sloav_mode == 2)
