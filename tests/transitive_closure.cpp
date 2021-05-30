@@ -26,7 +26,6 @@ int main(int argc, char **argv)
     lie1->add_scc(join1);
     lie1->add_scc(copy1);
     lie1->add_scc_dependance(copy1, join1);
-    //lie1->set_sloav_mode(atoi(argv[3]));
     lie1->set_sloav_mode(0);
     lie1->enable_all_to_all_dump();
     lie1->set_output_dir(argv[2]);
@@ -57,8 +56,7 @@ int main(int argc, char **argv)
     lie2->add_scc(join2);
     lie2->add_scc(copy2);
     lie2->add_scc_dependance(copy2, join2);
-    //lie2->set_sloav_mode(atoi(argv[5]));
-    lie2->set_sloav_mode(1);
+    lie2->set_sloav_mode(0);
     lie2->enable_all_to_all_dump();
     lie2->set_output_dir(argv[3]);
     //lie2->set_output_dir(argv[4]);
@@ -89,7 +87,6 @@ int main(int argc, char **argv)
     lie1->add_scc(join1);
     lie1->add_scc(copy1);
     lie1->add_scc_dependance(copy1, join1);
-    //lie1->set_sloav_mode(atoi(argv[3]));
     lie1->set_sloav_mode(0);
     lie1->enable_all_to_all_dump();
     lie1->set_output_dir(argv[4]);
@@ -120,8 +117,7 @@ int main(int argc, char **argv)
     lie2->add_scc(join2);
     lie2->add_scc(copy2);
     lie2->add_scc_dependance(copy2, join2);
-    //lie2->set_sloav_mode(atoi(argv[5]));
-    lie2->set_sloav_mode(1);
+    lie2->set_sloav_mode(0);
     lie2->enable_all_to_all_dump();
     lie2->set_output_dir(argv[5]);
     //lie2->set_output_dir(argv[4]);
@@ -151,7 +147,6 @@ int main(int argc, char **argv)
     lie1->add_scc(join1);
     lie1->add_scc(copy1);
     lie1->add_scc_dependance(copy1, join1);
-    //lie1->set_sloav_mode(atoi(argv[3]));
     lie1->set_sloav_mode(0);
     lie1->enable_all_to_all_dump();
     lie1->set_output_dir(argv[6]);
@@ -182,8 +177,7 @@ int main(int argc, char **argv)
     lie2->add_scc(join2);
     lie2->add_scc(copy2);
     lie2->add_scc_dependance(copy2, join2);
-    //lie2->set_sloav_mode(atoi(argv[5]));
-    lie2->set_sloav_mode(1);
+    lie2->set_sloav_mode(0);
     lie2->enable_all_to_all_dump();
     lie2->set_output_dir(argv[7]);
     //lie2->set_output_dir(argv[4]);
@@ -214,7 +208,6 @@ int main(int argc, char **argv)
     lie1->add_scc(join1);
     lie1->add_scc(copy1);
     lie1->add_scc_dependance(copy1, join1);
-    //lie1->set_sloav_mode(atoi(argv[3]));
     lie1->set_sloav_mode(0);
     lie1->enable_all_to_all_dump();
     lie1->set_output_dir(argv[8]);
@@ -245,8 +238,7 @@ int main(int argc, char **argv)
     lie2->add_scc(join2);
     lie2->add_scc(copy2);
     lie2->add_scc_dependance(copy2, join2);
-    //lie2->set_sloav_mode(atoi(argv[5]));
-    lie2->set_sloav_mode(1);
+    lie2->set_sloav_mode(0);
     lie2->enable_all_to_all_dump();
     lie2->set_output_dir(argv[9]);
     //lie2->set_output_dir(argv[4]);
@@ -277,7 +269,6 @@ int main(int argc, char **argv)
     lie1->add_scc(join1);
     lie1->add_scc(copy1);
     lie1->add_scc_dependance(copy1, join1);
-    //lie1->set_sloav_mode(atoi(argv[3]));
     lie1->set_sloav_mode(0);
     lie1->enable_all_to_all_dump();
     lie1->set_output_dir(argv[10]);
@@ -308,8 +299,7 @@ int main(int argc, char **argv)
     lie2->add_scc(join2);
     lie2->add_scc(copy2);
     lie2->add_scc_dependance(copy2, join2);
-    //lie2->set_sloav_mode(atoi(argv[5]));
-    lie2->set_sloav_mode(1);
+    lie2->set_sloav_mode(0);
     lie2->enable_all_to_all_dump();
     lie2->set_output_dir(argv[11]);
     //lie2->set_output_dir(argv[4]);
@@ -340,7 +330,6 @@ int main(int argc, char **argv)
     lie1->add_scc(join1);
     lie1->add_scc(copy1);
     lie1->add_scc_dependance(copy1, join1);
-    //lie1->set_sloav_mode(atoi(argv[3]));
     lie1->set_sloav_mode(0);
     lie1->enable_all_to_all_dump();
     lie1->set_output_dir(argv[12]);
@@ -371,8 +360,7 @@ int main(int argc, char **argv)
     lie2->add_scc(join2);
     lie2->add_scc(copy2);
     lie2->add_scc_dependance(copy2, join2);
-    //lie2->set_sloav_mode(atoi(argv[5]));
-    lie2->set_sloav_mode(1);
+    lie2->set_sloav_mode(0);
     lie2->enable_all_to_all_dump();
     lie2->set_output_dir(argv[13]);
     //lie2->set_output_dir(argv[4]);
