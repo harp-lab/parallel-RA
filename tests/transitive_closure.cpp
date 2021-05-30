@@ -59,7 +59,6 @@ int main(int argc, char **argv)
     lie2->set_sloav_mode(0);
     lie2->enable_all_to_all_dump();
     lie2->set_output_dir(argv[3]);
-    //lie2->set_output_dir(argv[4]);
     lie2->enable_IO();
     lie2->set_name(argv[0]);
     lie2->set_comm(mcomm);
