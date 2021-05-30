@@ -201,7 +201,7 @@ void comm_compaction_all_to_all(all_to_allv_buffer compute_buffer, int **recv_bu
     else if (sloav_mode == 2)
         sloav_non_uniform_benchmark_with_caching((char*)send_buffer, compute_buffer.cumulative_tuple_process_map, send_disp, MPI_UNSIGNED_LONG_LONG, (char*)*recv_buffer, recv_counts, recv_displacements, MPI_UNSIGNED_LONG_LONG, comm,
                                 running_a2a_find_count_time, running_a2a_create_rindex_time, running_a2a_total_find_blocks_time, running_a2a_total_pre_time, running_a2a_total_send_meda_time, running_a2a_total_comm_time, running_a2a_total_replace_time, running_a2a_exchange_time, running_a2a_filter_time, task_id, loop_counter, rotate_index_array, send_indexes, local_max_count, sendb_num);
-#if 0
+
     else if (sloav_mode == 3)   // Based on figure 7
     {
         int max_send_count = 0;
@@ -210,7 +210,7 @@ void comm_compaction_all_to_all(all_to_allv_buffer compute_buffer, int **recv_bu
         MPI_Allreduce(&local_max_count, &max_send_count, 1, MPI_INT, MPI_MAX, comm);
         if (nprocs == 128)
         {
-            if (max_send_count * 64 * 7 < ) // add max_Send_count
+            if (max_send_count < ) // add max_Send_count
             {
                 if (rank == 0)
                     std::cout << "M31 \t" << max_send_count << "\t";
@@ -227,7 +227,7 @@ void comm_compaction_all_to_all(all_to_allv_buffer compute_buffer, int **recv_bu
         }
         else if (nprocs == 256)
         {
-            if (max_send_count * 128 * 8 < )
+            if (max_send_count  < )
             {
                 if (rank == 0)
                     std::cout << "M31 \t";
@@ -244,7 +244,7 @@ void comm_compaction_all_to_all(all_to_allv_buffer compute_buffer, int **recv_bu
         }
         if (nprocs == 512)
         {
-            if (max_send_count * 256 * 9 < )
+            if (max_send_count < )
             {
                 if (rank == 0)
                     std::cout << "M31 \t";
@@ -261,7 +261,7 @@ void comm_compaction_all_to_all(all_to_allv_buffer compute_buffer, int **recv_bu
         }
         if (nprocs == 1024)
         {
-            if (max_send_count * 512 * 10 < )
+            if (max_send_count < )
             {
                 if (rank == 0)
                     std::cout << "M31 \t";
@@ -278,7 +278,7 @@ void comm_compaction_all_to_all(all_to_allv_buffer compute_buffer, int **recv_bu
         }
         if (nprocs == 2048)
         {
-            if (max_send_count * 1024 * 11 < )
+            if (max_send_count < )
             {
                 if (rank == 0)
                     std::cout << "M31 \t";
@@ -295,7 +295,7 @@ void comm_compaction_all_to_all(all_to_allv_buffer compute_buffer, int **recv_bu
         }
         if (nprocs == 4096)
         {
-            if (max_send_count * 2048 * 12 < )
+            if (max_send_count < )
             {
                 if (rank == 0)
                     std::cout << "M31 \t";
@@ -312,7 +312,7 @@ void comm_compaction_all_to_all(all_to_allv_buffer compute_buffer, int **recv_bu
         }
         if (nprocs == 8192)
         {
-            if (max_send_count * 4096 * 13 < )
+            if (max_send_count < )
             {
                 if (rank == 0)
                     std::cout << "M31 \t";
@@ -329,7 +329,7 @@ void comm_compaction_all_to_all(all_to_allv_buffer compute_buffer, int **recv_bu
         }
         if (nprocs == 16384)
         {
-            if (max_send_count * 8192 * 14 < )
+            if (max_send_count  < )
             {
                 if (rank == 0)
                     std::cout << "M31 \t";
@@ -345,7 +345,7 @@ void comm_compaction_all_to_all(all_to_allv_buffer compute_buffer, int **recv_bu
 
         }
     }
-
+#if 0
     else if (sloav_mode == 4) // Based on your new figure
     {
         int max_send_count = 0;

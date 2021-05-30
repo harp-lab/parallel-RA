@@ -394,18 +394,22 @@ int main(int argc, char **argv)
   mpi_comm mcomm;
   mcomm.create(argc, argv);
 
-  func(mcomm, 0, "kcfa-log_0_0");
-  func(mcomm, 1, "kcfa-log_0_1");
+  func(mcomm, 0, "final-kcfa-110-7-log_0_0");
+  func(mcomm, 1, "final-kcfa-110-7-log_0_1");
+  func(mcomm, 3, "final-kcfa-110-7-log_0_3");
 
 
-  func(mcomm, 0, "kcfa-log_1_0");
-  func(mcomm, 1, "kcfa-log_1_1");
+  func(mcomm, 0, "final-kcfa-110-7-log_1_0");
+  func(mcomm, 1, "final-kcfa-110-7-log_1_1");
+  func(mcomm, 3, "final-kcfa-110-7-log_1_3");
 
-  func(mcomm, 0, "kcfa-log_2_0");
-  func(mcomm, 1, "kcfa-log_2_1");
+  func(mcomm, 0, "final-kcfa-110-7-log_2_0");
+  func(mcomm, 1, "final-kcfa-110-7-log_2_1");
+  func(mcomm, 3, "final-kcfa-110-7-log_2_3");
 
-  func(mcomm, 0, "kcfa-log_3_0");
-  func(mcomm, 1, "kcfa-log_3_1");
+  func(mcomm, 0, "final-kcfa-110-7-log_3_0");
+  func(mcomm, 1, "final-kcfa-110-7-log_3_1");
+  func(mcomm, 3, "final-kcfa-110-7-log_3_3");
 
 
  mcomm.destroy();
