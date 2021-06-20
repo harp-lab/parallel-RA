@@ -201,7 +201,7 @@ void comm_compaction_all_to_all(all_to_allv_buffer compute_buffer, int **recv_bu
     else if (sloav_mode == 2)
         sloav_non_uniform_benchmark_with_caching((char*)send_buffer, compute_buffer.cumulative_tuple_process_map, send_disp, MPI_UNSIGNED_LONG_LONG, (char*)*recv_buffer, recv_counts, recv_displacements, MPI_UNSIGNED_LONG_LONG, comm,
                                 running_a2a_find_count_time, running_a2a_create_rindex_time, running_a2a_total_find_blocks_time, running_a2a_total_pre_time, running_a2a_total_send_meda_time, running_a2a_total_comm_time, running_a2a_total_replace_time, running_a2a_exchange_time, running_a2a_filter_time, task_id, loop_counter, rotate_index_array, send_indexes, local_max_count, sendb_num);
-
+#if 0
     else if (sloav_mode == 3)   // Based on figure 7
     {
         int max_send_count = 0;
@@ -345,6 +345,7 @@ void comm_compaction_all_to_all(all_to_allv_buffer compute_buffer, int **recv_bu
 
         }
     }
+#endif
 #if 0
     else if (sloav_mode == 4) // Based on your new figure
     {
