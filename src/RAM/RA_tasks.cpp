@@ -377,6 +377,7 @@ u32 RAM::local_compute(int* offset, int loop_counter, int task_id, int** compute
 
         else if ((*it)->get_RA_type() == COPY_GENERATE)
         {
+            std::cout << "YYYYYYYYYYYYYYYYY" << std::endl;
             parallel_copy_generate* current_ra = (parallel_copy_generate*) *it;
 
             //std::vector<int> reorder_map_array;
@@ -384,7 +385,7 @@ u32 RAM::local_compute(int* offset, int loop_counter, int task_id, int** compute
             relation* output_relation = current_ra->get_copy_generate_output();
             relation* input_relation = current_ra->get_copy_generate_input();
 
-            if (current_ra->get_copy_filter_input0_graph_type() == DELTA)
+            if (current_ra->get_copy_generate_input0_graph_type() == DELTA)
             {
                 current_ra->local_copy_generate(get_bucket_count(),
                                               input_relation->get_delta(), input_relation->get_bucket_map(),
@@ -393,7 +394,7 @@ u32 RAM::local_compute(int* offset, int loop_counter, int task_id, int** compute
                                               input_relation->get_join_column_count(),
                                               compute_buffer, counter);
             }
-            if (current_ra->get_copy_filter_input0_graph_type() == FULL)
+            if (current_ra->get_copy_generate_input0_graph_type() == FULL)
             {
                 current_ra->local_copy_generate(get_bucket_count(),
                                               input_relation->get_full(), input_relation->get_bucket_map(),
@@ -844,6 +845,8 @@ void RAM::local_insert_in_newt(std::map<u64, u64>& intern_map)
             output = RA_list[ra_id]->get_copy_filter_output();
         else if (RA_list[ra_id]->get_RA_type() == JOIN)
             output = RA_list[ra_id]->get_join_output();
+        else if (RA_list[ra_id]->get_RA_type() == COPY_GENERATE)
+            output = RA_list[ra_id]->get_copy_generate_output();
         else
             output = RA_list[ra_id]->get_acopy_output();
 

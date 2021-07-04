@@ -285,13 +285,18 @@ void shmap_relation::as_all_to_allv_copy_generate_buffer_helper(shmap_relation*&
     if ( cur_path.size() != 0 && cur_trie == NULL)
     {
         u64 reordered_cur_path[buffer.width[ra_id]];
+        reordered_cur_path[0] = 0;
+        reordered_cur_path[1] = 0;
         u64 cur_path_array[cur_path.size()];
         for (u32 i=0; i < cur_path.size(); i++)
             cur_path_array[i] = cur_path[i];
 
+        std::cout << "TTTTTTMMMMM 1111 " << cur_path_array[0] << " " << cur_path_array[1] << std::endl;
+        std::cout << "TTTTTTMMMMM 2222 " << reordered_cur_path[0] << " " << reordered_cur_path[1] << std::endl;
         //if (lambda(cur_path_array, reordered_cur_path) == true)
         lambda(cur_path_array, reordered_cur_path);
         {
+            std::cout << "TTTTTTMMMMM 3333 " << reordered_cur_path[0] << " " << reordered_cur_path[1] << std::endl;
             //for (u32 j =0; j < buffer.width[ra_id]; j++)
             //    reordered_cur_path[j] = cur_path[reorder_map[j]];
 

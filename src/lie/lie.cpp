@@ -153,6 +153,7 @@ void LIE::print_all_relation_size()
 
 void LIE::write_checkpoint_dump(int loop_counter, std::vector<int> executed_scc_id, int scc_id)
 {
+#if 0
     std::string dir_name;
     dir_name = output_dir + "/checkpoint-" + std::to_string(scc_id) + "-" + std::to_string(loop_counter);
 
@@ -160,6 +161,7 @@ void LIE::write_checkpoint_dump(int loop_counter, std::vector<int> executed_scc_
     scc_metadata = dir_name + "/scc_metadata";
     if (mcomm.get_local_rank() == 0)
     {
+        std::cout << "XXXXXXXXXXXXx " << dir_name << " " << (int)executed_scc_id.size() << " " << scc_metadata.c_str() << " " << executed_scc_id[0] << std::endl;
         //mkdir(dir_name.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
         FILE *fp;
         fp = fopen(scc_metadata.c_str(), "w");
@@ -175,6 +177,7 @@ void LIE::write_checkpoint_dump(int loop_counter, std::vector<int> executed_scc_
         //if(lie_relations[i]->get_debug_id() == "rel_path_2_1_2")
         lie_relations[i]->parallel_IO(dir_name);
     }
+#endif
 }
 
 
@@ -217,7 +220,7 @@ bool LIE::execute ()
         lie_relations[i]->initialize_relation(mcomm);
 
 #if DEBUG_OUTPUT
-        //lie_relations[i]->print();
+        lie_relations[i]->print();
 #endif
     }
 
@@ -469,8 +472,8 @@ bool LIE::execute ()
         /// For SCCs that runs for only one iteration
         if (executable_task->get_iteration_count() == 1)
         {
-            if (enable_data_io == true && loop_counter % cp_iteration == 0)
-                create_checkpoint_dump(loop_counter, executable_task->get_id());
+            //if (enable_data_io == true && loop_counter % cp_iteration == 0)
+            //    create_checkpoint_dump(loop_counter, executable_task->get_id());
 
             //executable_task->execute_in_batches_with_all_to_all_threshold(batch_size, history, intern_map, &running_time, &running_intra_bucket_comm, &running_buffer_allocate, &running_local_compute, &running_all_to_all, &running_buffer_free, &running_insert_newt, &running_insert_in_full);
             executable_task->execute_in_batches(app_name, batch_size, history, intern_map, running_time, running_intra_bucket_comm, running_buffer_allocate, running_local_compute, running_all_to_all, running_buffer_free, running_insert_newt, running_insert_in_full, running_fp, running_a2a_find_count_time, running_a2a_create_rindex_time, running_a2a_total_find_blocks_time, running_a2a_total_pre_time, running_a2a_total_send_meda_time, running_a2a_total_comm_time, running_a2a_total_replace_time, running_a2a_exchange_time, running_a2a_filter_time, &loop_counter, executable_task->get_id(), output_dir, all_to_all_meta_data_dump, /*all_to_all_buffer_size*/NULL, compute_size1, compute_size2, sloav_mode, rotate_index_array, send_indexes, sendb_num);
@@ -479,7 +482,7 @@ bool LIE::execute ()
             if (enable_data_io == true && loop_counter % cp_iteration == 0)
             {
                 double write_cp_start = MPI_Wtime();
-                write_checkpoint_dump(loop_counter, executed_scc_id, executable_task->get_id());
+                //write_checkpoint_dump(loop_counter, executed_scc_id, executable_task->get_id());
                 double write_cp_end = MPI_Wtime();
                 writing_checkpoint_dump_time = (write_cp_end - write_cp_start);
                 double max_write_cp_time = 0;
@@ -506,8 +509,8 @@ bool LIE::execute ()
             u64 delta_in_scc = 0;
             do
             {
-                if (enable_data_io == true && loop_counter % cp_iteration == 0)
-                    create_checkpoint_dump(loop_counter, executable_task->get_id());
+                //if (enable_data_io == true && loop_counter % cp_iteration == 0)
+                //    create_checkpoint_dump(loop_counter, executable_task->get_id());
 
                 //executable_task->execute_in_batches_with_all_to_all_threshold(batch_size, history, intern_map, &running_time, &running_intra_bucket_comm, &running_buffer_allocate, &running_local_compute, &running_all_to_all, &running_buffer_free, &running_insert_newt, &running_insert_in_full);
                 executable_task->execute_in_batches(app_name, batch_size, history, intern_map, running_time, running_intra_bucket_comm, running_buffer_allocate, running_local_compute, running_all_to_all, running_buffer_free, running_insert_newt, running_insert_in_full, running_fp, running_a2a_find_count_time, running_a2a_create_rindex_time, running_a2a_total_find_blocks_time, running_a2a_total_pre_time, running_a2a_total_send_meda_time, running_a2a_total_comm_time, running_a2a_total_replace_time, running_a2a_exchange_time, running_a2a_filter_time, &loop_counter, executable_task->get_id(), output_dir, all_to_all_meta_data_dump, /*all_to_all_buffer_size*/NULL, compute_size1, compute_size2, sloav_mode, rotate_index_array, send_indexes, sendb_num);
@@ -519,7 +522,7 @@ bool LIE::execute ()
                 if (enable_data_io == true && loop_counter % cp_iteration == 0)
                 {
                     double write_cp_start = MPI_Wtime();
-                    write_checkpoint_dump(loop_counter, executed_scc_id, executable_task->get_id());
+                    //write_checkpoint_dump(loop_counter, executed_scc_id, executable_task->get_id());
                     double write_cp_end = MPI_Wtime();
                     writing_checkpoint_dump_time = (write_cp_end - write_cp_start);
                     double max_write_cp_time = 0;
