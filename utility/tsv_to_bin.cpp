@@ -118,7 +118,7 @@ void read_symbols(string filename)
     ifstream fp_in(filename, ios_base::in);
     string    symbol_id;
     string    symbol_value;
-    unsigned  lineno = 0;
+    unsigned  lineno = 1;
     if (fp_in.fail()) {
 	cerr << "warning: could not open $symbols.csv file. Will create it.\n";
     }
@@ -148,7 +148,7 @@ void read_strings(string filename)
     ifstream fp_in(filename, ios_base::in);
     string    string_id;
     string    string_value;
-    unsigned  lineno = 0;
+    unsigned  lineno = 1;
     if (fp_in.fail()) {
 	cerr << "warning: could not open $strings.csv file. Will create it.\n";
     }
@@ -205,7 +205,7 @@ void stream_file_to_slog(char *input_file, char *output_file,
     string string_buffer; // builds up long strings
     int num_cols = -1;
     int cur_col = 1;
-    int lineno = 0;
+    int lineno = 1;
 
     // compute the inverse column order to use to shuffle u64s
     vector<unsigned> inverse_column_order(column_order.size());
@@ -259,6 +259,7 @@ void stream_file_to_slog(char *input_file, char *output_file,
 	    } else if (cur_state == ReadString && c == '\"') {
 		cur_state = StringEnd;
 	    } else if (c == '\n' && cur_state == Scanning) {
+		// skip empty lines
 		lineno++;
 	    } else if (c == '\t' || c == '\n') {
 		u64 v;
@@ -326,9 +327,8 @@ void stream_file_to_slog(char *input_file, char *output_file,
 		    } else {
 			// validate cols == first row cols
 			if (num_cols != cur_col) {
-			    cerr << "err: found " << cur_col << "cols on line "
-				 << lineno << " and " << num_cols
-				 << " on line 0.";
+			    cerr << "Invalid column layout (are you using tabs rather than whitespace) on line "
+				 << lineno << endl;
 			    exit(1);
 			}
 		    }
