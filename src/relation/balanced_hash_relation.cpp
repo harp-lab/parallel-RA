@@ -175,7 +175,8 @@ void relation::parallel_IO(std::string  filename_template)
 	if (separate_io == false) /// write shared file
 	{
 		/// calculate the offset for each process
-		uint64_t total_size_full = 0;
+
+        uint64_t total_size_full = 0;
 		double populate_metadata_start = MPI_Wtime();
 		MPI_Allgather(&full_size, 1, MPI_LONG_LONG, sizes, 1, MPI_LONG_LONG, mcomm.get_comm());
 		for (int i = 0; i < mcomm.get_nprocs(); i++)
@@ -186,7 +187,9 @@ void relation::parallel_IO(std::string  filename_template)
 		offset = offsets[mcomm.get_rank()];
 		double populate_metadata_end = MPI_Wtime();
 		populate_metadata_time_full = populate_metadata_end - populate_metadata_start;
+#if 1
 
+        //std::cout << "Filename 2 : " << full_file_offset.c_str() << std::endl;
 		/// write metadata out
 		if (mcomm.get_rank() == 0 && total_size_full > 0)
 		{
@@ -202,15 +205,16 @@ void relation::parallel_IO(std::string  filename_template)
 			else /// write size metadata out
 			{
                 fp = fopen(meta_data_full_filename.c_str(), "w");
-				fprintf (fp, "%d\n%d", (int)(total_size_full/((arity+1)*sizeof(u64))), (int)arity+1);
-				fclose(fp);
+                fprintf (fp, "%d\n%d", (int)(total_size_full/((arity+1)*sizeof(u64))), (int)arity+1);
+                fclose(fp);
 			}
 			double write_metadata_end = MPI_Wtime();
 			write_metadata_time_full = (write_metadata_end - write_metadata_start);
 		}
-
+#endif
 		/// write data out
 		double write_full_data_start = MPI_Wtime();
+#if 1
 		if (total_size_full > 0)
 		{
 			if (share_io == true)  /// MPI collective IO
@@ -247,6 +251,7 @@ void relation::parallel_IO(std::string  filename_template)
 				close(fp);
 			}
 		}
+#endif
 		double write_full_data_end = MPI_Wtime();
 		write_full_data_time = (write_full_data_end - write_full_data_start);
 	}
@@ -275,7 +280,7 @@ void relation::parallel_IO(std::string  filename_template)
 	}
 	free(full_buffer);
 
-
+#if 1
 	/// get buffer and size for each process
 	vector_buffer *vb_delta = new vector_buffer[buckets];
 	memset(sizes, 0,  mcomm.get_nprocs()*sizeof(uint64_t));
@@ -400,7 +405,7 @@ void relation::parallel_IO(std::string  filename_template)
 		write_delta_data_time = (write_delta_data_end - write_delta_data_start);
 	}
 	free(delta_buffer);
-
+#endif
 	double total_end = MPI_Wtime();
 	total_time = total_end - total_start;
 

@@ -176,7 +176,7 @@ scc6281->add_relation(rel__R__1__1, false);
 scc6281->add_relation(rel__Q__1__1, true);
 scc6281->add_rule(new parallel_copy_generate(rel__Q__1__1, rel__R__1__1, FULL, [](const u64* data, u64* const output) -> int{
       auto args_for_old_bi = std::array<u64, 2> {data[0], data[1]};
-      std::cout << "INPUT " << data[0] << " " << data[1] << std::endl;
+      //std::cout << "INPUT " << data[0] << " " << data[1] << std::endl;
       using TState = std::tuple<const u64*,u64*>;
       TState state = {data, output};
       auto callback = [](u64 res_0,  TState state) -> TState{
@@ -190,8 +190,8 @@ scc6281->add_rule(new parallel_copy_generate(rel__Q__1__1, rel__R__1__1, FULL, [
       };
       auto [_,new_ptr] = builtin_add<TState>(args_for_old_bi.data(), state, callback);
       auto tuples_count = (new_ptr - output) / 1;
-      std::cout << "OUTPUT " << output[0] << " " << output[1] << std::endl;
-      std::cout << "tuples_count " << tuples_count << std::endl;
+      //std::cout << "OUTPUT " << output[0] << " " << output[1] << std::endl;
+      //std::cout << "tuples_count " << tuples_count << std::endl;
       return tuples_count;
     }));
 
@@ -205,23 +205,11 @@ lie->add_scc(scc6281);
   // Enable IO
  lie->enable_share_io();
  lie->set_output_dir("../data/builtin-output"); // Write to this directory
- lie->enable_share_io();
  lie->set_comm(mcomm);
  lie->set_batch_size(1);
  lie->execute();
  lie->print_all_relation_size(); // Continuously print relation sizes
 
- // Write to disc
- double write_cp_start = MPI_Wtime();
- int loop_count = lie->get_loop_counter();
- std::vector<int> executed_scc_id = lie->get_executed_scc_id();
- lie->write_checkpoint_dump(loop_count, executed_scc_id, executed_scc_id.back());
- double write_cp_end = MPI_Wtime();
- double writing_checkpoint_dump_time = (write_cp_end - write_cp_start);
- double max_write_cp_time = 0;
- MPI_Reduce(&writing_checkpoint_dump_time, &max_write_cp_time, 1, MPI_DOUBLE, MPI_MAX, 0, mcomm.get_comm());
- if (mcomm.get_rank() == 0)
-   std::cout << "Writing last checkpoint dump takes " << max_write_cp_time << "(s)" << std::endl;
 
  delete lie;
  mcomm.destroy();

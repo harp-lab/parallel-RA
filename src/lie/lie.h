@@ -14,13 +14,13 @@ class LIE
 {
 private:
 
-    u32 batch_size=10;                                                 /// Number of iterations between two fixed-point checks
+    u32 batch_size=10;                                              /// Number of iterations between two fixed-point checks
     double batch_time;                                              /// Wallclock time between two fixed-point checks
     mpi_comm mcomm;                                                 /// MPI class
 
     std::string app_name;
     u32 lie_relation_count;
-    relation *lie_relations[64];
+    relation *lie_relations[128];
 
     //u32 lie_relations_key;
     //std::map<u32, relation*> lie_relations;                    /// List of all relations
@@ -75,7 +75,7 @@ public:
 
     LIE()
     {
-    	cp_iteration = 0;
+        cp_iteration = 1;
     	executed_scc_id = {};
     	loop_counter = 0;
     	separate_io = false;
@@ -164,6 +164,8 @@ public:
 
     /// Runs all tasks within the LIE, following the dependence as set by taskgraph
     bool execute();
+
+    void write_final_checkpoint_dump();
 
     void write_checkpoint_dump(int loop_counter, std::vector<int> executed_scc_id, int scc_id);
 
