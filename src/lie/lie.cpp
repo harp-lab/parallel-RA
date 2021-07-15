@@ -170,14 +170,30 @@ void LIE::write_checkpoint_dump(int loop_counter, std::vector<int> executed_scc_
         fclose(fp);
     }
     MPI_Barrier(mcomm.get_local_comm());
+#endif
 
+    std::string dir_name;
+    dir_name = output_dir + "/checkpoint-" + std::to_string(scc_id) + "-" + std::to_string(loop_counter);
+    std::cout << " output_dir name "<< dir_name << std::endl;
     for (u32 i = 0 ; i < lie_relation_count; i++)
     {
         //std::cout << "Name " << lie_relations[i]->get_filename() << std::endl;
         //if(lie_relations[i]->get_debug_id() == "rel_path_2_1_2")
         lie_relations[i]->parallel_IO(dir_name);
     }
-#endif
+
+}
+
+
+void LIE::write_final_checkpoint_dump()
+{
+    std::string dir_name;
+    dir_name = output_dir + "/checkpoint-final";
+    if (mcomm.get_local_rank() == 0)
+        std::filesystem::create_directories(dir_name.c_str());
+    MPI_Barrier(mcomm.get_local_comm());
+    for (u32 i = 0 ; i < lie_relation_count; i++)
+        lie_relations[i]->parallel_IO(dir_name);
 }
 
 
@@ -187,11 +203,11 @@ void LIE::create_checkpoint_dump(int loop_counter, int scc_id)
     std::string dir_name;
     dir_name = output_dir + "/checkpoint-" + std::to_string(scc_id) + "-" + std::to_string(loop_counter);
 
+    std::cout << "Dir name " << dir_name.c_str() << std::endl;
     std::string scc_metadata;
     scc_metadata = dir_name + "/scc_metadata";
     if (mcomm.get_local_rank() == 0)
-        mkdir(dir_name.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-
+        std::filesystem::create_directories(dir_name.c_str());
     MPI_Barrier(mcomm.get_local_comm());
 }
 
@@ -226,7 +242,10 @@ bool LIE::execute ()
 
     /// create output directory for checkpoint dumps
     if (enable_io == true && mcomm.get_local_rank() == 0)
+    {
+        std::cout << "Output folder" << std::endl;
         mkdir(output_dir.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+    }
 
 #if DEBUG_OUTPUT
     if (mcomm.get_local_rank() == 0)
@@ -466,8 +485,7 @@ bool LIE::execute ()
         /// else case is for join rules
 
 
-        double writing_checkpoint_dump_time = 0;
-        int checkpoint_dumps_num = 0;
+
 
         /// For SCCs that runs for only one iteration
         if (executable_task->get_iteration_count() == 1)
@@ -479,10 +497,14 @@ bool LIE::execute ()
             executable_task->execute_in_batches(app_name, batch_size, history, intern_map, running_time, running_intra_bucket_comm, running_buffer_allocate, running_local_compute, running_all_to_all, running_buffer_free, running_insert_newt, running_insert_in_full, running_fp, running_a2a_find_count_time, running_a2a_create_rindex_time, running_a2a_total_find_blocks_time, running_a2a_total_pre_time, running_a2a_total_send_meda_time, running_a2a_total_comm_time, running_a2a_total_replace_time, running_a2a_exchange_time, running_a2a_filter_time, &loop_counter, executable_task->get_id(), output_dir, all_to_all_meta_data_dump, /*all_to_all_buffer_size*/NULL, compute_size1, compute_size2, sloav_mode, rotate_index_array, send_indexes, sendb_num);
 
             executed_scc_id.push_back(executable_task->get_id());
-            if (enable_data_io == true && loop_counter % cp_iteration == 0)
+#if 0
+            int tlc = loop_counter - 1;
+            if (enable_data_io == true && tlc % cp_iteration == 0)
             {
+                double writing_checkpoint_dump_time = 0;
+                int checkpoint_dumps_num = 0;
                 double write_cp_start = MPI_Wtime();
-                //write_checkpoint_dump(loop_counter, executed_scc_id, executable_task->get_id());
+                write_checkpoint_dump(tlc, executed_scc_id, executable_task->get_id());
                 double write_cp_end = MPI_Wtime();
                 writing_checkpoint_dump_time = (write_cp_end - write_cp_start);
                 double max_write_cp_time = 0;
@@ -491,9 +513,9 @@ bool LIE::execute ()
                 //	std::cout << "Writing checkpoint dump " << checkpoint_dumps_num << " takes " << max_write_cp_time << "(s)" << std::endl;
                 checkpoint_dumps_num++;
             }
+#endif
             //loop_counter++;
             iteration_count[executable_task->get_id()] = loop_counter;
-
 
 #if DEBUG_OUTPUT
             //for (u32 i = 0 ; i < scc_relation_count; i++)
@@ -519,10 +541,13 @@ bool LIE::execute ()
                 delta_in_scc = history[history.size()-2];
                 if (delta_in_scc == 0)
                     executed_scc_id.push_back(executable_task->get_id());
+#if 0
                 if (enable_data_io == true && loop_counter % cp_iteration == 0)
                 {
+                    double writing_checkpoint_dump_time = 0;
+                    int checkpoint_dumps_num = 0;
                     double write_cp_start = MPI_Wtime();
-                    //write_checkpoint_dump(loop_counter, executed_scc_id, executable_task->get_id());
+                    write_checkpoint_dump(loop_counter, executed_scc_id, executable_task->get_id());
                     double write_cp_end = MPI_Wtime();
                     writing_checkpoint_dump_time = (write_cp_end - write_cp_start);
                     double max_write_cp_time = 0;
@@ -531,6 +556,7 @@ bool LIE::execute ()
                     //    std::cout << "Writing checkpoint dump " << checkpoint_dumps_num << " takes " << max_write_cp_time << "(s)" << std::endl;
                     checkpoint_dumps_num++;
                 }
+#endif
                 //loop_counter++;
                 iteration_count[executable_task->get_id()] = loop_counter;
 
@@ -545,8 +571,6 @@ bool LIE::execute ()
         }
 
         set_executed_scc_id(executed_scc_id);
-
-
         set_loop_counter(loop_counter);
 
 
@@ -555,11 +579,11 @@ bool LIE::execute ()
         /// marks executable_task as finished
         update_task_graph(executable_task);
 
-
-
         /// loads new runnable task
         executable_task = one_runnable_tasks();
     }
+
+    write_final_checkpoint_dump();
 
 #if 1
     if (all_to_all_meta_data_dump == true)

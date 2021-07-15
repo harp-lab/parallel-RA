@@ -377,7 +377,6 @@ u32 RAM::local_compute(int* offset, int loop_counter, int task_id, int** compute
 
         else if ((*it)->get_RA_type() == COPY_GENERATE)
         {
-            std::cout << "YYYYYYYYYYYYYYYYY" << std::endl;
             parallel_copy_generate* current_ra = (parallel_copy_generate*) *it;
 
             //std::vector<int> reorder_map_array;
