@@ -65,14 +65,14 @@ int main(int argc, char **argv)
 	run_non_uniform(nprocs, 0);
 
     // Gaussian Normal Distribution Scheme
-	if (rank == 0)
-		std::cout << "**************** Gaussian Normal Distribution Scheme **************\n";
-    run_non_uniform(nprocs, 1);
-
-    // Power Law Distribution Scheme
-	if (rank == 0)
-		std::cout << "********************* Power Law Distribution Scheme ****************\n";
-    run_non_uniform(nprocs, 2);
+//	if (rank == 0)
+//		std::cout << "**************** Gaussian Normal Distribution Scheme **************\n";
+//    run_non_uniform(nprocs, 1);
+//
+//    // Power Law Distribution Scheme
+//	if (rank == 0)
+//		std::cout << "********************* Power Law Distribution Scheme ****************\n";
+//    run_non_uniform(nprocs, 2);
 
 
     mcomm.destroy();
@@ -88,7 +88,7 @@ static void run_non_uniform(int nprocs, int dist)
     int range = 100;
     int random_offset = 100 - range;
 
-	for (u64 entry_count=2; entry_count <= 256; entry_count=entry_count*2)
+	for (int entry_count=2; entry_count <= 128; entry_count=entry_count*2)
 	{
 		int sendcounts[nprocs]; // the size of data each process send to other process
 		memset(sendcounts, 0, nprocs*sizeof(int));
@@ -158,8 +158,10 @@ static void run_non_uniform(int nprocs, int dist)
 		}
 
 		// Initial send buffer
-		u64* send_buffer = new u64[soffset];
-		u64* recv_buffer = new u64[roffset];
+//		u64* send_buffer = new u64[soffset];
+//		u64* recv_buffer = new u64[roffset];
+		char* send_buffer = (char*)malloc(soffset*sizeof(char));
+		char* recv_buffer = (char*)malloc(roffset*sizeof(char));
 		int scounts[nprocs]; // a copy of sendcounts for each iteration
 
 		// MPI_alltoallv
@@ -169,11 +171,12 @@ static void run_non_uniform(int nprocs, int dist)
 			for (int i=0; i < nprocs; i++)
 			{
 				for (int j = 0; j < sendcounts[i]; j++)
-					send_buffer[index++] = i + rank * 10;
+					send_buffer[index++] = 'A' + (random() % 26);
+//					send_buffer[index++] = i + rank * 10;
 			}
 
 			double comm_start = MPI_Wtime();
-			MPI_Alltoallv(send_buffer, sendcounts, sdispls, MPI_UNSIGNED_LONG_LONG, recv_buffer, recvcounts, rdispls, MPI_UNSIGNED_LONG_LONG, MPI_COMM_WORLD);
+			MPI_Alltoallv(send_buffer, sendcounts, sdispls, MPI_CHAR, recv_buffer, recvcounts, rdispls, MPI_CHAR, MPI_COMM_WORLD);
 			double comm_end = MPI_Wtime();
 
 			double max_time = 0;
@@ -194,9 +197,9 @@ static void run_non_uniform(int nprocs, int dist)
 			for (int i=0; i < nprocs; i++)
 			{
 				for (int j = 0; j < sendcounts[i]; j++)
-					send_buffer[index++] = i + rank * 10;
+					send_buffer[index++] = 'A' + (random() % 26);
 			}
-			padded_alltoall_non_uniform_benchmark(dist, 0, (char*)send_buffer, sendcounts, sdispls, MPI_UNSIGNED_LONG_LONG, (char*)recv_buffer, recvcounts, rdispls, MPI_UNSIGNED_LONG_LONG, MPI_COMM_WORLD);
+			padded_alltoall_non_uniform_benchmark(dist, 0, (char*)send_buffer, sendcounts, sdispls, MPI_CHAR, (char*)recv_buffer, recvcounts, rdispls, MPI_CHAR, MPI_COMM_WORLD);
 		}
 
 		MPI_Barrier(MPI_COMM_WORLD);
@@ -210,9 +213,9 @@ static void run_non_uniform(int nprocs, int dist)
 			for (int i=0; i < nprocs; i++)
 			{
 				for (int j = 0; j < sendcounts[i]; j++)
-					send_buffer[index++] = i + rank * 10;
+					send_buffer[index++] = 'A' + (random() % 26);
 			}
-			padded_bruck_non_uniform_benchmark(dist, 0, (char*)send_buffer, sendcounts, sdispls, MPI_UNSIGNED_LONG_LONG, (char*)recv_buffer, recvcounts, rdispls, MPI_UNSIGNED_LONG_LONG, MPI_COMM_WORLD);
+			padded_bruck_non_uniform_benchmark(dist, 0, (char*)send_buffer, sendcounts, sdispls, MPI_CHAR, (char*)recv_buffer, recvcounts, rdispls, MPI_CHAR, MPI_COMM_WORLD);
 		}
 
 		MPI_Barrier(MPI_COMM_WORLD);
@@ -221,42 +224,42 @@ static void run_non_uniform(int nprocs, int dist)
 
 
 		// two-phase algorithm
-		for (int it=0; it < ITERATION_COUNT; it++)
-		{
-			memcpy(&scounts, &sendcounts, nprocs*sizeof(int));
-
-			int index = 0;
-			for (int i=0; i < nprocs; i++)
-			{
-				for (int j = 0; j < sendcounts[i]; j++)
-					send_buffer[index++] = i + rank * 10;
-			}
-			twophase_non_uniform_benchmark(dist, 0, (char*)send_buffer, scounts, sdispls, MPI_UNSIGNED_LONG_LONG, (char*)recv_buffer, recvcounts, rdispls, MPI_UNSIGNED_LONG_LONG, MPI_COMM_WORLD);
-		}
-
-		MPI_Barrier(MPI_COMM_WORLD);
-		if (rank == 0)
-			std::cout << "----------------------------------------------------------------" << std::endl<< std::endl;
+//		for (int it=0; it < ITERATION_COUNT; it++)
+//		{
+//			memcpy(&scounts, &sendcounts, nprocs*sizeof(int));
+//
+//			int index = 0;
+//			for (int i=0; i < nprocs; i++)
+//			{
+//				for (int j = 0; j < sendcounts[i]; j++)
+//					send_buffer[index++] = i + rank * 10;
+//			}
+//			twophase_non_uniform_benchmark(dist, 0, (char*)send_buffer, scounts, sdispls, MPI_UNSIGNED_LONG_LONG, (char*)recv_buffer, recvcounts, rdispls, MPI_UNSIGNED_LONG_LONG, MPI_COMM_WORLD);
+//		}
+//
+//		MPI_Barrier(MPI_COMM_WORLD);
+//		if (rank == 0)
+//			std::cout << "----------------------------------------------------------------" << std::endl<< std::endl;
 
 
 		// new two-phase algorithm
-		for (int it=0; it < ITERATION_COUNT; it++)
-		{
-			memcpy(&scounts, &sendcounts, nprocs*sizeof(int));
+//		for (int it=0; it < ITERATION_COUNT; it++)
+//		{
+//			memcpy(&scounts, &sendcounts, nprocs*sizeof(int));
+//
+//			int index = 0;
+//			for (int i=0; i < nprocs; i++)
+//			{
+//				for (int j = 0; j < sendcounts[i]; j++)
+//					send_buffer[index++] = i + rank * 10;
+//			}
+//			new_twophase_non_uniform_benchmark(dist, 0, (char*)send_buffer, scounts, sdispls, MPI_UNSIGNED_LONG_LONG, (char*)recv_buffer, recvcounts, rdispls, MPI_UNSIGNED_LONG_LONG, MPI_COMM_WORLD);
+//		}
 
-			int index = 0;
-			for (int i=0; i < nprocs; i++)
-			{
-				for (int j = 0; j < sendcounts[i]; j++)
-					send_buffer[index++] = i + rank * 10;
-			}
-			new_twophase_non_uniform_benchmark(dist, 0, (char*)send_buffer, scounts, sdispls, MPI_UNSIGNED_LONG_LONG, (char*)recv_buffer, recvcounts, rdispls, MPI_UNSIGNED_LONG_LONG, MPI_COMM_WORLD);
-		}
 
-
-		MPI_Barrier(MPI_COMM_WORLD);
-		if (rank == 0)
-			std::cout << "----------------------------------------------------------------" << std::endl<< std::endl;
+//		MPI_Barrier(MPI_COMM_WORLD);
+//		if (rank == 0)
+//			std::cout << "----------------------------------------------------------------" << std::endl<< std::endl;
 
 //		// one phase Bruck
 //		for (int it=0; it < ITERATION_COUNT; it++)
@@ -281,8 +284,10 @@ static void run_non_uniform(int nprocs, int dist)
 //				std::cout << recv_buffer[i] << "\n";
 //		}
 
-		delete[] send_buffer;
-		delete[] recv_buffer;
+		free(send_buffer);
+		free(recv_buffer);
+//		delete[] send_buffer;
+//		delete[] recv_buffer;
 
 	}
 }
