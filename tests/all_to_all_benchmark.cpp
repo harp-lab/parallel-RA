@@ -299,7 +299,7 @@ static void run_uniform(int nprocs)
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
 	// Initial send buffer
-    for (u64 entry_count=2; entry_count <= 256; entry_count=entry_count*2)
+    for (u64 entry_count=2; entry_count <= 4096; entry_count=entry_count*2)
     {
 		u64* send_buffer = new u64[entry_count*nprocs];
 		for (int i=0; i<entry_count*nprocs; i++)
