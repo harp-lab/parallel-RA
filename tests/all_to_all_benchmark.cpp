@@ -88,7 +88,7 @@ static void run_non_uniform(int nprocs, int dist)
     int range = 100;
     int random_offset = 100 - range;
 
-	for (int entry_count=2; entry_count <= 128; entry_count=entry_count*2)
+	for (int entry_count=2; entry_count <= 4096; entry_count=entry_count*2)
 	{
 		int sendcounts[nprocs]; // the size of data each process send to other process
 		memset(sendcounts, 0, nprocs*sizeof(int));
