@@ -228,7 +228,10 @@ void stream_file_to_slog(char *input_file, char *output_file,
 	if (num_bytes == 0) break;
 	// loop over bytes to lex them
 	for (size_t i = 0; i < num_bytes; i++) {
+	    cout << "here at " << lineno << endl;
 	    char c = buffer[i];
+	    cout << c << "ok" << endl;
+	    cout << cur_state << endl;
 	    //cout << c;
 	    // If scanning, look to start lexing
 	    if (cur_state == Scanning) {
@@ -245,8 +248,11 @@ void stream_file_to_slog(char *input_file, char *output_file,
 		    // String
 		    last_idx = i;
 		    cur_state = ReadString;
+		} else if (c == '\t') {
+		    // Tab when already scanning, ignore this tab
+		    continue;
 		} else {
-		    cerr << "unexpected character " << c << endl;
+		    cerr << "unexpected character " << c << " on line " << lineno << endl;
 		    exit(1);
 		}
 	    } else if (cur_state == StringEsc) {
@@ -263,6 +269,7 @@ void stream_file_to_slog(char *input_file, char *output_file,
 		lineno++;
 	    } else if (c == '\t' || c == '\n') {
 		u64 v;
+		cout << "hihi";
 		// Done reading int/symbol/string
 		char buf[i-last_idx];
 		for (size_t j = last_idx, x = 0; j < i; j++, x++) {
