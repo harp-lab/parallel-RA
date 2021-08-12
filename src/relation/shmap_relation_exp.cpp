@@ -142,6 +142,7 @@ void shmap_relation::as_all_to_allv_acopy_buffer_helper(shmap_relation*& cur_tri
 
         int index = output_sub_bucket_rank[bucket_id][sub_bucket_id];
 
+        buffer.local_compute_output_size_rel[ra_id] = buffer.local_compute_output_size_rel[ra_id] + buffer.width[ra_id];
         buffer.local_compute_output_size_total = buffer.local_compute_output_size_total + buffer.width[ra_id];
         buffer.local_compute_output_size_flat[index * buffer.ra_count + ra_id] = buffer.local_compute_output_size_flat[index * buffer.ra_count + ra_id] + buffer.width[ra_id];
         buffer.local_compute_output_size[ra_id][index] = buffer.local_compute_output_size[ra_id][index] + buffer.width[ra_id];
@@ -190,6 +191,7 @@ void shmap_relation::as_all_to_allv_copy_buffer_helper(shmap_relation*& cur_trie
             sub_bucket_id = tuple_hash(reordered_cur_path + head_rel_hash_col_count, arity-head_rel_hash_col_count) % output_sub_bucket_count[bucket_id];
 
         int index = output_sub_bucket_rank[bucket_id][sub_bucket_id];
+        buffer.local_compute_output_size_rel[ra_id] = buffer.local_compute_output_size_rel[ra_id] + buffer.width[ra_id];
         buffer.local_compute_output_size_total = buffer.local_compute_output_size_total + buffer.width[ra_id];
         buffer.local_compute_output_size_flat[index * buffer.ra_count + ra_id] = buffer.local_compute_output_size_flat[index * buffer.ra_count + ra_id] + buffer.width[ra_id];
 
@@ -244,6 +246,7 @@ void shmap_relation::as_all_to_allv_copy_filter_buffer_helper(shmap_relation*& c
                 sub_bucket_id = tuple_hash(reordered_cur_path + head_rel_hash_col_count, arity-head_rel_hash_col_count) % output_sub_bucket_count[bucket_id];
 
             int index = output_sub_bucket_rank[bucket_id][sub_bucket_id];
+            buffer.local_compute_output_size_rel[ra_id] = buffer.local_compute_output_size_rel[ra_id] + buffer.width[ra_id];
             buffer.local_compute_output_size_total = buffer.local_compute_output_size_total + buffer.width[ra_id];
             buffer.local_compute_output_size_flat[index * buffer.ra_count + ra_id] = buffer.local_compute_output_size_flat[index * buffer.ra_count + ra_id] + buffer.width[ra_id];
 
@@ -304,6 +307,7 @@ void shmap_relation::as_all_to_allv_copy_generate_buffer_helper(shmap_relation*&
                 sub_bucket_id = tuple_hash(reordered_cur_path + head_rel_hash_col_count, arity-head_rel_hash_col_count) % output_sub_bucket_count[bucket_id];
 
             int index = output_sub_bucket_rank[bucket_id][sub_bucket_id];
+            buffer.local_compute_output_size_rel[ra_id] = buffer.local_compute_output_size_rel[ra_id] + buffer.width[ra_id];
             buffer.local_compute_output_size_total = buffer.local_compute_output_size_total + buffer.width[ra_id];
             buffer.local_compute_output_size_flat[index * buffer.ra_count + ra_id] = buffer.local_compute_output_size_flat[index * buffer.ra_count + ra_id] + buffer.width[ra_id];
 
@@ -366,6 +370,7 @@ void shmap_relation::as_all_to_allv_right_join_buffer_helper(shmap_relation*& cu
 
             int index = output_sub_bucket_rank[bucket_id][sub_bucket_id];
 
+            join_buffer.local_compute_output_size_rel[ra_id] = join_buffer.local_compute_output_size_rel[ra_id] + join_buffer.width[ra_id];
             join_buffer.local_compute_output_size_total = join_buffer.local_compute_output_size_total + join_buffer.width[ra_id];
             join_buffer.local_compute_output_size_flat[index*join_buffer.ra_count + ra_id] = join_buffer.local_compute_output_size_flat[index*join_buffer.ra_count + ra_id] + join_buffer.width[ra_id];
             join_buffer.local_compute_output_size[ra_id][index] = join_buffer.local_compute_output_size[ra_id][index] + join_buffer.width[ra_id];
@@ -434,6 +439,7 @@ void shmap_relation::as_all_to_allv_left_join_buffer_helper(shmap_relation*& cur
 
             int index = output_sub_bucket_rank[bucket_id][sub_bucket_id];
 
+            join_buffer.local_compute_output_size_rel[ra_id] = join_buffer.local_compute_output_size_rel[ra_id] + join_buffer.width[ra_id];
             join_buffer.local_compute_output_size_total = join_buffer.local_compute_output_size_total + join_buffer.width[ra_id];
             join_buffer.local_compute_output_size_flat[index*join_buffer.ra_count + ra_id] = join_buffer.local_compute_output_size_flat[index*join_buffer.ra_count + ra_id] + join_buffer.width[ra_id];
             join_buffer.local_compute_output_size[ra_id][index] = join_buffer.local_compute_output_size[ra_id][index] + join_buffer.width[ra_id];
@@ -489,6 +495,7 @@ void shmap_relation::as_all_to_all_copy_buffer_helper(int threshold, int RA_coun
 
         int index = output_sub_bucket_rank[bucket_id][sub_bucket_id];
         memcpy (buffer.local_compute_output + (index * (RA_count * threshold + RA_count)) + (RA_count + threshold * ra_id) + buffer.local_compute_output_size[ra_id][index], (const unsigned char*)reordered_cur_path, sizeof(u64)*buffer.width[ra_id]);
+
         buffer.local_compute_output_size[ra_id][index] = buffer.local_compute_output_size[ra_id][index] + buffer.width[ra_id];
         buffer.local_compute_output[(index * (RA_count * threshold + RA_count)) + ra_id] = buffer.local_compute_output[(index * (RA_count * threshold + RA_count)) + ra_id] + buffer.width[ra_id];
 

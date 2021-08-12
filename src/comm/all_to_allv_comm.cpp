@@ -78,6 +78,7 @@ void all_to_all_comm(vector_buffer* vectorized_send_buffer, int vectorized_send_
         memcpy(send_buffer + send_displacements[i], (&vectorized_send_buffer[i])->buffer, (&vectorized_send_buffer[i])->size);
         vectorized_send_buffer[i].vector_buffer_free();
     }
+    //std::cout << "vectorized_send_buffer_size" << vectorized_send_buffer_size << std::endl;
     assert(send_displacements[nprocs - 1] + send_counts[nprocs - 1] == vectorized_send_buffer_size);
 
     /// creating recv_buffer

@@ -55,10 +55,8 @@ public:
 
 #ifdef GOOGLE_MAP
     void local_acopy(u32 buckets, google_relation* input, u32* input_bucket_map, relation* output, std::vector<int> reorder_map, u32 arity, u32 join_column_count, all_to_allv_buffer& acopy_buffer, int ra_counter);
-    void local_acopy_with_threshold(int threshold, int RA_Count, u32 buckets, google_relation* input, u32* input_bucket_map, relation* output, std::vector<int> reorder_map, u32 arity, u32 join_column_count, all_to_all_buffer& acopy_buffer, int ra_counter);
 #else
     void local_acopy(u32 buckets, shmap_relation* input, u32* input_bucket_map, relation* output, std::vector<int> reorder_map, u32 arity, u32 join_column_count, all_to_allv_buffer& acopy_buffer, int ra_counter);
-    void local_acopy_with_threshold(int threshold, int RA_Count, u32 buckets, shmap_relation* input, u32* input_bucket_map, relation* output, std::vector<int> reorder_map, u32 arity, u32 join_column_count, all_to_all_buffer& acopy_buffer, int ra_counter);
 #endif
 };
 
