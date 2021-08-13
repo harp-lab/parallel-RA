@@ -66,6 +66,7 @@ private:
     std::string output_dir;
 
 
+    int comm_compaction;
 
     int cp_iteration;
 
@@ -93,6 +94,8 @@ public:
     }
 
     void set_cp_iteration(int iteration)       {cp_iteration = iteration;}
+
+    void set_comm_compaction(int type)  {comm_compaction = type;}
 
     void set_output_dir(std::string output)   {output_dir = output;}
 

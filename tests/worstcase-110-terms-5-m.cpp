@@ -390,9 +390,9 @@ lie->add_scc_dependance(scc5011, scc4999);
 
 lie->set_comm(mcomm);
 lie->set_batch_size(10);
-lie->set_sloav_mode(atoi(argv[1]));
-//lie->enable_all_to_all_dump();
-//lie->set_output_dir(argv[1]);
+lie->set_sloav_mode(atoi(argv[2]));
+lie->enable_all_to_all_dump();
+lie->set_output_dir(argv[1]);
 //lie->enable_IO();
 lie->set_name(argv[0]);
 lie->execute();

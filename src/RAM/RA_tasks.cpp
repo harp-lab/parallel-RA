@@ -588,6 +588,7 @@ void RAM::free_compute_buffers()
         delete[] compute_buffer.local_compute_output[i];
         delete[] compute_buffer.local_compute_output_size[i];
     }
+    delete[] compute_buffer.local_compute_output_size_rel;
     delete[] compute_buffer.local_compute_output_size_flat;
     delete[] compute_buffer.width;
     delete[] compute_buffer.local_compute_output;
@@ -766,8 +767,8 @@ void RAM::local_insert_in_newt(std::map<u64, u64>& intern_map)
         delete[] cumulative_all_to_allv_buffer_cmp[r];
     }
 
-    delete[] cumulative_all_to_allv_recv_process_size_array;
-    delete[] cumulative_all_to_allv_buffer;
+    //delete[] cumulative_all_to_allv_recv_process_size_array;
+    //delete[] cumulative_all_to_allv_buffer;
 
     delete[] cumulative_all_to_allv_recv_process_size_array_cmp;
     delete[] cumulative_all_to_allv_buffer_cmp;
