@@ -687,14 +687,14 @@ void RAM::local_insert_in_newt_comm_compaction(std::map<u64, u64>& intern_map)
 void RAM::local_insert_in_newt(std::map<u64, u64>& intern_map)
 {
     u32 successful_insert = 0;
-    int nprocs = mcomm.get_local_nprocs();
+    //int nprocs = mcomm.get_local_nprocs();
     int RA_count = RA_list.size();
     u64 relation_id=0, bucket_id=0, intern_key=0, intern_value=0;
 
     for (int r = 0; r < RA_count; r++)
     {
-        for (int k = 0; k < nprocs; k++)
-        {
+        //for (int k = 0; k < nprocs; k++)
+        //{
             successful_insert = 0;
             u32 elements_to_read = cumulative_all_to_allv_recv_process_size_array_cmp[r];
             relation* output;
@@ -763,7 +763,7 @@ void RAM::local_insert_in_newt(std::map<u64, u64>& intern_map)
                 }
             }
             //std::cout << output->get_debug_id() << " successful insert " << successful_insert << std::endl;
-        }
+        //}
         delete[] cumulative_all_to_allv_buffer_cmp[r];
     }
 
