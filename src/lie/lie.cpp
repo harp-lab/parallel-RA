@@ -187,6 +187,7 @@ void LIE::write_checkpoint_dump(int loop_counter, std::vector<int> executed_scc_
 
 void LIE::write_final_checkpoint_dump()
 {
+#if 0
     std::string dir_name;
     dir_name = output_dir + "/checkpoint-final";
     if (mcomm.get_local_rank() == 0)
@@ -194,12 +195,14 @@ void LIE::write_final_checkpoint_dump()
     MPI_Barrier(mcomm.get_local_comm());
     for (u32 i = 0 ; i < lie_relation_count; i++)
         lie_relations[i]->parallel_IO(dir_name);
+#endif
 }
 
 
 
 void LIE::create_checkpoint_dump(int loop_counter, int scc_id)
 {
+#if 0
     std::string dir_name;
     dir_name = output_dir + "/checkpoint-" + std::to_string(scc_id) + "-" + std::to_string(loop_counter);
 
@@ -209,6 +212,7 @@ void LIE::create_checkpoint_dump(int loop_counter, int scc_id)
     if (mcomm.get_local_rank() == 0)
         std::filesystem::create_directories(dir_name.c_str());
     MPI_Barrier(mcomm.get_local_comm());
+#endif
 }
 
 
