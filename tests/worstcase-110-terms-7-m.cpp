@@ -396,8 +396,8 @@ int main(int argc, char **argv)
   mcomm.create(argc, argv);
 
 
-  func(mcomm, 0, "final-kcfa-110-7-log_0_0", 0);
-  func(mcomm, 0, "final-kcfa-110-7-log_0_1", 1);
+  func(mcomm, 0, "final-kcfa-110-7-log_0_0", 1);
+  func(mcomm, 3, "final-kcfa-110-7-log_0_1", 1);
 
   //func(mcomm, 3, "final-kcfa-110-7-log_0_1", 0);
   //func(mcomm, 3, "final-kcfa-110-7-log_3_1", 1);
