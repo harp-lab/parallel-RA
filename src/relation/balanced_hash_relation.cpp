@@ -618,6 +618,7 @@ void relation::load_data_from_file()
     {
         /// Main : Execute : init : io : end
     	double read_data_start = MPI_Wtime();
+        //std::cout << "Filename " << filename << std::endl;
         file_io.parallel_read_input_relation_from_file_to_local_buffer(arity, filename, mcomm.get_local_comm());
         double read_data_end = MPI_Wtime();
         double read_data_time = read_data_end - read_data_start;
@@ -770,6 +771,11 @@ void relation::initialize_relation(mpi_comm& mcomm)
     }
     else
     	load_data_from_file();
+
+    //std::cout << filename << " " << fact_load << std::endl;
+    if (fact_load == true)
+        if (init_val.size() != 0)
+            populate_delta_with_keys(init_val.size(), reinterpret_cast<u64*>(init_val.data()));
 }
 
 
@@ -810,6 +816,40 @@ void relation::populate_delta (int buffer_size, u64* buffer)
 
         for (u32 a = i; a < i + arity + 1; a++)
             t[a-i] = buffer[a];
+
+        if (delta[bucket_id].insert_tuple_from_array(t, arity+1) == true)
+        {
+            delta_element_count++;
+            delta_bucket_element_count[bucket_id]++;
+        }
+    }
+}
+
+void relation::populate_delta_with_keys (int buffer_size, u64* buffer)
+{
+    u64 t[arity+1];
+    u32 buckets = get_bucket_count();
+
+    //std::cout << "arity " << arity << std::endl;
+    //std::cout << "buffer_size " << buffer_size << std::endl;
+    //std::cout << "join_column_count " << join_column_count << std::endl;
+    //std::cout << "buffer " << buffer[0] << std::endl;
+    //std::cout << "buckets " << buckets << std::endl;
+
+    for (int i = 0; i < buffer_size; i = i + (arity))
+    {
+        uint64_t bucket_id = tuple_hash(buffer + i, join_column_count) % buckets;
+        //std::cout << "Bucket id " << bucket_id << std::endl;
+
+        u64 relation_id = get_intern_tag();
+        relation_id = relation_id<<46;
+        bucket_id = bucket_id<<28;
+        u64 intern_key = relation_id | bucket_id;
+
+        //std::cout << "Intern key " << intern_key << std::endl;
+        for (u32 a = i; a < i + arity; a++)
+            t[a-i] = buffer[a];
+        t[arity] = intern_key;
 
         if (delta[bucket_id].insert_tuple_from_array(t, arity+1) == true)
         {

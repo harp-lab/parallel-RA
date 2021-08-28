@@ -21,6 +21,7 @@ file (GLOB source_files_parallel_RA "${source_dir}/parallel_RA_inc.h" "${source_
 file (GLOB source_files_ata "${tests_dir}/all_to_all_benchmark.cpp")
 file (GLOB source_files_tc "${tests_dir}/transitive_closure.cpp")
 #file (GLOB source_files_builtin "${tests_dir}/builtin.cpp")
+file (GLOB source_files_fact "${tests_dir}/fact.cpp")
 file (GLOB source_files_wc110_4 "${tests_dir}/worstcase-110-terms-4-m.cpp")
 file (GLOB source_files_wc110_5 "${tests_dir}/worstcase-110-terms-5-m.cpp")
 file (GLOB source_files_wc110_6 "${tests_dir}/worstcase-110-terms-6-m.cpp")
@@ -64,6 +65,10 @@ TARGET_LINK_LIBRARIES(wc1109 parallel_RA ${MPI_LIBRARIES})
 add_executable(wc11010 ${source_files_wc110_10})
 INCLUDE_DIRECTORIES(${MPI_INCLUDE_PATH})
 TARGET_LINK_LIBRARIES(wc11010 parallel_RA ${MPI_LIBRARIES})
+
+add_executable(fact ${source_files_fact})
+INCLUDE_DIRECTORIES(${MPI_INCLUDE_PATH})
+TARGET_LINK_LIBRARIES(fact parallel_RA ${MPI_LIBRARIES})
 
 add_executable(TC ${source_files_tc})
 INCLUDE_DIRECTORIES(${MPI_INCLUDE_PATH})

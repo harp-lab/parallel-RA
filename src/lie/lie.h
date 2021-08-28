@@ -80,7 +80,7 @@ public:
     	executed_scc_id = {};
     	loop_counter = 0;
     	separate_io = false;
-        sloav_mode = false;
+        sloav_mode = 0;
     	offset_io = false;
     	share_io = false;
     	restart_flag = false;
@@ -91,6 +91,7 @@ public:
         lie_sccs_count = 0;
         taskgraph = {{},{}};
         intern_map = {{},{}};
+        comm_compaction = 1;
     }
 
     void set_cp_iteration(int iteration)       {cp_iteration = iteration;}

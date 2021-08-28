@@ -376,12 +376,12 @@ void func(mpi_comm mcomm, int mode, const char* log_name, int cc_mode)
 
 
     lie->set_comm(mcomm);
-    lie->set_batch_size(10);
-    lie->set_sloav_mode(mode);
-    lie->enable_all_to_all_dump();
+    lie->set_batch_size(1);
+    //lie->set_sloav_mode(mode);
+    //lie->enable_all_to_all_dump();
     lie->set_output_dir(log_name);
     lie->enable_IO();
-    lie->set_comm_compaction(cc_mode);
+    //lie->set_comm_compaction(cc_mode);
     lie->set_name("kcfa-110-4");
     lie->execute();
     //lie->print_all_relation_size();

@@ -11,7 +11,7 @@
 
 enum {LEFT=0, RIGHT};
 enum {DELTA=0, FULL, FULL_AND_DELTA};
-enum {COPY=0, COPY_FILTER, COPY_GENERATE, ACOPY, JOIN};
+enum {COPY=0, COPY_FILTER, COPY_GENERATE, ACOPY, JOIN, FACT};
 enum {STATIC=0, DYNAMIC};
 
 class relation
@@ -75,6 +75,8 @@ private:
     bool share_io;
     bool separate_io;
     bool restart_flag;
+    bool fact_load=false;
+    std::vector<u64> init_val;
 
 
 public:
@@ -90,6 +92,7 @@ public:
     relation (u32 jcc, bool is_c, u32 ar, u32 tg, std::string fname, int version)
         :join_column_count(jcc), is_canonical(is_c), arity(ar), intern_tag(tg), initailization_type(version), filename(fname)
     {
+        fact_load = false;
         full_element_count=0;
         delta_bucket_element_count=0;
     }
@@ -97,6 +100,7 @@ public:
     relation (u32 jcc, bool is_c, u32 ar, u32 tg, std::string did, std::string fname, int version)
         :join_column_count(jcc), is_canonical(is_c), arity(ar), intern_tag(tg), debug_id(did), initailization_type(version), filename(fname)
     {
+        fact_load = false;
         full_element_count=0;
         delta_bucket_element_count=0;
     }
@@ -116,6 +120,9 @@ public:
     /// set comm
     void set_mcomm(mpi_comm& mc)    {mcomm = mc;}
 
+    void set_fact_load() {fact_load = true;}
+
+    void set_init_val(std::vector<u64> temp_init_val)   {init_val = temp_init_val;}
 
     /// used for load balancing
     void set_last_rank(int lr)   {last_rank = lr;}
@@ -195,6 +202,7 @@ public:
     void initialize_relation(mpi_comm& mcomm);
     void populate_full(int buffer_size, u64* buffer);
     void populate_delta (int buffer_size, u64* buffer);
+    void populate_delta_with_keys (int buffer_size, u64* buffer);
     void finalize_relation();
 
 

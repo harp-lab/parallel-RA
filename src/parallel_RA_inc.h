@@ -33,6 +33,7 @@
 
 #include "relation/balanced_hash_relation.h"
 #include "RA/parallel_RA.h"
+#include "RA/fact.h"
 #include "RA/parallel_join.h"
 #include "RA/parallel_copy.h"
 #include "RA/parallel_copy_filter.h"

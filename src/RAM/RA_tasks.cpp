@@ -142,14 +142,14 @@ u64 RAM::intra_bucket_comm_execute()
         }
 
         /// No intra-bucket comm required for copy
-        if ((*it)->get_RA_type() == COPY_FILTER)
+        else if ((*it)->get_RA_type() == COPY_FILTER)
         {
             counter++;
             continue;
         }
 
         /// No intra-bucket comm required for copy
-        if ((*it)->get_RA_type() == COPY_GENERATE)
+        else if ((*it)->get_RA_type() == COPY_GENERATE)
         {
             counter++;
             continue;
@@ -157,6 +157,13 @@ u64 RAM::intra_bucket_comm_execute()
 
         /// No intra-bucket comm required for acopy
         else if ((*it)->get_RA_type() == ACOPY)
+        {
+            counter++;
+            continue;
+        }
+
+        /// No intra-bucket comm required for fact
+        else if ((*it)->get_RA_type() == FACT)
         {
             counter++;
             continue;
@@ -409,6 +416,11 @@ u32 RAM::local_compute(int* offset, int loop_counter, int task_id, int** compute
             }
         }
 
+        else if ((*it)->get_RA_type() == FACT)
+        {
+        }
+
+
         else if ((*it)->get_RA_type() == ACOPY)
         {
             parallel_acopy* current_ra = (parallel_acopy*) *it;
@@ -622,7 +634,7 @@ void RAM::local_insert_in_newt_comm_compaction(std::map<u64, u64>& intern_map)
         else
             output = RA_list[ra_id]->get_acopy_output();
 
-        if (RA_list[ra_id]->get_RA_type() == COPY || RA_list[ra_id]->get_RA_type() == JOIN || RA_list[ra_id]->get_RA_type() == COPY_FILTER)
+        if (RA_list[ra_id]->get_RA_type() == COPY || RA_list[ra_id]->get_RA_type() == JOIN || RA_list[ra_id]->get_RA_type() == COPY_FILTER || RA_list[ra_id]->get_RA_type() == COPY_GENERATE)
         {
             u32 width = output->get_arity();
             u64 tuple[width + 1];
@@ -657,7 +669,7 @@ void RAM::local_insert_in_newt_comm_compaction(std::map<u64, u64>& intern_map)
                 }
             }
         }
-        else
+        else if (RA_list[ra_id]->get_RA_type() == ACOPY)
         {
             u32 width = output->get_arity() + 1;
             u64 tuple[width];
@@ -674,6 +686,9 @@ void RAM::local_insert_in_newt_comm_compaction(std::map<u64, u64>& intern_map)
                 }
             }
         }
+        else if (RA_list[ra_id]->get_RA_type() == FACT)
+            continue;
+
         starting = starting + elements_to_read;
         //std::cout << output->get_debug_id() << " successful insert " << successful_insert << std::endl;
     }
@@ -710,7 +725,7 @@ void RAM::local_insert_in_newt(std::map<u64, u64>& intern_map)
             else
                 output = RA_list[r]->get_acopy_output();
 
-            if (RA_list[r]->get_RA_type() == COPY || RA_list[r]->get_RA_type() == JOIN || RA_list[r]->get_RA_type() == COPY_FILTER)
+            if (RA_list[r]->get_RA_type() == COPY || RA_list[r]->get_RA_type() == JOIN || RA_list[r]->get_RA_type() == COPY_FILTER || RA_list[r]->get_RA_type() == COPY_GENERATE)
             {
                 u32 width = output->get_arity();
                 u64 tuple[width + 1];
@@ -745,7 +760,7 @@ void RAM::local_insert_in_newt(std::map<u64, u64>& intern_map)
                     }
                 }
             }
-            else
+            else if (RA_list[r]->get_RA_type() == ACOPY)
             {
                 u32 width = output->get_arity() + 1;
                 u64 tuple[width];
