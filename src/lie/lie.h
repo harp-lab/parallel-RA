@@ -20,14 +20,14 @@ private:
 
     std::string app_name;
     u32 lie_relation_count;
-    relation *lie_relations[128];
+    relation *lie_relations[512];
 
     //u32 lie_relations_key;
     //std::map<u32, relation*> lie_relations;                    /// List of all relations
 
     u32 lie_sccs_count;
-    RAM *lie_sccs[64];
-    int iteration_count[64];
+    RAM *lie_sccs[512];
+    int iteration_count[512];
 
     //u32 lie_sccs_key;
     //std::map<u32, RAM*> lie_sccs;                                 /// List of all tasks
