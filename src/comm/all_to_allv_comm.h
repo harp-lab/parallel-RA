@@ -19,6 +19,7 @@ struct all_to_allv_buffer
 
     /// local_compute_output is of size RA_list size x nprocs, this contains data per RA rule for per process
     vector_buffer** local_compute_output;
+    int* local_compute_output_size_rel;
 
     /// local_compute_output_size is of size RA_list size x nprocs, this contains size of data per RA rule for per process
     int **local_compute_output_size;

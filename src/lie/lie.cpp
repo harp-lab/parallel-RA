@@ -187,6 +187,7 @@ void LIE::write_checkpoint_dump(int loop_counter, std::vector<int> executed_scc_
 
 void LIE::write_final_checkpoint_dump()
 {
+#if 0
     std::string dir_name;
     dir_name = output_dir + "/checkpoint-final";
     if (mcomm.get_local_rank() == 0)
@@ -194,12 +195,14 @@ void LIE::write_final_checkpoint_dump()
     MPI_Barrier(mcomm.get_local_comm());
     for (u32 i = 0 ; i < lie_relation_count; i++)
         lie_relations[i]->parallel_IO(dir_name);
+#endif
 }
 
 
 
 void LIE::create_checkpoint_dump(int loop_counter, int scc_id)
 {
+#if 0
     std::string dir_name;
     dir_name = output_dir + "/checkpoint-" + std::to_string(scc_id) + "-" + std::to_string(loop_counter);
 
@@ -209,6 +212,7 @@ void LIE::create_checkpoint_dump(int loop_counter, int scc_id)
     if (mcomm.get_local_rank() == 0)
         std::filesystem::create_directories(dir_name.c_str());
     MPI_Barrier(mcomm.get_local_comm());
+#endif
 }
 
 
@@ -236,7 +240,7 @@ bool LIE::execute ()
         lie_relations[i]->initialize_relation(mcomm);
 
 #if DEBUG_OUTPUT
-        lie_relations[i]->print();
+        //lie_relations[i]->print();
 #endif
     }
 
@@ -493,8 +497,11 @@ bool LIE::execute ()
             //if (enable_data_io == true && loop_counter % cp_iteration == 0)
             //    create_checkpoint_dump(loop_counter, executable_task->get_id());
 
-            //executable_task->execute_in_batches_with_all_to_all_threshold(batch_size, history, intern_map, &running_time, &running_intra_bucket_comm, &running_buffer_allocate, &running_local_compute, &running_all_to_all, &running_buffer_free, &running_insert_newt, &running_insert_in_full);
-            executable_task->execute_in_batches(app_name, batch_size, history, intern_map, running_time, running_intra_bucket_comm, running_buffer_allocate, running_local_compute, running_all_to_all, running_buffer_free, running_insert_newt, running_insert_in_full, running_fp, running_a2a_find_count_time, running_a2a_create_rindex_time, running_a2a_total_find_blocks_time, running_a2a_total_pre_time, running_a2a_total_send_meda_time, running_a2a_total_comm_time, running_a2a_total_replace_time, running_a2a_exchange_time, running_a2a_filter_time, &loop_counter, executable_task->get_id(), output_dir, all_to_all_meta_data_dump, /*all_to_all_buffer_size*/NULL, compute_size1, compute_size2, sloav_mode, rotate_index_array, send_indexes, sendb_num);
+            if (comm_compaction == 0)
+                executable_task->execute_in_batches(app_name, batch_size, history, intern_map, running_time, running_intra_bucket_comm, running_buffer_allocate, running_local_compute, running_all_to_all, running_buffer_free, running_insert_newt, running_insert_in_full, running_fp, running_a2a_find_count_time, running_a2a_create_rindex_time, running_a2a_total_find_blocks_time, running_a2a_total_pre_time, running_a2a_total_send_meda_time, running_a2a_total_comm_time, running_a2a_total_replace_time, running_a2a_exchange_time, running_a2a_filter_time, &loop_counter, executable_task->get_id(), output_dir, all_to_all_meta_data_dump, /*all_to_all_buffer_size*/NULL, compute_size1, compute_size2, sloav_mode, rotate_index_array, send_indexes, sendb_num);
+            else
+                executable_task->execute_in_batches_comm_compaction(app_name, batch_size, history, intern_map, running_time, running_intra_bucket_comm, running_buffer_allocate, running_local_compute, running_all_to_all, running_buffer_free, running_insert_newt, running_insert_in_full, running_fp, running_a2a_find_count_time, running_a2a_create_rindex_time, running_a2a_total_find_blocks_time, running_a2a_total_pre_time, running_a2a_total_send_meda_time, running_a2a_total_comm_time, running_a2a_total_replace_time, running_a2a_exchange_time, running_a2a_filter_time, &loop_counter, executable_task->get_id(), output_dir, all_to_all_meta_data_dump, /*all_to_all_buffer_size*/NULL, compute_size1, compute_size2, sloav_mode, rotate_index_array, send_indexes, sendb_num);
+            //executable_task->execute_in_batches_comm_compaction(app_name, batch_size, history, intern_map, running_time, running_intra_bucket_comm, running_buffer_allocate, running_local_compute, running_all_to_all, running_buffer_free, running_insert_newt, running_insert_in_full, running_fp, running_a2a_find_count_time, running_a2a_create_rindex_time, running_a2a_total_find_blocks_time, running_a2a_total_pre_time, running_a2a_total_send_meda_time, running_a2a_total_comm_time, running_a2a_total_replace_time, running_a2a_exchange_time, running_a2a_filter_time, &loop_counter, executable_task->get_id(), output_dir, all_to_all_meta_data_dump, /*all_to_all_buffer_size*/NULL, compute_size1, compute_size2, sloav_mode, rotate_index_array, send_indexes, sendb_num);
 
             executed_scc_id.push_back(executable_task->get_id());
 #if 0
@@ -534,8 +541,11 @@ bool LIE::execute ()
                 //if (enable_data_io == true && loop_counter % cp_iteration == 0)
                 //    create_checkpoint_dump(loop_counter, executable_task->get_id());
 
-                //executable_task->execute_in_batches_with_all_to_all_threshold(batch_size, history, intern_map, &running_time, &running_intra_bucket_comm, &running_buffer_allocate, &running_local_compute, &running_all_to_all, &running_buffer_free, &running_insert_newt, &running_insert_in_full);
-                executable_task->execute_in_batches(app_name, batch_size, history, intern_map, running_time, running_intra_bucket_comm, running_buffer_allocate, running_local_compute, running_all_to_all, running_buffer_free, running_insert_newt, running_insert_in_full, running_fp, running_a2a_find_count_time, running_a2a_create_rindex_time, running_a2a_total_find_blocks_time, running_a2a_total_pre_time, running_a2a_total_send_meda_time, running_a2a_total_comm_time, running_a2a_total_replace_time, running_a2a_exchange_time, running_a2a_filter_time, &loop_counter, executable_task->get_id(), output_dir, all_to_all_meta_data_dump, /*all_to_all_buffer_size*/NULL, compute_size1, compute_size2, sloav_mode, rotate_index_array, send_indexes, sendb_num);
+                if (comm_compaction == 0)
+                    executable_task->execute_in_batches(app_name, batch_size, history, intern_map, running_time, running_intra_bucket_comm, running_buffer_allocate, running_local_compute, running_all_to_all, running_buffer_free, running_insert_newt, running_insert_in_full, running_fp, running_a2a_find_count_time, running_a2a_create_rindex_time, running_a2a_total_find_blocks_time, running_a2a_total_pre_time, running_a2a_total_send_meda_time, running_a2a_total_comm_time, running_a2a_total_replace_time, running_a2a_exchange_time, running_a2a_filter_time, &loop_counter, executable_task->get_id(), output_dir, all_to_all_meta_data_dump, /*all_to_all_buffer_size*/NULL, compute_size1, compute_size2, sloav_mode, rotate_index_array, send_indexes, sendb_num);
+                else
+                    executable_task->execute_in_batches_comm_compaction(app_name, batch_size, history, intern_map, running_time, running_intra_bucket_comm, running_buffer_allocate, running_local_compute, running_all_to_all, running_buffer_free, running_insert_newt, running_insert_in_full, running_fp, running_a2a_find_count_time, running_a2a_create_rindex_time, running_a2a_total_find_blocks_time, running_a2a_total_pre_time, running_a2a_total_send_meda_time, running_a2a_total_comm_time, running_a2a_total_replace_time, running_a2a_exchange_time, running_a2a_filter_time, &loop_counter, executable_task->get_id(), output_dir, all_to_all_meta_data_dump, /*all_to_all_buffer_size*/NULL, compute_size1, compute_size2, sloav_mode, rotate_index_array, send_indexes, sendb_num);
+
                 //executable_task->print_all_relation();
 
                 delta_in_scc = history[history.size()-2];
@@ -583,7 +593,7 @@ bool LIE::execute ()
         executable_task = one_runnable_tasks();
     }
 
-    write_final_checkpoint_dump();
+    //write_final_checkpoint_dump();
 
 #if 1
     if (all_to_all_meta_data_dump == true)
@@ -602,13 +612,13 @@ bool LIE::execute ()
             FILE *fpm;
             fpm = fopen(time_file.c_str(), "w");
 
-            fprintf(fpm, "TaskID\tIteration#\tBuffer_creation_time\tComputation_time\tAll_to_all_time\tBuffer_free_time\tInsert_in_newt_time\tIntra_comm_time\tInsert_in_full_time\tFixed_point_check\tTotal_time\tmode\ta2a_find_count_time\tcreate_rindex_time\ttotal_find_blocks_time\ttotal_pre_time\ttotal_send_meda_time\ttotal_comm_time\ttotal_replace_time\texchange_time\tfilter_time\n");
+            fprintf(fpm, "CC\tTaskID\tIteration#\tBuffer_creation_time\tComputation_time\tAll_to_all_time\tBuffer_free_time\tInsert_in_newt_time\tIntra_comm_time\tInsert_in_full_time\tFixed_point_check\tTotal_time\tmode\ta2a_find_count_time\tcreate_rindex_time\ttotal_find_blocks_time\ttotal_pre_time\ttotal_send_meda_time\ttotal_comm_time\ttotal_replace_time\texchange_time\tfilter_time\n");
 
             for (u32 l=0; l < lie_sccs_count; l++)
             {
                 for (u32 il=0; il < iteration_count[l]; il++)
                 {
-                    fprintf(fpm, "%d\t%d\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%d\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\n", l, il,
+                    fprintf(fpm, "%d\t%d\t%d\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%d\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\n", comm_compaction, l, il,
                             running_buffer_allocate[l][il], running_local_compute[l][il], running_all_to_all[l][il], running_buffer_free[l][il], running_insert_newt[l][il], running_intra_bucket_comm[l][il], running_insert_in_full[l][il], running_fp[l][il], running_time[l][il],
                             sloav_mode,
                             running_a2a_find_count_time[l][il], running_a2a_create_rindex_time[l][il], running_a2a_total_find_blocks_time[l][il], running_a2a_total_pre_time[l][il], running_a2a_total_send_meda_time[l][il], running_a2a_total_comm_time[l][il], running_a2a_total_replace_time[l][il], running_a2a_exchange_time[l][il], running_a2a_filter_time[l][il]);
@@ -625,11 +635,11 @@ bool LIE::execute ()
             FILE *fpm;
             fpm = fopen(time_file.c_str(), "w");
 
-            fprintf(fpm, "TaskID\tIteration#\tBuffer_creation_time\tComputation_time\tAll_to_all_time\tBuffer_free_time\tInsert_in_newt_time\tIntra_comm_time\tInsert_in_full_time\tFixed_point_check\tTotal_time\tmode\ta2a_find_count_time\tcreate_rindex_time\ttotal_find_blocks_time\ttotal_pre_time\ttotal_send_meda_time\ttotal_comm_time\ttotal_replace_time\texchange_time\tfilter_time\n");
+            fprintf(fpm, "CC\tTaskID\tIteration#\tBuffer_creation_time\tComputation_time\tAll_to_all_time\tBuffer_free_time\tInsert_in_newt_time\tIntra_comm_time\tInsert_in_full_time\tFixed_point_check\tTotal_time\tmode\ta2a_find_count_time\tcreate_rindex_time\ttotal_find_blocks_time\ttotal_pre_time\ttotal_send_meda_time\ttotal_comm_time\ttotal_replace_time\texchange_time\tfilter_time\n");
 
             for (u32 l=0; l < lie_sccs_count; l++)
                 for (u32 il=0; il < iteration_count[l]; il++)
-                    fprintf(fpm, "%d\t%d\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%d\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\n", l, il,
+                    fprintf(fpm, "%d\t%d\t%d\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%d\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\n", comm_compaction , l, il,
                             running_buffer_allocate[l][il], running_local_compute[l][il], running_all_to_all[l][il], running_buffer_free[l][il], running_insert_newt[l][il], running_intra_bucket_comm[l][il], running_insert_in_full[l][il], running_fp[l][il], running_time[l][il],
                             sloav_mode,
                             running_a2a_find_count_time[l][il], running_a2a_create_rindex_time[l][il], running_a2a_total_find_blocks_time[l][il], running_a2a_total_pre_time[l][il], running_a2a_total_send_meda_time[l][il], running_a2a_total_comm_time[l][il], running_a2a_total_replace_time[l][il], running_a2a_exchange_time[l][il], running_a2a_filter_time[l][il]);

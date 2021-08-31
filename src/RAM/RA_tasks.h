@@ -42,6 +42,9 @@ private:
     u64 *cumulative_all_to_allv_buffer;                      /// result of all to all comm
     int* cumulative_all_to_allv_recv_process_size_array;
 
+    u64 **cumulative_all_to_allv_buffer_cmp;                      /// result of all to all comm
+    int* cumulative_all_to_allv_recv_process_size_array_cmp;
+
     mpi_comm mcomm;                                         /// comm related
 
     u32 loop_count_tracker;
@@ -119,16 +122,10 @@ public:
     void allocate_all_to_all_compute_buffers();
 
 
-    u32 local_compute_with_all_to_all_threshold(int* offset);
-
     /// Join/compy/acopy
     u32 local_compute(int* offset, int loop_counter, int task_id, int** compute_size1, int** compute_size2);
 
-
-    //// Comm compaction
-    //void all_to_all(int loop_counter, std::string output_dir);
-    void all_to_all_with_threshold();
-
+    void local_comm();
 
     /// Free intermediate buffers
     void free_compute_buffers();
@@ -137,8 +134,8 @@ public:
 
     /// Update the head relation with new tuples
     void local_insert_in_newt(std::map<u64, u64>& intern_map);
-    void local_insert_in_newt_with_threshold(std::map<u64, u64>& intern_map);
 
+    void local_insert_in_newt_comm_compaction(std::map<u64, u64>& intern_map);
 
     /// insert delta in full, copy newt pointer to delta
     void local_insert_in_full();
@@ -150,19 +147,11 @@ public:
     void check_for_fixed_point(std::vector<u32>& history);
 
 
-    void execute_in_batches_with_threshold(int batch_size, std::vector<u32>& history, std::map<u64, u64>& intern_map, double *running_time);
-
 
     /// Start running this SCC (task) for "batck_size" iterations
     void execute_in_batches(std::string name, int batch_size, std::vector<u32>& history, std::map<u64, u64>& intern_map, double **running_time, double **running_intra_bucket_comm, double **running_buffer_allocate, double **running_local_compute, double **running_all_to_all, double **running_buffer_free, double **running_insert_newt, double **running_insert_in_full, double **running_fp, double **running_a2a_find_count_time, double **running_a2a_create_rindex_time, double **running_a2a_total_find_blocks_time, double **running_a2a_total_pre_time, double **running_a2a_total_send_meda_time, double **running_a2a_total_comm_time, double **running_a2a_total_replace_time, double **running_a2a_exchange_time, double **running_a2a_filter_time, int *loop_counter,int task_id, std::string output_dir, bool all_to_all_record, int*** all_to_all_buffer_size, int** compute_size1, int** compute_size2, int sloav_mode, int* rotate_index_array, int** send_indexes, int *sendb_num);
 
-
-
-    //void execute_in_batches_with_all_to_all_threshold(int batch_size, std::vector<u32>& history, std::map<u64, u64>& intern_map, double *running_time, double *running_intra_bucket_comm, double *running_buffer_allocate, double *running_local_compute, double *running_all_to_all, double *running_buffer_free, double *running_insert_newt, double *running_insert_in_full);
-
-
-    /// Start running this SCC (task) for "batck_time" seconds
-    void execute_by_wall_clock(double batch_time, std::vector<u32>& history, std::map<u64, u64>& intern_map, double *running_time, double *running_intra_bucket_comm, double *running_buffer_allocate, double *running_local_compute, double *running_all_to_all, double *running_buffer_free, double *running_insert_newt, double *running_insert_in_full);
+    void execute_in_batches_comm_compaction(std::string name, int batch_size, std::vector<u32>& history, std::map<u64, u64>& intern_map, double **running_time, double **running_intra_bucket_comm, double **running_buffer_allocate, double **running_local_compute, double **running_all_to_all, double **running_buffer_free, double **running_insert_newt, double **running_insert_in_full, double **running_fp, double **running_a2a_find_count_time, double **running_a2a_create_rindex_time, double **running_a2a_total_find_blocks_time, double **running_a2a_total_pre_time, double **running_a2a_total_send_meda_time, double **running_a2a_total_comm_time, double **running_a2a_total_replace_time, double **running_a2a_exchange_time, double **running_a2a_filter_time,  int* loop_counter, int task_id, std::string output_dir, bool all_to_all_record, int*** all_to_all_buffer_size, int** compute_size1, int** compute_size2, int sloav_mode, int* rotate_index_array, int** send_indexes, int *sendb_num);
 };
 
 #endif

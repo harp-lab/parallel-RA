@@ -42,6 +42,8 @@ static void sloav_non_uniform_benchmark(char *sendbuf, int *sendcounts, int *sdi
 
 static void sloav_non_uniform_benchmark_with_caching(char *sendbuf, int *sendcounts, int *sdispls, MPI_Datatype sendtype, char *recvbuf, int *recvcounts, int *rdispls, MPI_Datatype recvtype, MPI_Comm comm, double **running_a2a_find_count_time, double **running_a2a_create_rindex_time, double **running_a2a_total_find_blocks_time, double **running_a2a_total_pre_time, double **running_a2a_total_send_meda_time, double **running_a2a_total_comm_time, double **running_a2a_total_replace_time, double **running_a2a_exchange_time, double **running_a2a_filter_time, int task_id, int loop_counter, int* rotate_index_array, int** send_indexes, int local_max_count, int *sendb_num);
 
+static void padded_bruck_non_uniform_benchmark(char *sendbuf, int *sendcounts, int *sdispls, MPI_Datatype sendtype, char *recvbuf, int *recvcounts, int *rdispls, MPI_Datatype recvtype, MPI_Comm comm);
+
 
 
 void all_to_all_comm(vector_buffer* vectorized_send_buffer, int vectorized_send_buffer_size, int* send_counts, int *recv_buffer_size, u64 **recv_buffer, MPI_Comm comm)
@@ -78,6 +80,7 @@ void all_to_all_comm(vector_buffer* vectorized_send_buffer, int vectorized_send_
         memcpy(send_buffer + send_displacements[i], (&vectorized_send_buffer[i])->buffer, (&vectorized_send_buffer[i])->size);
         vectorized_send_buffer[i].vector_buffer_free();
     }
+    //std::cout << "vectorized_send_buffer_size" << vectorized_send_buffer_size << std::endl;
     assert(send_displacements[nprocs - 1] + send_counts[nprocs - 1] == vectorized_send_buffer_size);
 
     /// creating recv_buffer
@@ -201,6 +204,15 @@ void comm_compaction_all_to_all(all_to_allv_buffer compute_buffer, int **recv_bu
     else if (sloav_mode == 2)
         sloav_non_uniform_benchmark_with_caching((char*)send_buffer, compute_buffer.cumulative_tuple_process_map, send_disp, MPI_UNSIGNED_LONG_LONG, (char*)*recv_buffer, recv_counts, recv_displacements, MPI_UNSIGNED_LONG_LONG, comm,
                                 running_a2a_find_count_time, running_a2a_create_rindex_time, running_a2a_total_find_blocks_time, running_a2a_total_pre_time, running_a2a_total_send_meda_time, running_a2a_total_comm_time, running_a2a_total_replace_time, running_a2a_exchange_time, running_a2a_filter_time, task_id, loop_counter, rotate_index_array, send_indexes, local_max_count, sendb_num);
+    else if (sloav_mode == 3)
+    {
+        if (rank == 0)
+            std::cout << "M3 \t" << max_send_count << "\t" << average_send_count/nprocs << "\t";
+        padded_bruck_non_uniform_benchmark((char*)send_buffer, compute_buffer.cumulative_tuple_process_map, send_disp, MPI_UNSIGNED_LONG_LONG, (char*)*recv_buffer, recv_counts, recv_displacements, MPI_UNSIGNED_LONG_LONG, comm);
+    }
+        //static void padded_bruck_non_uniform_benchmark(char *sendbuf, int *sendcounts, int *sdispls, MPI_Datatype sendtype, char *recvbuf, int *recvcounts, int *rdispls, MPI_Datatype recvtype, MPI_Comm comm)
+
+
 #if 0
     else if (sloav_mode == 3)   // Based on figure 7
     {
@@ -741,4 +753,122 @@ static void sloav_non_uniform_benchmark_with_caching(char *sendbuf, int *sendcou
                   << total_find_blocks_time << " " << total_pre_time << " " << total_send_meda_time << " " << total_comm_time << " " << total_replace_time << "] " << filter_time << std::endl;
     }
 #endif
+}
+
+
+static void padded_bruck_non_uniform_benchmark(char *sendbuf, int *sendcounts, int *sdispls, MPI_Datatype sendtype, char *recvbuf, int *recvcounts, int *rdispls, MPI_Datatype recvtype, MPI_Comm comm)
+{
+    double u_start = MPI_Wtime();
+
+    int rank, nprocs;
+    MPI_Comm_rank(comm, &rank);
+    MPI_Comm_size(comm, &nprocs);
+
+    int typesize;
+    MPI_Type_size(sendtype, &typesize);
+
+    // 1. Find max send count
+    double find_count_start = MPI_Wtime();
+    int local_max_count = 0;
+    for (int i = 0; i < nprocs; i++)
+    {
+        if (sendcounts[i] > local_max_count)
+            local_max_count = sendcounts[i];
+    }
+    int max_send_count = 0;
+    MPI_Allreduce(&local_max_count, &max_send_count, 1, MPI_INT, MPI_MAX, comm);
+    double find_count_end = MPI_Wtime();
+    double find_count_time = find_count_end - find_count_start;
+
+    // 2. local rotation
+    double rotation_start = MPI_Wtime();
+    char* temp_send_buffer = (char*)malloc(max_send_count*nprocs*typesize);
+    memset(temp_send_buffer, 0, max_send_count*nprocs*typesize);
+    int offset = 0;
+    for (int i = 0; i < nprocs; i++)
+    {
+        int index = (i - rank + nprocs) % nprocs;
+        memcpy(&temp_send_buffer[index*max_send_count*typesize], &sendbuf[offset], sendcounts[i]*typesize);
+        offset += sendcounts[i]*typesize;
+    }
+    double rotation_end = MPI_Wtime();
+    double rotation_time = rotation_end - rotation_start;
+
+    // 3. exchange data with log(P) steps
+    double exchange_start =  MPI_Wtime();
+    u64 unit_size = max_send_count * typesize;
+    double total_find_blocks_time = 0, total_copy_time = 0, total_comm_time = 0, total_replace_time = 0;
+    char* temp_buffer = (char*)malloc(max_send_count*typesize*((nprocs+1)/2));
+    char* temp_recv_buffer = (char*)malloc(max_send_count*typesize*((nprocs+1)/2));
+    for (int k = 1; k < nprocs; k <<= 1)
+    {
+        // 1) find which data blocks to send
+        double find_blocks_start = MPI_Wtime();
+        int send_indexes[(nprocs+1)/2];
+        int sendb_num = 0;
+        for (int i = k; i < nprocs; i++)
+        {
+            if (i & k)
+                send_indexes[sendb_num++] = i;
+        }
+        double find_blocks_end = MPI_Wtime();
+        total_find_blocks_time += (find_blocks_end - find_blocks_start);
+
+        // 2) copy blocks which need to be sent at this step
+        double copy_start = MPI_Wtime();
+        for (int i = 0; i < sendb_num; i++)
+        {
+            u64 offset = send_indexes[i] * unit_size;
+            memcpy(temp_buffer+(i*unit_size), temp_send_buffer+offset, unit_size);
+        }
+        double copy_end = MPI_Wtime();
+        total_copy_time += (copy_end - copy_start);
+
+        // 3) send and receive
+        double comm_start = MPI_Wtime();
+        int recv_proc = (rank - k + nprocs) % nprocs; // receive data from rank - 2^step process
+        int send_proc = (rank + k) % nprocs; // send data from rank + 2^k process
+        u64 comm_size = sendb_num * unit_size;
+        MPI_Sendrecv(temp_buffer, comm_size, MPI_CHAR, send_proc, 0, temp_recv_buffer, comm_size, MPI_CHAR, recv_proc, 0, comm, MPI_STATUS_IGNORE);
+        double comm_end = MPI_Wtime();
+        total_comm_time += (comm_end - comm_start);
+
+        // 4) replace with received data
+        double replace_start = MPI_Wtime();
+        for (int i = 0; i < sendb_num; i++)
+        {
+            u64 offset = send_indexes[i] * unit_size;
+            memcpy(temp_send_buffer+offset, temp_recv_buffer+(i*unit_size), unit_size);
+        }
+        double replace_end = MPI_Wtime();
+        total_replace_time += (replace_end - replace_start);
+    }
+    free(temp_buffer);
+    free(temp_recv_buffer);
+    double exchange_end = MPI_Wtime();
+    double exchange_time = exchange_end - exchange_start;
+
+    // 4. second rotation
+    double revs_rotation_start = MPI_Wtime();
+    offset = 0;
+    for (int i = 0; i < nprocs; i++)
+    {
+        int index = (rank - i + nprocs) % nprocs;
+        memcpy(&recvbuf[rdispls[index]*typesize], &temp_send_buffer[i*unit_size], recvcounts[index]*typesize);
+    }
+    free(temp_send_buffer);
+    double revs_rotation_end = MPI_Wtime();
+    double revs_rotation_time = revs_rotation_end - revs_rotation_start;
+
+    /*
+    double u_end = MPI_Wtime();
+    double max_u_time = 0;
+    double total_u_time = u_end - u_start;
+    MPI_Allreduce(&total_u_time, &max_u_time, 1, MPI_DOUBLE, MPI_MAX, comm);
+    if (total_u_time == max_u_time)
+    {
+         std::cout << "[PaddedBruck] [" << " " << nprocs << " " << max_send_count << "] " << total_u_time << " " << find_count_time << " " << rotation_time << " "
+                 << exchange_time << " [" << total_find_blocks_time << " " << total_copy_time << " " << total_comm_time << " " << total_replace_time << "] "<< revs_rotation_time << std::endl;
+    }
+    */
 }

@@ -1,7 +1,7 @@
 // Compilation template for slog daemon
 #include "../src/parallel_RA_inc.h"
 
-void func(mpi_comm mcomm, int mode, const char* log_name)
+void func(mpi_comm mcomm, int mode, const char* log_name, int cc_mode)
 {
 relation* rel_t_ret_to_ret_18_12_11_10 = new relation(3, false, 18, 272, "rel_t_ret_to_ret_18_12_11_10", "../data/worstcase-110-terms-8-m//t-ret-to-ret_18_58.dat", FULL);
 relation* rel_seq_2_0 = new relation(1, false, 2, 256, "rel_seq_2_0", "../data/worstcase-110-terms-8-m//seq_2_57.dat", FULL);
@@ -378,9 +378,10 @@ lie->set_sloav_mode(mode);
 lie->enable_all_to_all_dump();
 lie->set_output_dir(log_name);
 lie->enable_IO();
+lie->set_comm_compaction(cc_mode);
 lie->set_name("kcfa-110-8");
 lie->execute();
-lie->print_all_relation_size();
+//lie->print_all_relation_size();
 
 
 
@@ -392,22 +393,11 @@ int main(int argc, char **argv)
   mpi_comm mcomm;
   mcomm.create(argc, argv);
 
-  func(mcomm, 0, "final-kcfa-110-8-log_0_0");
-  func(mcomm, 1, "final-kcfa-110-8-log_0_1");
-  func(mcomm, 3, "final-kcfa-110-8-log_0_3");
+  //func(mcomm, 0, "final-kcfa-110-8-log_0_0", 0);
+  //func(mcomm, 3, "final-kcfa-110-8-log_3_0", 0);
 
-  func(mcomm, 0, "final-kcfa-110-8-log_1_0");
-  func(mcomm, 1, "final-kcfa-110-8-log_1_1");
-  func(mcomm, 3, "final-kcfa-110-8-log_1_3");
-
-  func(mcomm, 0, "final-kcfa-110-8-log_2_0");
-  func(mcomm, 1, "final-kcfa-110-8-log_2_1");
-  func(mcomm, 3, "final-kcfa-110-8-log_2_3");
-
-  func(mcomm, 0, "final-kcfa-110-8-log_3_0");
-  func(mcomm, 1, "final-kcfa-110-8-log_3_1");
-  func(mcomm, 3, "final-kcfa-110-8-log_3_3");
-
+  func(mcomm, 0, "final-kcfa-110-8-log_0_1", 1);
+  func(mcomm, 3, "final-kcfa-110-8-log_3_1", 1);
 
  mcomm.destroy();
  return 0;
