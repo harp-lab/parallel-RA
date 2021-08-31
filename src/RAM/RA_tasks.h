@@ -26,8 +26,8 @@ private:
 
 
     u32 ram_relation_count;
-    relation *ram_relations[64];
-    bool ram_relation_status[64];
+    relation *ram_relations[512];
+    bool ram_relation_status[512];
 
 
     std::vector<parallel_RA*> RA_list;                      /// All relations of this SCC
