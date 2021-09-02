@@ -210,6 +210,14 @@ void comm_compaction_all_to_all(all_to_allv_buffer compute_buffer, int **recv_bu
             std::cout << "M3 \t" << max_send_count << "\t" << average_send_count/nprocs << "\t";
         padded_bruck_non_uniform_benchmark((char*)send_buffer, compute_buffer.cumulative_tuple_process_map, send_disp, MPI_UNSIGNED_LONG_LONG, (char*)*recv_buffer, recv_counts, recv_displacements, MPI_UNSIGNED_LONG_LONG, comm);
     }
+
+    //if (outer_hash_buffer_size != 0)
+    //{
+    //    std::cout << "compute_buffer.cumulative_tuple_process_map " << compute_buffer.cumulative_tuple_process_map[0] << std::endl;
+    //    std::cout << "send_buffer " << send_buffer[0] << " " << send_buffer[1] << std::endl;
+    //    std::cout << "*recv_buffer " << (*recv_buffer)[0] << " " << (*recv_buffer)[1] << std::endl;
+    //}
+    //std::cout << "Buffer size " << outer_hash_buffer_size << "Buffer "  << "A2A: " << *recv_buffer[0] << " " << *recv_buffer[1] << " " << std::endl;
         //static void padded_bruck_non_uniform_benchmark(char *sendbuf, int *sendcounts, int *sdispls, MPI_Datatype sendtype, char *recvbuf, int *recvcounts, int *rdispls, MPI_Datatype recvtype, MPI_Comm comm)
 
 

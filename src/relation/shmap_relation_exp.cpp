@@ -11,7 +11,7 @@
 bool shmap_relation::insert_tuple_from_array(u64* t, int arity)
 {
     //for (int i=0; i < arity; i++)
-    //    std::cout << t[i] << "\t";
+    //    std::cout << "Insert newt " << t[i] << "\t";
     //std::cout << "\n";
 
     bool counter = false;
@@ -142,6 +142,7 @@ void shmap_relation::as_all_to_allv_acopy_buffer_helper(shmap_relation*& cur_tri
 
         int index = output_sub_bucket_rank[bucket_id][sub_bucket_id];
 
+
         buffer.local_compute_output_size_rel[ra_id] = buffer.local_compute_output_size_rel[ra_id] + buffer.width[ra_id];
         buffer.local_compute_output_size_total = buffer.local_compute_output_size_total + buffer.width[ra_id];
         buffer.local_compute_output_size_flat[index * buffer.ra_count + ra_id] = buffer.local_compute_output_size_flat[index * buffer.ra_count + ra_id] + buffer.width[ra_id];
@@ -190,6 +191,9 @@ void shmap_relation::as_all_to_allv_copy_buffer_helper(shmap_relation*& cur_trie
         if (canonical == false)
             sub_bucket_id = tuple_hash(reordered_cur_path + head_rel_hash_col_count, arity-head_rel_hash_col_count) % output_sub_bucket_count[bucket_id];
 
+        //std::cout << "Copy size " << buffer.width[ra_id] << std::endl;
+        //std::cout << "Copy happening " << cur_path[0] << " " << cur_path[1] <<  std::endl;
+        //std::cout << "Copy happening " << reordered_cur_path[0] << " " << reordered_cur_path[1] <<  std::endl;
         int index = output_sub_bucket_rank[bucket_id][sub_bucket_id];
         buffer.local_compute_output_size_rel[ra_id] = buffer.local_compute_output_size_rel[ra_id] + buffer.width[ra_id];
         buffer.local_compute_output_size_total = buffer.local_compute_output_size_total + buffer.width[ra_id];

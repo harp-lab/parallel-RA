@@ -833,7 +833,7 @@ void relation::populate_delta_with_keys (int buffer_size, u64* buffer)
     //std::cout << "arity " << arity << std::endl;
     //std::cout << "buffer_size " << buffer_size << std::endl;
     //std::cout << "join_column_count " << join_column_count << std::endl;
-    //std::cout << "buffer " << buffer[0] << std::endl;
+    std::cout << "buffer[0] " << buffer[0] << std::endl;
     //std::cout << "buckets " << buckets << std::endl;
 
     for (int i = 0; i < buffer_size; i = i + (arity))
@@ -846,11 +846,11 @@ void relation::populate_delta_with_keys (int buffer_size, u64* buffer)
         bucket_id = bucket_id<<28;
         u64 intern_key = relation_id | bucket_id;
 
-        //std::cout << "Intern key " << intern_key << std::endl;
+
         for (u32 a = i; a < i + arity; a++)
             t[a-i] = buffer[a];
         t[arity] = intern_key;
-
+        std::cout << "Inserting " << t[0] << " " << intern_key << std::endl;
         if (delta[bucket_id].insert_tuple_from_array(t, arity+1) == true)
         {
             delta_element_count++;
@@ -1236,15 +1236,31 @@ void relation::local_insert_in_delta()
 
     delta = newt;
 
+
     /*
     u32 i = mcomm.get_rank();
+    vector_buffer *vb_newt = new vector_buffer[buckets];
+    vb_newt[i].vector_buffer_create_empty();
+    std::vector<u64> prefix = {};
+    newt[i].as_vector_buffer_recursive(&(vb_newt[i]), prefix);
+
+    if (i == 0)
+        std::cout << "XX [" << get_debug_id() << "] Test " << mcomm.get_rank() << " DELTA " << vb_newt[i].size/(sizeof(u64) * (arity + 1)) << " arity " << arity + 1 << std::endl;
+
+    vb_newt[i].vector_buffer_free();
+
+    delete[] vb_newt;
+
+
+
+    //u32 i = mcomm.get_rank();
     vector_buffer *vb_delta = new vector_buffer[buckets];
     vb_delta[i].vector_buffer_create_empty();
-    std::vector<u64> prefix = {};
+    //std::vector<u64> prefix = {};
     delta[i].as_vector_buffer_recursive(&(vb_delta[i]), prefix);
 
-    //if (i == 0)
-    //    std::cout << "[" << get_debug_id() << "] Test " << mcomm.get_rank() << " DELTA " << vb_delta[i].size/(sizeof(u64) * (arity + 1)) << " arity " << arity + 1 << std::endl;
+    if (i == 0)
+        std::cout << "YY [" << get_debug_id() << "] Test " << mcomm.get_rank() << " DELTA " << vb_delta[i].size/(sizeof(u64) * (arity + 1)) << " arity " << arity + 1 << std::endl;
 
     vb_delta[i].vector_buffer_free();
 

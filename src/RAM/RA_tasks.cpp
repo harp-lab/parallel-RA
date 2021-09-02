@@ -639,6 +639,31 @@ void RAM::local_insert_in_newt_comm_compaction(std::map<u64, u64>& intern_map)
             u32 width = output->get_arity();
             u64 tuple[width + 1];
 
+            if (output->get_arity() == 0)
+            {
+                assert(elements_to_read == 0);
+                relation_id = output->get_intern_tag();
+                relation_id = relation_id<<46;
+                bucket_id = tuple_hash(tuple, output->get_join_column_count()) % get_bucket_count();
+                bucket_id = bucket_id<<28;
+
+                if (bucket_id == mcomm.get_local_rank())
+                {
+                    std::map<u64 ,u64>::const_iterator it = intern_map.find(intern_key);
+                    if( it == intern_map.end() )
+                        intern_value=0;
+                    else
+                        intern_value = it->second + 1;
+
+                    intern_map[intern_key] = intern_value;
+                    tuple[width] = intern_key | intern_value;    /// Intern here
+
+                    if (output->insert_in_newt(tuple) == true)
+                        successful_insert++;
+                }
+
+            }
+
             for (u32 x = starting; x < starting + elements_to_read; x = x + width)
             {
                 if (output->find_in_full(cumulative_all_to_allv_buffer + x, width) == false &&
@@ -671,6 +696,7 @@ void RAM::local_insert_in_newt_comm_compaction(std::map<u64, u64>& intern_map)
         }
         else if (RA_list[ra_id]->get_RA_type() == ACOPY)
         {
+            //std::cout <<  "ACOPY finishing" << std::endl;
             u32 width = output->get_arity() + 1;
             u64 tuple[width];
             successful_insert = 0;
@@ -683,6 +709,9 @@ void RAM::local_insert_in_newt_comm_compaction(std::map<u64, u64>& intern_map)
 
                     if (output->insert_in_newt(tuple) == true)
                         successful_insert++;
+                    //std::cout << "Inserting " << tuple[0] << " " << tuple[1] << std::endl;
+                    //std::cout << "successful_insert " << successful_insert << std::endl;
+                    //std::cout << "get_debug_id " << output->get_debug_id() << std::endl;
                 }
             }
         }
