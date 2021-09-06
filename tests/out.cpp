@@ -183,46 +183,29 @@ int main(int argc, char **argv)
   mpi_comm mcomm;
   mcomm.create(argc, argv);
 
-relation* rel__bar__not__empty__has__id__1__1 = new relation(1, true, 1, 257, "rel__bar__not__empty__has__id__1__1", "../data/arity//bar_dashnot_dashempty_dashhas_dashid_1_3.dat", FULL);
-relation* rel__bar__not__empty__0__ = new relation(0, true, 0, 258, "rel__bar__not__empty__0__", "../data/arity//bar_dashnot_dashempty_0_2.dat", FULL);
-relation* rel__bar__1__1 = new relation(1, true, 1, 256, "rel__bar__1__1", "../data/arity//bar_1_1.dat", FULL);
-relation* rel__bar__1__ = new relation(0, false, 1, 256, "rel__bar__1__", "../data/arity//bar_1_0.dat", FULL);
+relation* rel__bar__0__ = new relation(0, true, 0, 257, "rel__bar__0__", "../data/mini//bar_0_1.dat", FULL);
+relation* rel__foo__0__ = new relation(0, true, 0, 256, "rel__foo__0__", "../data/mini//foo_0_0.dat", FULL);
 
 RAM* scc6550 = new RAM(false, 1);
-scc6550->add_relation(rel__bar__1__, true);
-scc6550->add_relation(rel__bar__1__1, true);
-scc6550->add_rule(new parallel_acopy(rel__bar__1__, rel__bar__1__1, DELTA, {1, 0}));
+scc6550->add_relation(rel__foo__0__, true);
+scc6550->add_rule(new fact(rel__foo__0__, {}));
 
-RAM* scc6551 = new RAM(false, 3);
-scc6551->add_relation(rel__bar__1__1, true);
-scc6551->add_rule(new fact(rel__bar__1__1, {n2d(1)}));
-
-RAM* scc6552 = new RAM(false, 0);
-scc6552->add_relation(rel__bar__not__empty__has__id__1__1, true);
-scc6552->add_rule(new parallel_copy(rel__bar__not__empty__has__id__1__1, rel__bar__not__empty__0__, FULL, {0}));
-
-RAM* scc6553 = new RAM(false, 2);
-scc6553->add_relation(rel__bar__not__empty__0__, true);
-scc6553->add_rule(new parallel_copy(rel__bar__not__empty__0__, rel__bar__1__1, FULL, {}));
+RAM* scc6551 = new RAM(false, 0);
+scc6551->add_relation(rel__bar__0__, true);
+scc6551->add_rule(new parallel_copy(rel__bar__0__, rel__foo__0__, FULL, {}));
 
 LIE* lie = new LIE();
-lie->add_relation(rel__bar__not__empty__has__id__1__1);
-lie->add_relation(rel__bar__not__empty__0__);
-lie->add_relation(rel__bar__1__1);
-lie->add_relation(rel__bar__1__);
+lie->add_relation(rel__bar__0__);
+lie->add_relation(rel__foo__0__);
 lie->add_scc(scc6550);
 lie->add_scc(scc6551);
-lie->add_scc(scc6552);
-lie->add_scc(scc6553);
-lie->add_scc_dependance(scc6551, scc6553);
-lie->add_scc_dependance(scc6551, scc6550);
-lie->add_scc_dependance(scc6553, scc6552);
+lie->add_scc_dependance(scc6550, scc6551);
 
 
 
   // Enable IO
  lie->enable_share_io();
- lie->set_output_dir("../data/arity-output"); // Write to this directory
+ lie->set_output_dir("../data/mini-output"); // Write to this directory
  lie->set_comm(mcomm);
  lie->set_batch_size(1);
  lie->execute();

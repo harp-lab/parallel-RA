@@ -661,7 +661,7 @@ void relation::load_data_from_file()
     }
 }
 
-void relation::initialize_relation(mpi_comm& mcomm)
+void relation::initialize_relation(mpi_comm& mcomm, std::map<u64, u64>& intern_map)
 {
     /// Main : Execute : init : buffer_init : start
     this->mcomm = mcomm;
@@ -774,8 +774,8 @@ void relation::initialize_relation(mpi_comm& mcomm)
 
     //std::cout << filename << " " << fact_load << std::endl;
     if (fact_load == true)
-        if (init_val.size() != 0)
-            populate_delta_with_keys(init_val.size(), reinterpret_cast<u64*>(init_val.data()));
+        //if (init_val.size() != 0)
+            populate_delta_with_keys(init_val.size(), reinterpret_cast<u64*>(init_val.data()), intern_map);
 }
 
 
@@ -825,37 +825,84 @@ void relation::populate_delta (int buffer_size, u64* buffer)
     }
 }
 
-void relation::populate_delta_with_keys (int buffer_size, u64* buffer)
+void relation::populate_delta_with_keys (int buffer_size, u64* buffer, std::map<u64, u64>& intern_map)
 {
     u64 t[arity+1];
+    u64 intern_key=0;
     u32 buckets = get_bucket_count();
 
     //std::cout << "arity " << arity << std::endl;
     //std::cout << "buffer_size " << buffer_size << std::endl;
     //std::cout << "join_column_count " << join_column_count << std::endl;
-    std::cout << "buffer[0] " << buffer[0] << std::endl;
+    //std::cout << "buffer[0] " << buffer[0] << std::endl;
     //std::cout << "buckets " << buckets << std::endl;
 
+    if (buffer_size == 0)
+    {
+        uint64_t bucket_id = tuple_hash(0, join_column_count) % buckets;
+        assert(buffer_size == 0);
+        if (bucket_id == mcomm.get_local_rank())
+        {
+            bucket_id = bucket_id<<28;
+            u64 intern_value=0;
+            u64 relation_id = get_intern_tag();
+            relation_id = relation_id<<46;
+            intern_key = relation_id | bucket_id;
+
+            std::map<u64 ,u64>::const_iterator it = intern_map.find(intern_key);
+            if( it == intern_map.end() )
+                intern_value=0;
+            else
+                intern_value = it->second + 1;
+
+            intern_map[intern_key] = intern_value;
+            t[arity] = intern_key | intern_value;    /// Intern here
+            assert(arity == 0);
+
+
+
+            //std::cout << "Inserting " << t[0] << " " << intern_key << std::endl;
+            if (delta[bucket_id].insert_tuple_from_array(t, arity+1) == true)
+            {
+                delta_element_count++;
+                delta_bucket_element_count[bucket_id]++;
+            }
+        }
+
+    }
+    else
+    {
     for (int i = 0; i < buffer_size; i = i + (arity))
     {
         uint64_t bucket_id = tuple_hash(buffer + i, join_column_count) % buckets;
-        //std::cout << "Bucket id " << bucket_id << std::endl;
-
-        u64 relation_id = get_intern_tag();
-        relation_id = relation_id<<46;
-        bucket_id = bucket_id<<28;
-        u64 intern_key = relation_id | bucket_id;
-
-
-        for (u32 a = i; a < i + arity; a++)
-            t[a-i] = buffer[a];
-        t[arity] = intern_key;
-        std::cout << "Inserting " << t[0] << " " << intern_key << std::endl;
-        if (delta[bucket_id].insert_tuple_from_array(t, arity+1) == true)
+        if (bucket_id == mcomm.get_local_rank())
         {
-            delta_element_count++;
-            delta_bucket_element_count[bucket_id]++;
+            bucket_id = bucket_id<<28;
+            u64 intern_value=0;
+            u64 relation_id = get_intern_tag();
+            relation_id = relation_id<<46;
+            intern_key = relation_id | bucket_id;
+
+            std::map<u64 ,u64>::const_iterator it = intern_map.find(intern_key);
+            if( it == intern_map.end() )
+                intern_value=0;
+            else
+                intern_value = it->second + 1;
+
+            intern_map[intern_key] = intern_value;
+            t[arity] = intern_key | intern_value;    /// Intern here
+
+            for (u32 a = i; a < i + arity; a++)
+                t[a-i] = buffer[a];
+
+            //std::cout << "Inserting " << t[0] << " " << intern_key << std::endl;
+            if (delta[bucket_id].insert_tuple_from_array(t, arity+1) == true)
+            {
+                delta_element_count++;
+                delta_bucket_element_count[bucket_id]++;
+            }
         }
+    }
     }
 }
 
@@ -1025,7 +1072,7 @@ void relation::copy_relation(relation*& recv_rel, mpi_comm output_comm, int targ
 
     finalize_relation();
     recv_rel->set_initailization_type(-1);
-    recv_rel->initialize_relation(output_comm);
+    //recv_rel->initialize_relation(output_comm);
 
 
     u64 t[arity];

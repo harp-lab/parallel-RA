@@ -641,14 +641,19 @@ void RAM::local_insert_in_newt_comm_compaction(std::map<u64, u64>& intern_map)
 
             if (output->get_arity() == 0)
             {
+                tuple[width] = 0;
                 assert(elements_to_read == 0);
                 relation_id = output->get_intern_tag();
                 relation_id = relation_id<<46;
                 bucket_id = tuple_hash(tuple, output->get_join_column_count()) % get_bucket_count();
-                bucket_id = bucket_id<<28;
+
+
 
                 if (bucket_id == mcomm.get_local_rank())
                 {
+                    bucket_id = bucket_id<<28;
+                    intern_key = relation_id | bucket_id;
+
                     std::map<u64 ,u64>::const_iterator it = intern_map.find(intern_key);
                     if( it == intern_map.end() )
                         intern_value=0;

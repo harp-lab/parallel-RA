@@ -199,10 +199,10 @@ public:
 
 
     /// initialize and finalize relation
-    void initialize_relation(mpi_comm& mcomm);
+    void initialize_relation(mpi_comm& mcomm, std::map<u64, u64>& intern_map);
     void populate_full(int buffer_size, u64* buffer);
     void populate_delta (int buffer_size, u64* buffer);
-    void populate_delta_with_keys (int buffer_size, u64* buffer);
+    void populate_delta_with_keys (int buffer_size, u64* buffer, std::map<u64, u64>& intern_map);
     void finalize_relation();
 
 

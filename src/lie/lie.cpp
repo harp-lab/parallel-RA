@@ -237,7 +237,7 @@ bool LIE::execute ()
         lie_relations[i]->set_share_io(share_io);
         lie_relations[i]->set_separate_io(separate_io);
         lie_relations[i]->set_offset_io(offset_io);
-        lie_relations[i]->initialize_relation(mcomm);
+        lie_relations[i]->initialize_relation(mcomm, intern_map);
 
 #if DEBUG_OUTPUT
         //lie_relations[i]->print();
