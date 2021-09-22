@@ -83,14 +83,15 @@ def bin_to_tsv(filename, arity, output, index, meta_folder):
     rows = []
     with open(filename, "rb") as bin_file:
         bin_bytes = bin_file.read()
+        print(f"binary file has {len(bin_bytes)/(8*(arity+1))} tuples")
         for i in range(0, len(bin_bytes), 8 * (arity + 1)):
-            col_id = int.from_bytes(bin_bytes[i:i+8], 'little', signed=False)
+            col_id = int.from_bytes(bin_bytes[i+arity*8:i+(arity+1)*8], 'little', signed=False)
             rel_tag = col_id >> 46
             bucket_hash = (col_id & BUCKET_MASK) >> 28
             tuple_id = col_id & TUPLE_ID_MASK
             print(f'tuple id -- ({rel_tag}, {bucket_hash}, {tuple_id})')
             attributes = [-1 for _ in range(arity)]
-            for j in range(1, arity + 1):
+            for j in range(0, arity):
                 raw_val = int.from_bytes(bin_bytes[i+j*8:i+(j+1)*8], 'little', signed=False)
                 val_tag = raw_val >> 46
                 if val_tag == INT_TAG:
@@ -102,7 +103,7 @@ def bin_to_tsv(filename, arity, output, index, meta_folder):
                 else:
                     # relation
                     attr_val = f'rel_{raw_val & VAL_MASK}'
-                attributes[index[j-1]-1] = attr_val
+                attributes[index[j]-1] = attr_val
             rows.append(attributes)
     if os.path.exists(output):
         os.remove(output)

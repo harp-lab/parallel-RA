@@ -17,6 +17,7 @@
 #include <sstream>
 #include <unordered_map>
 #include <vector>
+#include <filesystem>
 
 #include "../src/compat.h"
 
@@ -47,6 +48,10 @@ unsigned arity;
 unsigned index_length = 0;
 unordered_set<u64> tuple_ids;
 unsigned buckets;
+string string_intern_file_path;
+string symbol_intern_file_path;
+string size_file_path;
+string mode = "slog";
 
 // hash a tuple n values long using our hashing algorithm
 u64 hash_tuple(u64 *fact, unsigned num)
@@ -76,7 +81,6 @@ void parse_column_order(char *index, vector<unsigned> &result)
 	s_stream << index;
 	unsigned cur_col = 1;
 	unsigned tuple_cols = arity + 1;
-	result.push_back(0);
 	while (s_stream.good())
 	{
 		string substr;
@@ -115,6 +119,8 @@ void parse_column_order(char *index, vector<unsigned> &result)
 		}
 		cur_col++;
 	}
+	// index coloumn (0) is the last one
+	result.push_back(0);
 
 	if (cur_col > tuple_cols)
 	{
@@ -208,18 +214,39 @@ void read_strings(string filename)
 	}
 }
 
+// read size file if already exists
+// set current_tuple_id to
+void read_size(string filename)
+{
+	ifstream size_in(filename, ios_base::in);
+	int col_size;
+	if (size_in.fail())
+	{
+		cerr << "warning: could not open size file" << filename << "file. Will create it.\n";
+	}
+	size_in >> current_tuple_id >> col_size;
+	if (col_size != (arity + 1))
+	{
+		cerr << "error: arity in size file" << filename << " mismatch with input arity ! expect "
+			 << arity + 1 << " in file but get" << col_size << endl;
+		size_in.close();
+		exit(1);
+	}
+	size_in.close();
+}
+
 // fill in $strings.csv, $symbols.csv, ...
 void write_interned_pools()
 {
-	const string strings_file = "./$strings.csv";
-	const string symbols_file = "./$symbols.csv";
-	int strings = open(strings_file.c_str(), O_CREAT | O_RDWR, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+	// const string strings_file = "./$strings.csv";
+	// const string symbols_file = "./$symbols.csv";
+	int strings = open(string_intern_file_path.c_str(), O_CREAT | O_RDWR, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 	for (const auto &[key, value] : strings_map)
 	{
 		string s = to_string(value) + "\t" + key + "\n";
 		write(strings, s.c_str(), s.length());
 	}
-	int symbols = open(symbols_file.c_str(), O_CREAT | O_RDWR, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+	int symbols = open(symbol_intern_file_path.c_str(), O_CREAT | O_RDWR, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 	for (const auto &[key, value] : symbols_map)
 	{
 		string s = to_string(value) + "\t" + key + "\n";
@@ -227,15 +254,30 @@ void write_interned_pools()
 	}
 }
 
+void write_size_file(string filename)
+{
+	cout << "updating size file ... \n";
+	fstream size_file(filename);
+	if (filesystem::exists(filename))
+	{
+		filesystem::resize_file(filename, 0);
+		size_file.seekp(0);
+	}
+	size_file << current_tuple_id << '\n'
+			  << arity + 1 << '\n';
+	size_file.close();
+}
+
 #define BUF_SIZE 4096
+
+// void parsing_type
 
 void stream_file_to_slog(char *input_file, char *output_file,
 						 vector<unsigned> &column_order, unsigned rel_tag)
 {
-	string size_file = (string)output_file + ".size";
+	// string size_file = (string)output_file + ".size";
 	int fp_in = open(input_file, O_CREAT | O_RDONLY, S_IRUSR | S_IRGRP | S_IROTH);
-	int fp_out = open(output_file, O_CREAT | O_RDWR, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
-	int fp_size_out = open(size_file.c_str(), O_CREAT | O_RDWR, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+	int fp_out = open(output_file, O_CREAT | O_RDWR | O_APPEND, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 	// initialize state machine
 	char buffer[BUF_SIZE + 1];
 	buffer[BUF_SIZE] = 0; // to ensure end of buffer is nul-terminated
@@ -256,15 +298,15 @@ void stream_file_to_slog(char *input_file, char *output_file,
 	int tuple_counts = 0;
 
 	// compute the inverse column order to use to shuffle u64s
-	// vector<unsigned> inverse_column_order(column_order.size());
-	// for (size_t i = 0; i < column_order.size(); i++)
-	// {
-	// 	size_t j = 0;
-	// 	while (column_order[j] != i)
-	// 		j++;
-	// 	inverse_column_order[i] = j;
-	// 	cout << "inverse_column_order[" << i << "] = " << j << endl;
-	// }
+	vector<unsigned> inverse_column_order(column_order.size());
+	for (size_t i = 0; i < column_order.size(); i++)
+	{
+		size_t j = 0;
+		while (column_order[j] != i)
+			j++;
+		inverse_column_order[i] = j;
+		// cout << "inverse_column_order[" << i << "] = " << j << endl;
+	}
 
 	u64 tuple_buffer[column_order.size()];
 
@@ -343,7 +385,7 @@ void stream_file_to_slog(char *input_file, char *output_file,
 			}
 			else if (c == '\t' || c == '\n')
 			{
-				u64 v;
+				u64 v = 0;
 				// Done reading int/symbol/string
 				char buf[i - last_idx + 1];
 				for (size_t j = last_idx, x = 0; j < i; j++, x++)
@@ -355,7 +397,7 @@ void stream_file_to_slog(char *input_file, char *output_file,
 				// now string_buffer contains the thing we want to write
 				if (cur_state == ReadNumber)
 				{
-					long long input = stoi(string_buffer);
+					u64 input = stoull(string_buffer);
 					if (((TUPLE_MASK | BUCKET_MASK) & input) != input)
 					{
 						cerr << "Value outside of u48 range.\n";
@@ -384,6 +426,11 @@ void stream_file_to_slog(char *input_file, char *output_file,
 				else if (cur_state == ReadSymbol)
 				{
 					// encode symbol, extend symbols map if necessary
+					if (string_buffer == "")
+					{
+						// empty symbol
+						string_buffer = "$_EMPTY";
+					}
 					auto itr = symbols_map.find(string_buffer);
 					v = SYMBOL_TAG;
 					v <<= TUPLE_MASK_LENGTH + BUCKET_MASK_LENGTH;
@@ -401,8 +448,8 @@ void stream_file_to_slog(char *input_file, char *output_file,
 					}
 				}
 
-				// cout << inverse_column_order[cur_col] << endl;
-				tuple_buffer[column_order[cur_col]] = v;
+				// cout << "original " << cur_col << " inverse " << inverse_column_order[cur_col] << endl;
+				tuple_buffer[inverse_column_order[cur_col]] = v;
 
 				if (c == '\t')
 				{
@@ -442,7 +489,7 @@ void stream_file_to_slog(char *input_file, char *output_file,
 					tid <<= (TUPLE_MASK_LENGTH + BUCKET_MASK_LENGTH);
 					tid |= ((hash_tuple(tuple_buffer, index_length) % buckets)) << TUPLE_MASK_LENGTH;
 					tid |= current_tuple_id++;
-					tuple_buffer[column_order[0]] = tid;
+					tuple_buffer[inverse_column_order[0]] = tid;
 
 					// write data
 					write(fp_out, tuple_buffer, 8 * (arity + 1));
@@ -454,15 +501,10 @@ void stream_file_to_slog(char *input_file, char *output_file,
 			}
 		}
 	} while (true);
-	int size_s_len = snprintf( NULL, 0, "%d", tuple_counts);
-	char* size_s = (char*)malloc(size_s_len+1);
-	snprintf(size_s, size_s_len+1, "%d", tuple_counts);
+	write_size_file(size_file_path);
 	write_interned_pools();
-	write(fp_size_out, size_s, size_s_len);
 	close(fp_in);
 	close(fp_out);
-	close(fp_size_out);
-	free(size_s);
 }
 
 int main(int argc, char **argv)
@@ -471,19 +513,22 @@ int main(int argc, char **argv)
 	char *output_file;
 	vector<unsigned> column_ordering;
 	unsigned rel_tag = MIN_REL_TAG;
+	string interned_prims_dir("");
 	// symbols_map[""] = 0;
 
 	if (argc < 5 || argc > 7)
 	{
 		cout << "usage: tsv_bin <input>.(c|t)sv <arity> <output> <index> <buckets>\n";
-		cout << "usage: tsv_bin <input>.(c|t)sv <arity> <output> <index> <buckets> <tag>\n";
-		cout << "usage: tsv_bin <input>.(c|t)sv <arity> <output> <index> <buckets> <tag> <interned-prims-dir>\n\n";
+		cout << "usage: tsv_bin <input>.(c|t)sv <arity> <output> <index> <buckets> <interned-prims-dir>\n";
+		cout << "usage: tsv_bin <input>.(c|t)sv <arity> <output> <index> <buckets> <interned-prims-dir> <mode> \n\n";
 		cout << "This utility converts tab-separated value files (either .csv\n";
 		cout << "or .tsv, assuming tab separators regardless) into Slog\n";
 		cout << "u64-encoded input tuple files. The tuple file <output> will be\n";
 		cout << "written using the comma-separated ordering provided (e.g.,\n";
 		cout << "`1,2,0`). <buckets> is the number of buckets. If <tag>\n";
-		cout << "is provided, <tag> will be used as the relation tag.\n\n";
+		cout << "is provided, <tag> will be used as the relation tag.\n";
+		cout << "mode is either souffle or slog, in souffle mode, first \n";
+		cout << "line of fact will be type of column \n\n";
 		cout << "Primitive values are assumed to exist in $(symbols|strings|...).csv\n";
 		cout << "of the current directory or <interned-prims-dir> if it is provided.\n";
 		exit(1);
@@ -491,7 +536,17 @@ int main(int argc, char **argv)
 
 	if (argc > 6)
 	{
-		int i = stoi(argv[5]);
+		interned_prims_dir = argv[6];
+	}
+
+	if (argc > 7)
+	{
+		mode = argv[7];
+	}
+
+	if (argc > 8)
+	{
+		int i = stoi(argv[8]);
 		if (i < MIN_REL_TAG || i > MAX_REL_TAG)
 		{
 			cerr << "invalid tag (must be between "
@@ -532,9 +587,15 @@ int main(int argc, char **argv)
 	}
 
 	// read symbols and strings
-	read_symbols("./$symbols.csv");
-	read_strings("./$strings.csv");
+	string_intern_file_path = interned_prims_dir + "/$strings.csv";
+	symbol_intern_file_path = interned_prims_dir + "/$symbols.csv";
+	read_symbols(symbol_intern_file_path);
+	read_strings(string_intern_file_path);
 
+	// read size
+	string output_file_name = output_file;
+	size_file_path = output_file_name + ".size";
+	read_size(size_file_path);
 	// stream this CSV output to slog
 	stream_file_to_slog(input_file, output_file, column_ordering, rel_tag);
 
