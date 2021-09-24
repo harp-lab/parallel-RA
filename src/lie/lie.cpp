@@ -174,7 +174,7 @@ void LIE::write_checkpoint_dump(int loop_counter, std::vector<int> executed_scc_
 
     std::string dir_name;
     dir_name = output_dir + "/checkpoint-" + std::to_string(scc_id) + "-" + std::to_string(loop_counter);
-    std::cout << " output_dir name "<< dir_name << std::endl;
+    //std::cout << " output_dir name "<< dir_name << std::endl;
     for (u32 i = 0 ; i < lie_relation_count; i++)
     {
         //std::cout << "Name " << lie_relations[i]->get_filename() << std::endl;
@@ -206,7 +206,7 @@ void LIE::create_checkpoint_dump(int loop_counter, int scc_id)
     std::string dir_name;
     dir_name = output_dir + "/checkpoint-" + std::to_string(scc_id) + "-" + std::to_string(loop_counter);
 
-    std::cout << "Dir name " << dir_name.c_str() << std::endl;
+    //std::cout << "Dir name " << dir_name.c_str() << std::endl;
     std::string scc_metadata;
     scc_metadata = dir_name + "/scc_metadata";
     if (mcomm.get_local_rank() == 0)
@@ -505,13 +505,13 @@ bool LIE::execute ()
 
             executed_scc_id.push_back(executable_task->get_id());
 #if 1
-            int tlc = loop_counter - 1;
-            if (enable_data_io == true && tlc % cp_iteration == 0)
+            //int tlc = loop_counter - 1;
+            if (enable_data_io == true && (loop_counter - 1) % cp_iteration == 0)
             {
                 double writing_checkpoint_dump_time = 0;
                 int checkpoint_dumps_num = 0;
                 double write_cp_start = MPI_Wtime();
-                write_checkpoint_dump(tlc, executed_scc_id, executable_task->get_id());
+                write_checkpoint_dump(loop_counter - 1, executed_scc_id, executable_task->get_id());
                 double write_cp_end = MPI_Wtime();
                 writing_checkpoint_dump_time = (write_cp_end - write_cp_start);
                 double max_write_cp_time = 0;
@@ -538,7 +538,7 @@ bool LIE::execute ()
             u64 delta_in_scc = 0;
             do
             {
-                if (enable_data_io == true && loop_counter % cp_iteration == 0)
+                if (enable_data_io == true && (loop_counter - 1) % cp_iteration == 0)
                     create_checkpoint_dump(loop_counter, executable_task->get_id());
 
                 if (comm_compaction == 0)
@@ -557,7 +557,7 @@ bool LIE::execute ()
                     double writing_checkpoint_dump_time = 0;
                     int checkpoint_dumps_num = 0;
                     double write_cp_start = MPI_Wtime();
-                    write_checkpoint_dump(loop_counter, executed_scc_id, executable_task->get_id());
+                    write_checkpoint_dump(loop_counter - 1, executed_scc_id, executable_task->get_id());
                     double write_cp_end = MPI_Wtime();
                     writing_checkpoint_dump_time = (write_cp_end - write_cp_start);
                     double max_write_cp_time = 0;
