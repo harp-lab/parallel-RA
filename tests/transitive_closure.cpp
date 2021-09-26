@@ -5,6 +5,7 @@ void func(mpi_comm mcomm, int mode, const char* log_name, const char* input_name
 {
 relation* T1 = new relation(1, true, 2, 257, "T", "../data/g5955/path_2_1_2", FULL);
 relation* G1 = new relation(1, true, 2, 256, "G", input_name, FULL);
+
 RAM* join1 = new RAM(true, 1);
 join1->add_relation(G1, false);
 join1->add_relation(T1, true);

@@ -122,6 +122,7 @@ void shmap_relation::as_all_to_allv_acopy_buffer(all_to_allv_buffer& buffer, std
             return;
         m_trie = *(m_trie->next.find(n));
     }
+
     as_all_to_allv_acopy_buffer_helper(m_trie, prefix, buffer, ra_id, buckets, output_sub_bucket_count, output_sub_bucket_rank, reorder_map, arity, join_column_count, head_rel_hash_col_count, canonical);
 }
 
@@ -137,8 +138,9 @@ void shmap_relation::as_all_to_allv_acopy_buffer_helper(shmap_relation*& cur_tri
 
         uint64_t bucket_id = tuple_hash(reordered_cur_path, head_rel_hash_col_count) % buckets;
         uint64_t sub_bucket_id=0;
-        if (canonical == false)
+        if (canonical == false && arity != 0)
             sub_bucket_id = tuple_hash(reordered_cur_path + head_rel_hash_col_count, arity-head_rel_hash_col_count) % output_sub_bucket_count[bucket_id];
+
 
         int index = output_sub_bucket_rank[bucket_id][sub_bucket_id];
 

@@ -137,14 +137,15 @@ void LIE::print_all_relation_size()
 
     u64 global_total_facts[lie_relation_count];
     MPI_Allreduce(local_facts, global_total_facts, lie_relation_count, MPI_UNSIGNED_LONG_LONG, MPI_SUM, mcomm.get_local_comm());
+#if 1
     for (u32 i = 0 ; i < lie_relation_count; i++)
     {
-        relation* curr_relation = lie_relations[i];
-        if (mcomm.get_local_rank() == 0)
-            std::cout << curr_relation->get_debug_id() << ": {" << curr_relation->get_arity() << "}. (" << global_total_facts[i] << " total facts)" << std::endl;
+        //relation* curr_relation = lie_relations[i];
+        //if (mcomm.get_local_rank() == 0)
+        //    std::cout << curr_relation->get_debug_id() << ": {" << curr_relation->get_arity() << "}. (" << global_total_facts[i] << " total facts)" << std::endl;
         total_facts = total_facts + global_total_facts[i];
     }
-
+#endif
     if (mcomm.get_local_rank() == 0)
         std::cout << "Total facts across all relations " << total_facts << std::endl << std::endl;
 }

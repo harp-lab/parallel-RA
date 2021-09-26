@@ -1132,7 +1132,7 @@ bool relation::insert_in_delta(u64* t)
 {
     uint64_t bucket_id = tuple_hash(t, join_column_count) % get_bucket_count();
     u32 sub_bucket_id = 0;
-    if (is_canonical == false)
+    if (is_canonical == false   && arity != 0)
         sub_bucket_id = tuple_hash(t + join_column_count, arity-join_column_count) % sub_bucket_per_bucket_count[bucket_id];
 
     //assert((int)bucket_id == mcomm.get_local_rank());
@@ -1154,7 +1154,7 @@ bool relation::insert_in_newt(u64* t)
 {
     uint64_t bucket_id = tuple_hash(t, join_column_count) % get_bucket_count();
     u32 sub_bucket_id = 0;
-    if (is_canonical == false)
+    if (is_canonical == false && arity != 0)
         sub_bucket_id = tuple_hash(t + join_column_count, arity-join_column_count) % sub_bucket_per_bucket_count[bucket_id];
 
     //assert((int)bucket_id == mcomm.get_local_rank());
@@ -1177,7 +1177,7 @@ bool relation::insert_in_full(u64* t)
     u32 buckets = get_bucket_count();
     uint64_t bucket_id = tuple_hash(t, join_column_count) % buckets;
     uint64_t sub_bucket_id=0;
-    if (is_canonical == false)
+    if (is_canonical == false  && arity != 0)
         sub_bucket_id = tuple_hash(t + join_column_count, arity-join_column_count) % sub_bucket_per_bucket_count[bucket_id];
 
     //assert((int)bucket_id == mcomm.get_local_rank());
