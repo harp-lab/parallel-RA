@@ -61,6 +61,7 @@ public:
     virtual void get_copy_generate_rename_index(int** projection_reorder_index_array, int* projection_reorder_index_array_length) {return;}
 
 
+    virtual relation* get_relation(){return NULL;}
 
     /// MPI comm
     void set_comm(mpi_comm& mcomm)  {this->mcomm = mcomm;}

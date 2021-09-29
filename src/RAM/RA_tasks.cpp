@@ -418,6 +418,20 @@ u32 RAM::local_compute(int* offset, int loop_counter, int task_id, int** compute
 
         else if ((*it)->get_RA_type() == FACT)
         {
+            fact* current_ra = (fact*) *it;
+            relation* fact_relation = current_ra->get_relation();
+            std::vector<u64> data = current_ra->get_init_data();
+            current_ra->init_with_fact(get_bucket_count(),
+                                       fact_relation->get_sub_bucket_per_bucket_count(),
+                                       fact_relation->get_sub_bucket_rank(),
+                                       fact_relation->get_arity(),
+                                       fact_relation->get_join_column_count(),
+                                       fact_relation->get_is_canonical(),
+                                       data,
+                                       compute_buffer,
+                                       counter);
+
+
         }
 
 
@@ -631,10 +645,12 @@ void RAM::local_insert_in_newt_comm_compaction(std::map<u64, u64>& intern_map)
             output = RA_list[ra_id]->get_join_output();
         else if (RA_list[ra_id]->get_RA_type() == COPY_GENERATE)
             output = RA_list[ra_id]->get_copy_generate_output();
+        else if (RA_list[ra_id]->get_RA_type() == FACT)
+            output = RA_list[ra_id]->get_relation();
         else
             output = RA_list[ra_id]->get_acopy_output();
 
-        if (RA_list[ra_id]->get_RA_type() == COPY || RA_list[ra_id]->get_RA_type() == JOIN || RA_list[ra_id]->get_RA_type() == COPY_FILTER || RA_list[ra_id]->get_RA_type() == COPY_GENERATE)
+        if (RA_list[ra_id]->get_RA_type() == COPY || RA_list[ra_id]->get_RA_type() == JOIN || RA_list[ra_id]->get_RA_type() == COPY_FILTER || RA_list[ra_id]->get_RA_type() == COPY_GENERATE || RA_list[ra_id]->get_RA_type() == FACT)
         {
             u32 width = output->get_arity();
             u64 tuple[width + 1];
@@ -646,8 +662,6 @@ void RAM::local_insert_in_newt_comm_compaction(std::map<u64, u64>& intern_map)
                 relation_id = output->get_intern_tag();
                 relation_id = relation_id<<46;
                 bucket_id = tuple_hash(tuple, output->get_join_column_count()) % get_bucket_count();
-
-
 
                 if (bucket_id == mcomm.get_local_rank())
                 {
@@ -694,8 +708,12 @@ void RAM::local_insert_in_newt_comm_compaction(std::map<u64, u64>& intern_map)
                     intern_map[intern_key] = intern_value;
                     tuple[width] = intern_key | intern_value;    /// Intern here
 
+
                     if (output->insert_in_newt(tuple) == true)
                         successful_insert++;
+
+                    //if (RA_list[ra_id]->get_RA_type() == FACT)
+                    //    std::cout << "FFFFFFFFFF "<< tuple[0] << " " << tuple[1] << " " << successful_insert << std::endl;
                 }
             }
         }
@@ -720,8 +738,8 @@ void RAM::local_insert_in_newt_comm_compaction(std::map<u64, u64>& intern_map)
                 }
             }
         }
-        else if (RA_list[ra_id]->get_RA_type() == FACT)
-            continue;
+        //else if (RA_list[ra_id]->get_RA_type() == FACT)
+        //    continue;
 
         starting = starting + elements_to_read;
         //std::cout << output->get_debug_id() << " successful insert " << successful_insert << std::endl;

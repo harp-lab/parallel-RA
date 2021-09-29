@@ -133,6 +133,7 @@ void LIE::print_all_relation_size()
     {
         relation* curr_relation = lie_relations[i];
         local_facts[i] = curr_relation->get_full_element_count();
+        local_facts[i] = local_facts[i] + curr_relation->get_delta_element_count();
     }
 
     u64 global_total_facts[lie_relation_count];
@@ -140,9 +141,9 @@ void LIE::print_all_relation_size()
 #if 1
     for (u32 i = 0 ; i < lie_relation_count; i++)
     {
-        //relation* curr_relation = lie_relations[i];
-        //if (mcomm.get_local_rank() == 0)
-        //    std::cout << curr_relation->get_debug_id() << ": {" << curr_relation->get_arity() << "}. (" << global_total_facts[i] << " total facts)" << std::endl;
+        relation* curr_relation = lie_relations[i];
+        if (mcomm.get_local_rank() == 0)
+            std::cout << curr_relation->get_debug_id() << ": {" << curr_relation->get_arity() << "}. (" << global_total_facts[i] << " total facts)" << std::endl;
         total_facts = total_facts + global_total_facts[i];
     }
 #endif

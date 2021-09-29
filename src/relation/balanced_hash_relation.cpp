@@ -773,9 +773,9 @@ void relation::initialize_relation(mpi_comm& mcomm, std::map<u64, u64>& intern_m
     	load_data_from_file();
 
     //std::cout << filename << " " << fact_load << std::endl;
-    if (fact_load == true)
+    //if (fact_load == true)
         //if (init_val.size() != 0)
-            populate_delta_with_keys(init_val.size(), reinterpret_cast<u64*>(init_val.data()), intern_map);
+            //populate_delta_with_keys(init_val.size(), reinterpret_cast<u64*>(init_val.data()), intern_map);
 }
 
 
@@ -825,6 +825,7 @@ void relation::populate_delta (int buffer_size, u64* buffer)
     }
 }
 
+/*
 void relation::populate_delta_with_keys (int buffer_size, u64* buffer, std::map<u64, u64>& intern_map)
 {
     u64 t[arity+1];
@@ -905,6 +906,7 @@ void relation::populate_delta_with_keys (int buffer_size, u64* buffer, std::map<
     }
     }
 }
+*/
 
 
 
